@@ -106,15 +106,12 @@ function createWindow({ posOnly = false, returnOnly = false } = {}) {
   if (posOnly) {
     posWindowCounter++;
     const { width: screenWidth, height: screenHeight } = screen.getPrimaryDisplay().workAreaSize;
-    const cascadeOffset = (posWindowCounter - 1) * 30;
-    const x = Math.min(
-      Math.round((screenWidth - winOptions.width) / 2) + cascadeOffset,
-      screenWidth - 200
-    );
-    const y = Math.min(
-      Math.round((screenHeight - winOptions.height) / 2) + cascadeOffset,
-      screenHeight - 200
-    );
+    winOptions.width = Math.round(screenWidth * 0.8);
+    winOptions.height = Math.round(screenHeight * 0.8);
+    winOptions.minWidth = Math.round(screenWidth * 0.6);
+    winOptions.minHeight = Math.round(screenHeight * 0.6);
+    const x = Math.round((screenWidth - winOptions.width) / 2);
+    const y = Math.round((screenHeight - winOptions.height) / 2);
     winOptions.x = x;
     winOptions.y = y;
     winOptions.title = `Faraz Pharmacy - Sale ${posWindowCounter}`;

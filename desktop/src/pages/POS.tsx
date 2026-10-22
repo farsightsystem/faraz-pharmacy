@@ -512,18 +512,6 @@ export default function POS() {
   return (
     <div className="flex flex-col h-[calc(100vh-5rem)] max-w-[1600px] mx-auto px-4 py-2 select-none gap-3">
       {/* Multi-window drag handle */}
-      {isPosWindow && (
-        <div className="drag-region h-6 w-full shrink-0 cursor-grab active:cursor-grabbing flex items-center justify-center gap-2 bg-surface border-b border-border/50 rounded-t-lg -mt-2 -mx-4 px-4 select-none">
-          <div className="flex gap-1 no-drag">
-            <div className="w-1.5 h-1.5 rounded-full bg-text-secondary/30" />
-            <div className="w-1.5 h-1.5 rounded-full bg-text-secondary/30" />
-            <div className="w-1.5 h-1.5 rounded-full bg-text-secondary/30" />
-          </div>
-          <span className="no-drag text-[9px] text-text-secondary/50 font-medium tracking-wider uppercase">
-            Sale Window — Drag to move
-          </span>
-        </div>
-      )}
 
       {/* TOP: Full-width Search & Barcode Bar */}
       <div className="shrink-0 space-y-1.5">
