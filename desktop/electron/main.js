@@ -85,23 +85,27 @@ function createWindow({ posOnly = false, returnOnly = false } = {}) {
       ? "/pos?pos=1"
       : "/pos";
 
-  const winOptions = {
-    width: 1440,
-    height: 900,
-    minWidth: 1024,
-    minHeight: 700,
-    title: "Faraz Pharmacy",
-    icon: path.join(__dirname, "..", "src", "asset", "image", "logo.png"),
-    webPreferences: {
-      preload: path.join(__dirname, "preload.cjs"),
-      nodeIntegration: false,
-      contextIsolation: true,
-      sandbox: false,
-    },
-    show: false,
-    titleBarStyle: "hiddenInset",
-    autoHideMenuBar: true,
-  };
+ const winOptions = {
+  width: 1440,
+  height: 900,
+  minWidth: 1024,
+  minHeight: 700,
+  title: "Faraz Pharmacy",
+  movable: true,
+  icon: path.join(__dirname, "..", "src", "asset", "image", "logo.png"),
+  webPreferences: {
+    preload: path.join(__dirname, "preload.cjs"),
+    nodeIntegration: false,
+    contextIsolation: true,
+    sandbox: false,
+  },
+  show: false,
+  autoHideMenuBar: true,
+};
+
+// if (isPrimary) {
+//   winOptions.titleBarStyle = "hiddenInset";
+// }
 
   if (posOnly) {
     posWindowCounter++;
