@@ -214,7 +214,7 @@ export const reportsService = {
         name: product.name,
         barcode: product.barcode,
         category: product.category,
-        company: product.company?.name || null,
+        company: product.company,
         location: product.location,
         stockQty: product.stockQty,
         purchasePrice: product.purchasePrice,

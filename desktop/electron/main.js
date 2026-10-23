@@ -85,36 +85,37 @@ function createWindow({ posOnly = false, returnOnly = false } = {}) {
       ? "/pos?pos=1"
       : "/pos";
 
-  const winOptions = {
-    width: 1440,
-    height: 900,
-    minWidth: 1024,
-    minHeight: 700,
-    title: "Faraz Pharmacy",
-    icon: path.join(__dirname, "..", "src", "asset", "image", "logo.png"),
-    webPreferences: {
-      preload: path.join(__dirname, "preload.cjs"),
-      nodeIntegration: false,
-      contextIsolation: true,
-      sandbox: false,
-    },
-    show: false,
-    titleBarStyle: "hiddenInset",
-    autoHideMenuBar: true,
-  };
+ const winOptions = {
+  width: 1440,
+  height: 900,
+  minWidth: 1024,
+  minHeight: 700,
+  title: "Faraz Pharmacy",
+  movable: true,
+  icon: path.join(__dirname, "..", "src", "asset", "image", "logo.png"),
+  webPreferences: {
+    preload: path.join(__dirname, "preload.cjs"),
+    nodeIntegration: false,
+    contextIsolation: true,
+    sandbox: false,
+  },
+  show: false,
+  autoHideMenuBar: true,
+};
+
+// if (isPrimary) {
+//   winOptions.titleBarStyle = "hiddenInset";
+// }
 
   if (posOnly) {
     posWindowCounter++;
     const { width: screenWidth, height: screenHeight } = screen.getPrimaryDisplay().workAreaSize;
-    const cascadeOffset = (posWindowCounter - 1) * 30;
-    const x = Math.min(
-      Math.round((screenWidth - winOptions.width) / 2) + cascadeOffset,
-      screenWidth - 200
-    );
-    const y = Math.min(
-      Math.round((screenHeight - winOptions.height) / 2) + cascadeOffset,
-      screenHeight - 200
-    );
+    winOptions.width = Math.round(screenWidth * 0.8);
+    winOptions.height = Math.round(screenHeight * 0.8);
+    winOptions.minWidth = Math.round(screenWidth * 0.6);
+    winOptions.minHeight = Math.round(screenHeight * 0.6);
+    const x = Math.round((screenWidth - winOptions.width) / 2);
+    const y = Math.round((screenHeight - winOptions.height) / 2);
     winOptions.x = x;
     winOptions.y = y;
     winOptions.title = `Faraz Pharmacy - Sale ${posWindowCounter}`;
