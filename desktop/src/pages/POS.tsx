@@ -287,19 +287,65 @@ export default function POS() {
       }
 
       try {
-        const barcodeProduct = await api.products.getByBarcode(trimmed);
+        const barcodeProduct = await api.products.socketProductScan(trimmed);
         if (barcodeProduct) {
-          if (barcodeProduct.stock_qty <= 0) {
+          // Map camelCase fast response to snake_case Product shape
+          const mapped: Product = {
+            id: barcodeProduct.id,
+            barcode: barcodeProduct.barcode,
+            name: barcodeProduct.name,
+            sale_price: barcodeProduct.salePrice,
+            purchase_price: barcodeProduct.purchasePrice,
+            stock_qty: barcodeProduct.stockQty,
+            category: barcodeProduct.category,
+            location: barcodeProduct.location,
+            active: barcodeProduct.active,
+            company: barcodeProduct.company?.name || "",
+            prices: [],
+            markup_percent: 20,
+            created_at: new Date().toISOString(),
+          };
+          if (mapped.stock_qty <= 0) {
             showInlineError("Out of stock");
             setSearch("");
             focusSearch();
             return;
           }
-          promptPriceTier(barcodeProduct);
+          promptPriceTier(mapped);
           return;
         }
       } catch {
-        // Not a barcode match, fall through to search results
+        // Socket.io not available or scan failed, fall through to REST fast endpoint
+        try {
+          const barcodeProduct = await api.products.getByBarcodeFast(trimmed);
+          if (barcodeProduct) {
+            const mapped: Product = {
+              id: barcodeProduct.id,
+              barcode: barcodeProduct.barcode,
+              name: barcodeProduct.name,
+              sale_price: barcodeProduct.salePrice,
+              purchase_price: barcodeProduct.purchasePrice,
+              stock_qty: barcodeProduct.stockQty,
+              category: barcodeProduct.category,
+              location: barcodeProduct.location,
+              active: barcodeProduct.active,
+              company: barcodeProduct.company?.name || "",
+              prices: [],
+              markup_percent: 20,
+              created_at: new Date().toISOString(),
+            };
+            if (mapped.stock_qty <= 0) {
+              showInlineError("Out of stock");
+              setSearch("");
+              focusSearch();
+              return;
+            }
+            promptPriceTier(mapped);
+            return;
+          }
+        } catch {
+          // Not a barcode match, fall through to search results
+        }
       }
 
       // 2. If dropdown is open and user navigates or selects

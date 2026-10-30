@@ -1,5 +1,6 @@
 import { prisma } from "../../services/prisma";
 import { NotFoundError, BadRequestError } from "../../utils/errors";
+import { cacheGet, cacheSet, cacheDelNamespace, makeKey } from "../../utils/cache";
 import type { CreateCustomerInput } from "./customers.schema";
 import { Prisma } from "../../generated/prisma/client";
 
@@ -32,6 +33,12 @@ export const customersService = {
     sortBy?: string;
     sortOrder?: "asc" | "desc";
   } = {}) {
+    const cacheKey = makeKey("customers:list", {
+      page, limit, search, includeArchived, archivedOnly, sortBy, sortOrder,
+    });
+    const cached = cacheGet<any>(cacheKey);
+    if (cached) return cached;
+
     const skip = (page - 1) * limit;
 
     const conditions: string[] = [];
@@ -75,7 +82,7 @@ export const customersService = {
 
     const data = await prisma.$queryRawUnsafe<unknown[]>(dataQuery, ...params, limit, skip);
 
-    return {
+    const result = {
       data,
       meta: {
         total,
@@ -84,9 +91,16 @@ export const customersService = {
         totalPages: Math.ceil(total / limit) || 1,
       },
     };
+
+    cacheSet(cacheKey, result, 120); // cache customer list for 120 seconds
+    return result;
   },
 
   async getById(id: string) {
+    const cacheKey = makeKey("customers:id", { id });
+    const cached = cacheGet<any>(cacheKey);
+    if (cached) return cached;
+
     const customer = await prisma.customer.findUnique({
       where: { id },
       include: {
@@ -111,7 +125,7 @@ export const customersService = {
       id
     );
 
-    return {
+    const result = {
       id: customer.id,
       name: customer.name,
       phone: customer.phone,
@@ -160,10 +174,13 @@ export const customersService = {
         })),
       })),
     };
+
+    cacheSet(cacheKey, result, 120); // cache customer detail for 120 seconds
+    return result;
   },
 
   async create(data: CreateCustomerInput) {
-    return prisma.customer.create({
+    const result = await prisma.customer.create({
       data: {
         name: data.name,
         phone: data.phone ?? "",
@@ -172,13 +189,15 @@ export const customersService = {
         fatherPhone: data.fatherPhone ?? "",
       },
     });
+    cacheDelNamespace("customers"); // invalidate customer cache on write
+    return result;
   },
 
   async update(id: string, data: CreateCustomerInput) {
     const existing = await prisma.customer.findUnique({ where: { id } });
     if (!existing) throw new NotFoundError("Customer");
 
-    return prisma.customer.update({
+    const result = await prisma.customer.update({
       where: { id },
       data: {
         name: data.name,
@@ -188,6 +207,8 @@ export const customersService = {
         fatherPhone: data.fatherPhone ?? "",
       },
     });
+    cacheDelNamespace("customers"); // invalidate customer cache on write
+    return result;
   },
 
   async archive(id: string) {
@@ -210,31 +231,37 @@ export const customersService = {
       );
     }
 
-    return prisma.customer.update({
+    const result = await prisma.customer.update({
       where: { id },
       data: { active: 0 },
     });
+    cacheDelNamespace("customers"); // invalidate customer cache on write
+    return result;
   },
 
   async restore(id: string) {
     const customer = await prisma.customer.findUnique({ where: { id } });
     if (!customer) throw new NotFoundError("Customer");
-    return prisma.customer.update({
+    const result = await prisma.customer.update({
       where: { id },
       data: { active: 1 },
     });
+    cacheDelNamespace("customers"); // invalidate customer cache on write
+    return result;
   },
 
   async hardDelete(id: string) {
     const customer = await prisma.customer.findUnique({ where: { id } });
     if (!customer) throw new NotFoundError("Customer");
 
-    return prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+    const result = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       await tx.sale.updateMany({ where: { customerId: id }, data: { customerId: null } });
       await tx.arrear.deleteMany({ where: { customerId: id } });
       await tx.customer.delete({ where: { id } });
       return { success: true };
     });
+    cacheDelNamespace("customers"); // invalidate customer cache on write
+    return result;
   },
 
   async delete(id: string) {

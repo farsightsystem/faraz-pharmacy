@@ -47,6 +47,15 @@ export const medicinesController = {
     }
   },
 
+  async getByBarcodeFast(req: Request, res: Response, next: NextFunction) {
+    try {
+      const product = await medicinesService.getByBarcodeFast(req.params.b);
+      res.json(product);
+    } catch (err) {
+      next(err);
+    }
+  },
+
   async getById(req: Request, res: Response, next: NextFunction) {
     try {
       const product = await medicinesService.getById(req.params.id);

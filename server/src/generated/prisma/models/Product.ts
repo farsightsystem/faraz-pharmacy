@@ -414,7 +414,7 @@ export type ProductCreateInput = {
   barcode: string
   name: string
   category?: string
-  location?: string
+  location: string
   salePrice?: number
   purchasePrice?: number
   markupPercent?: number
@@ -437,7 +437,7 @@ export type ProductUncheckedCreateInput = {
   barcode: string
   name: string
   category?: string
-  location?: string
+  location: string
   distributorId?: string | null
   salePrice?: number
   purchasePrice?: number
@@ -506,7 +506,7 @@ export type ProductCreateManyInput = {
   barcode: string
   name: string
   category?: string
-  location?: string
+  location: string
   distributorId?: string | null
   salePrice?: number
   purchasePrice?: number
@@ -832,7 +832,7 @@ export type ProductCreateWithoutBarcodeLinkInput = {
   barcode: string
   name: string
   category?: string
-  location?: string
+  location: string
   salePrice?: number
   purchasePrice?: number
   markupPercent?: number
@@ -854,7 +854,7 @@ export type ProductUncheckedCreateWithoutBarcodeLinkInput = {
   barcode: string
   name: string
   category?: string
-  location?: string
+  location: string
   distributorId?: string | null
   salePrice?: number
   purchasePrice?: number
@@ -936,7 +936,7 @@ export type ProductCreateWithoutPricesInput = {
   barcode: string
   name: string
   category?: string
-  location?: string
+  location: string
   salePrice?: number
   purchasePrice?: number
   markupPercent?: number
@@ -958,7 +958,7 @@ export type ProductUncheckedCreateWithoutPricesInput = {
   barcode: string
   name: string
   category?: string
-  location?: string
+  location: string
   distributorId?: string | null
   salePrice?: number
   purchasePrice?: number
@@ -1040,7 +1040,7 @@ export type ProductCreateWithoutDistributorInput = {
   barcode: string
   name: string
   category?: string
-  location?: string
+  location: string
   salePrice?: number
   purchasePrice?: number
   markupPercent?: number
@@ -1062,7 +1062,7 @@ export type ProductUncheckedCreateWithoutDistributorInput = {
   barcode: string
   name: string
   category?: string
-  location?: string
+  location: string
   salePrice?: number
   purchasePrice?: number
   markupPercent?: number
@@ -1130,7 +1130,7 @@ export type ProductCreateWithoutSaleItemsInput = {
   barcode: string
   name: string
   category?: string
-  location?: string
+  location: string
   salePrice?: number
   purchasePrice?: number
   markupPercent?: number
@@ -1152,7 +1152,7 @@ export type ProductUncheckedCreateWithoutSaleItemsInput = {
   barcode: string
   name: string
   category?: string
-  location?: string
+  location: string
   distributorId?: string | null
   salePrice?: number
   purchasePrice?: number
@@ -1234,7 +1234,7 @@ export type ProductCreateWithoutStockPurchasesInput = {
   barcode: string
   name: string
   category?: string
-  location?: string
+  location: string
   salePrice?: number
   purchasePrice?: number
   markupPercent?: number
@@ -1256,7 +1256,7 @@ export type ProductUncheckedCreateWithoutStockPurchasesInput = {
   barcode: string
   name: string
   category?: string
-  location?: string
+  location: string
   distributorId?: string | null
   salePrice?: number
   purchasePrice?: number
@@ -1338,7 +1338,7 @@ export type ProductCreateWithoutBatchesInput = {
   barcode: string
   name: string
   category?: string
-  location?: string
+  location: string
   salePrice?: number
   purchasePrice?: number
   markupPercent?: number
@@ -1360,7 +1360,7 @@ export type ProductUncheckedCreateWithoutBatchesInput = {
   barcode: string
   name: string
   category?: string
-  location?: string
+  location: string
   distributorId?: string | null
   salePrice?: number
   purchasePrice?: number
@@ -1442,7 +1442,7 @@ export type ProductCreateWithoutReturnItemsInput = {
   barcode: string
   name: string
   category?: string
-  location?: string
+  location: string
   salePrice?: number
   purchasePrice?: number
   markupPercent?: number
@@ -1464,7 +1464,7 @@ export type ProductUncheckedCreateWithoutReturnItemsInput = {
   barcode: string
   name: string
   category?: string
-  location?: string
+  location: string
   distributorId?: string | null
   salePrice?: number
   purchasePrice?: number
@@ -1546,7 +1546,7 @@ export type ProductCreateWithoutCompanyInput = {
   barcode: string
   name: string
   category?: string
-  location?: string
+  location: string
   salePrice?: number
   purchasePrice?: number
   markupPercent?: number
@@ -1568,7 +1568,7 @@ export type ProductUncheckedCreateWithoutCompanyInput = {
   barcode: string
   name: string
   category?: string
-  location?: string
+  location: string
   distributorId?: string | null
   salePrice?: number
   purchasePrice?: number
@@ -1616,7 +1616,7 @@ export type ProductCreateManyDistributorInput = {
   barcode: string
   name: string
   category?: string
-  location?: string
+  location: string
   salePrice?: number
   purchasePrice?: number
   markupPercent?: number
@@ -1692,7 +1692,7 @@ export type ProductCreateManyCompanyInput = {
   barcode: string
   name: string
   category?: string
-  location?: string
+  location: string
   distributorId?: string | null
   salePrice?: number
   purchasePrice?: number

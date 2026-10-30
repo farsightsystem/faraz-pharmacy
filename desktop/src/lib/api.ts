@@ -125,6 +125,41 @@ const api = {
     getById: (id: string): Promise<Product> => fetchJson("GET", `/api/products/${id}`),
     getByBarcode: (b: string): Promise<Product | null> =>
       fetchJson("GET", `/api/products/barcode/${encodeURIComponent(b)}`),
+
+    /**
+     * Fast barcode lookup for POS scanning.
+     * Returns only core fields (camelCase from Prisma) to keep the JSON payload tiny.
+     * Use this for high-frequency barcode scans; it skips the full normalization
+     * and prices relation to minimize payload size.
+     */
+    getByBarcodeFast: (b: string): Promise<{
+      id: string;
+      barcode: string;
+      name: string;
+      salePrice: number;
+      purchasePrice: number;
+      stockQty: number;
+      category: string;
+      location: string;
+      active: number;
+      company: { name: string } | null;
+    } | null> =>
+      fetchJson(
+        "GET",
+        `/api/products/barcode-fast/${encodeURIComponent(b)}`
+      ),
+
+    /**
+     * Socket.io barcode scan — uses persistent WebSocket connection instead of HTTP.
+     * Faster for high-frequency POS scans because it avoids HTTP handshake overhead.
+     */
+    socketProductScan: (b: string) => {
+      const s = (window as unknown as { electronAPI?: { socket?: { scanBarcode: (b: string) => Promise<any> } } }).electronAPI?.socket;
+      if (!s) {
+        throw new Error("Socket.io not available in this environment");
+      }
+      return s.scanBarcode(b);
+    },
     create: (p: ProductInput): Promise<Product> => fetchJson("POST", "/api/products", p),
     update: (id: string, p: ProductInput): Promise<Product> =>
       fetchJson("PUT", `/api/products/${id}`, p),

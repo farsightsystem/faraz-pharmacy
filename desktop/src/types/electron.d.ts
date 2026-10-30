@@ -20,6 +20,21 @@ export interface ElectronAPI {
     openWindow(): Promise<{ success: boolean; windowId?: number; error?: string }>;
     getWindowCount(): Promise<number>;
   };
+  socket: {
+    scanBarcode(barcode: string): Promise<{
+      id: string;
+      barcode: string;
+      name: string;
+      salePrice: number;
+      purchasePrice: number;
+      stockQty: number;
+      category: string;
+      location: string;
+      active: number;
+      company: { name: string } | null;
+    } | null>;
+    disconnect(): void;
+  };
 }
 
 export interface AppConfig {

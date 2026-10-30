@@ -1,6 +1,7 @@
 import { prisma, Prisma } from "../../services/prisma";
 import { NotFoundError } from "../../utils/errors";
 import { emitEvent } from "../../socket";
+import { cacheDelNamespace } from "../../utils/cache";
 import type { CreateStockInput } from "./purchases.schema";
 
 export const purchasesService = {

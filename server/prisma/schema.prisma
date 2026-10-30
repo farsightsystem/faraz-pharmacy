@@ -46,7 +46,7 @@ model Product {
   barcode        String          @unique
   name           String
   category       String          @default("")
-  location       String          @default("")
+  location       String
   distributorId  String?         @map("distributor_id")
   salePrice      Float           @default(0) @map("sale_price")
   purchasePrice  Float           @default(0) @map("purchase_price")
@@ -65,6 +65,9 @@ model Product {
   stockPurchases StockPurchase[]
   batches        ProductBatch[]
 
+  @@index([name])
+  @@index([location])
+  @@index([createdAt])
   @@map("products")
 }
 
@@ -209,6 +212,9 @@ model StockPurchase {
   batch         ProductBatch? @relation(fields: [batchId], references: [id])
   priceTier     ProductPrice? @relation(fields: [priceTierId], references: [id])
 
+  @@index([productId])
+  @@index([invoiceNumber])
+  @@index([createdAt])
   @@map("stock_purchases")
 }
 

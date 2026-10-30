@@ -424,7 +424,7 @@ export default function Stock() {
   }
 
   async function handleScan(value: string) {
-    const product = await api.products.getByBarcode(value.trim());
+    const product = await api.products.getByBarcodeFast(value.trim());
     if (product) {
       handleSelectProduct(product.id);
       toast.success(`Found: ${product.name}`);
@@ -436,7 +436,7 @@ export default function Stock() {
   }
 
   async function handleToolbarScan(barcode: string) {
-    const product = await api.products.getByBarcode(barcode.trim());
+    const product = await api.products.getByBarcodeFast(barcode.trim());
     if (product) {
       openAdd();
       handleSelectProduct(product.id);
@@ -1087,7 +1087,7 @@ export default function Stock() {
                         const tiers = product?.prices ?? [];
                         if (tiers.length === 0) {
                           return (
-                            <SelectItem disabled value="">
+                            <SelectItem disabled value="none">
                               No price tiers configured for this product
                             </SelectItem>
                           );
