@@ -88,13 +88,26 @@ export const purchasesService = {
   },
 
   async create(data: CreateStockInput) {
-    const product = await prisma.product.findUnique({
-      where: { id: data.productId },
-      select: { purchasePrice: true, salePrice: true },
-    });
+    // Resolve prices: use selected price tier if provided, else fall back to product defaults
+    let price = 0;
+    let salePrice = 0;
 
-    const price = product?.purchasePrice ?? 0;
-    const salePrice = product?.salePrice ?? 0;
+    if (data.priceTierId) {
+      const priceTier = await prisma.productPrice.findUnique({
+        where: { id: data.priceTierId },
+        select: { purchasePrice: true, salePrice: true },
+      });
+      price = priceTier?.purchasePrice ?? 0;
+      salePrice = priceTier?.salePrice ?? 0;
+    } else {
+      const product = await prisma.product.findUnique({
+        where: { id: data.productId },
+        select: { purchasePrice: true, salePrice: true },
+      });
+      price = product?.purchasePrice ?? 0;
+      salePrice = product?.salePrice ?? 0;
+    }
+
     const totalValue = data.quantity * price;
     const batchNo =
       data.batchNumber?.trim() ||
@@ -157,11 +170,13 @@ export const purchasesService = {
           stax: data.stax ?? 0,
           expiry,
           totalValue,
+          priceTierId: data.priceTierId ?? null,
         },
         include: {
           product: { select: { name: true } },
           distributor: { select: { name: true } },
           batch: true,
+          priceTier: true,
         },
       });
 
@@ -187,8 +202,23 @@ export const purchasesService = {
     const old = await prisma.stockPurchase.findUnique({ where: { id } });
     if (!old) throw new NotFoundError("Stock purchase");
 
+    // Resolve prices: use selected price tier if provided, else keep existing prices
+    let purchasePrice = old.purchasePrice;
+    let salePrice = old.salePrice;
+
+    if (data.priceTierId !== undefined && data.priceTierId !== null) {
+      const priceTier = await prisma.productPrice.findUnique({
+        where: { id: data.priceTierId },
+        select: { purchasePrice: true, salePrice: true },
+      });
+      if (priceTier) {
+        purchasePrice = priceTier.purchasePrice;
+        salePrice = priceTier.salePrice;
+      }
+    }
+
     const qtyDiff = (data.quantity ?? old.quantity) - old.quantity;
-    const totalValue = (data.quantity ?? old.quantity) * old.purchasePrice;
+    const totalValue = (data.quantity ?? old.quantity) * purchasePrice;
 
     return prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       const updated = await tx.stockPurchase.update({
@@ -200,11 +230,15 @@ export const purchasesService = {
           invoiceNumber: data.invoiceNumber ?? old.invoiceNumber,
           distributorId: data.distributorId ?? old.distributorId,
           stax: data.stax !== undefined ? data.stax : (old as any).stax ?? 0,
+          purchasePrice,
+          salePrice,
+          ...(data.priceTierId !== undefined ? { priceTierId: data.priceTierId } : {}),
         },
         include: {
           product: { select: { name: true } },
           distributor: { select: { name: true } },
           batch: true,
+          priceTier: true,
         },
       });
 

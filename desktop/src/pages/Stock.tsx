@@ -66,6 +66,7 @@ export default function Stock() {
     quantity: "",
     stax: "",
     expiry: "",
+    priceTierId: "" as string | null,
   });
 
   const stockHeaders = [
@@ -225,6 +226,7 @@ export default function Stock() {
         quantity: Number(form.quantity),
         stax: form.stax ? Number(form.stax) : 0,
         expiry: form.expiry || undefined,
+        priceTierId: form.priceTierId || undefined,
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["stock"] });
@@ -240,6 +242,7 @@ export default function Stock() {
           batchNumber: "",
           quantity: "",
           expiry: "",
+          priceTierId: null,
         }));
         toast.success(`Saved ${prodName}! Ready for next item on Invoice ${form.invoiceNumber || "Consignment"}.`);
         setTimeout(() => {
@@ -255,6 +258,7 @@ export default function Stock() {
           quantity: "",
           stax: "",
           expiry: "",
+          priceTierId: "",
         });
         toast.success("Stock purchase recorded");
       }
@@ -328,6 +332,7 @@ export default function Stock() {
         quantity: Number(form.quantity),
         stax: form.stax ? Number(form.stax) : 0,
         expiry: form.expiry || undefined,
+        priceTierId: form.priceTierId || undefined,
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["stock"] });
@@ -343,6 +348,7 @@ export default function Stock() {
         quantity: "",
         stax: "",
         expiry: "",
+        priceTierId: "",
       });
       toast.success("Stock purchase updated");
     },
@@ -378,8 +384,16 @@ export default function Stock() {
     const purchasesList: StockPurchase[] = recentPurchasesData?.data || stockEntries;
     const lastPurchase = purchasesList.find((s: StockPurchase) => s.product_id === productId);
 
+    // Determine default price tier: prefer last purchase's tier, else first available tier, else null
+    let defaultPriceTierId: string | null = null;
+    if (lastPurchase?.price_tier_id) {
+      defaultPriceTierId = lastPurchase.price_tier_id;
+    } else if (product?.prices && product.prices.length > 0) {
+      defaultPriceTierId = product.prices[0].id;
+    }
+
     setForm((prev) => {
-      const updated = { ...prev, productId };
+      const updated = { ...prev, productId, priceTierId: defaultPriceTierId };
 
       // Pre-fill batch from last purchase if empty
       if (!updated.batchNumber && lastPurchase?.batch_number) {
@@ -453,6 +467,7 @@ export default function Stock() {
         quantity: "",
         stax: targetInv.stax !== undefined && targetInv.stax !== null ? String(targetInv.stax) : "",
         expiry: "",
+        priceTierId: "",
       });
       setInvoiceMode("recent");
     } else {
@@ -464,6 +479,7 @@ export default function Stock() {
         quantity: "",
         stax: "",
         expiry: "",
+        priceTierId: "",
       });
       setInvoiceMode("new");
     }
@@ -480,6 +496,7 @@ export default function Stock() {
       quantity: String(entry.quantity),
       stax: entry.stax !== undefined && entry.stax !== null ? String(entry.stax) : "",
       expiry: entry.expiry || "",
+      priceTierId: entry.price_tier_id ?? null,
     });
     setInvoiceMode(
       recentInvoices.some((i) => i.invoiceNumber.toLowerCase() === (entry.invoice_number || "").toLowerCase().trim())
@@ -1052,6 +1069,52 @@ export default function Stock() {
                   placeholder="Select product"
                 />
               </div>
+
+              {/* Price Tier Selection */}
+              {form.productId && (
+                <div className="space-y-1">
+                  <Label className="text-xs">Price Tier</Label>
+                  <Select
+                    value={form.priceTierId || ""}
+                    onValueChange={(v) => setForm({ ...form, priceTierId: v || null })}
+                  >
+                    <SelectTrigger className="h-9 text-xs rounded-xl">
+                      <SelectValue placeholder="Use default price" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {(() => {
+                        const product = products.find((p: Product) => p.id === form.productId);
+                        const tiers = product?.prices ?? [];
+                        if (tiers.length === 0) {
+                          return (
+                            <SelectItem disabled value="">
+                              No price tiers configured for this product
+                            </SelectItem>
+                          );
+                        }
+                        return tiers.map((tier) => (
+                          <SelectItem key={tier.id} value={tier.id}>
+                            <div className="flex justify-between w-full text-xs">
+                              <span className="font-medium">{tier.label}</span>
+                              <span className="font-mono text-text-secondary">
+                                {formatCurrency(tier.purchasePrice)} / {formatCurrency(tier.salePrice)}
+                              </span>
+                            </div>
+                            <div className="text-[10px] text-text-secondary">
+                              Purchase: {formatCurrency(tier.purchasePrice)} &nbsp;•&nbsp; Sale: {formatCurrency(tier.salePrice)}
+                            </div>
+                          </SelectItem>
+                        ));
+                      })()}
+                    </SelectContent>
+                  </Select>
+                  {form.priceTierId && (
+                    <p className="text-[10px] text-text-secondary">
+                      Selected tier will be used for purchase &amp; sale prices on this stock entry.
+                    </p>
+                  )}
+                </div>
+              )}
 
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
