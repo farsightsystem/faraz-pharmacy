@@ -162,12 +162,16 @@ export const salesService = {
           { id: { contains: query, mode: "insensitive" } },
           { customer: { is: { name: { contains: query, mode: "insensitive" } } } },
           { items: { some: { productName: { contains: query, mode: "insensitive" } } } },
+          { items: { some: { barcode: { contains: query, mode: "insensitive" } } } },
+          { items: { some: { product: { is: { barcode: { contains: query, mode: "insensitive" } } } } } },
         ],
       },
       orderBy: { createdAt: "desc" },
       take: limit,
       include: {
         customer: { select: { name: true } },
+        items: true,
+        returns: { include: { items: true } },
         _count: { select: { items: true, returns: true } },
       },
     });
@@ -180,6 +184,8 @@ export const salesService = {
     tzOffsetMinutes?: number;
     page?: number;
     limit?: number;
+    sortBy?: string;
+    sortOrder?: "asc" | "desc";
   }) {
     const where: Record<string, unknown> = {};
     const offsetMs = (opts?.tzOffsetMinutes ?? 0) * 60000;
@@ -204,6 +210,8 @@ export const salesService = {
         { id: { contains: search, mode: "insensitive" } },
         { customer: { is: { name: { contains: search, mode: "insensitive" } } } },
         { items: { some: { productName: { contains: search, mode: "insensitive" } } } },
+        { items: { some: { barcode: { contains: search, mode: "insensitive" } } } },
+        { items: { some: { product: { is: { barcode: { contains: search, mode: "insensitive" } } } } } },
       ];
     }
 
@@ -211,11 +219,22 @@ export const salesService = {
     const limit = opts?.limit || 100000;
     const skip = (page - 1) * limit;
 
+    let orderBy: Prisma.SaleOrderByWithRelationInput = { createdAt: opts?.sortOrder || "desc" };
+    if (opts?.sortBy === "total") {
+      orderBy = { total: opts?.sortOrder || "desc" };
+    } else if (opts?.sortBy === "discount") {
+      orderBy = { discount: opts?.sortOrder || "desc" };
+    } else if (opts?.sortBy === "subtotal") {
+      orderBy = { subtotal: opts?.sortOrder || "desc" };
+    } else if (opts?.sortBy === "createdAt" || opts?.sortBy === "created_at" || opts?.sortBy === "date") {
+      orderBy = { createdAt: opts?.sortOrder || "desc" };
+    }
+
     const [total, sales] = await prisma.$transaction([
       prisma.sale.count({ where }),
       prisma.sale.findMany({
         where,
-        orderBy: { createdAt: "desc" },
+        orderBy,
         take: limit,
         skip,
         include: {

@@ -7,11 +7,15 @@ export const barcodesService = {
     limit = 50,
     search,
     includeArchived = false,
+    sortBy,
+    sortOrder,
   }: {
     page?: number;
     limit?: number;
     search?: string;
     includeArchived?: boolean;
+    sortBy?: string;
+    sortOrder?: "asc" | "desc";
   } = {}) {
     const where: Prisma.BarcodeWhereInput = {};
     const conditions: Prisma.BarcodeWhereInput[] = [];
@@ -41,11 +45,20 @@ export const barcodesService = {
 
     const skip = (page - 1) * limit;
 
+    let orderBy: Prisma.BarcodeOrderByWithRelationInput = { createdAt: sortOrder || "desc" };
+    if (sortBy === "code" || sortBy === "barcode") {
+      orderBy = { code: sortOrder || "asc" };
+    } else if (sortBy === "productName" || sortBy === "name") {
+      orderBy = { product: { name: sortOrder || "asc" } };
+    } else if (sortBy === "createdAt" || sortBy === "created_at") {
+      orderBy = { createdAt: sortOrder || "desc" };
+    }
+
     const [total, data] = await prisma.$transaction([
       prisma.barcode.count({ where }),
       prisma.barcode.findMany({
         where,
-        orderBy: { createdAt: "desc" },
+        orderBy,
         skip,
         take: limit,
         include: {

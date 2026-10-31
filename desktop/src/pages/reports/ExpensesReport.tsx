@@ -21,6 +21,7 @@ import { generatePDF } from "@/lib/pdfExport";
 import { downloadExcelFile } from "@/lib/excelExport";
 import type { Expense } from "@/types";
 import { useDebounce } from "@/hooks/useDebounce";
+import { EXPENSE_CATEGORIES } from "@/pages/Expenses";
 
 export default function ExpensesReport() {
   const [dateRange, setDateRange] = useState<DateRange>({
@@ -198,21 +199,11 @@ export default function ExpensesReport() {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Categories</SelectItem>
-            {existingCategories.map((cat) => (
+            {Array.from(new Set([...EXPENSE_CATEGORIES, ...existingCategories])).map((cat) => (
               <SelectItem key={cat} value={cat}>
                 {cat}
               </SelectItem>
             ))}
-            {!existingCategories.includes("Utilities") && (
-              <SelectItem value="Utilities">Utilities</SelectItem>
-            )}
-            {!existingCategories.includes("Rent") && <SelectItem value="Rent">Rent</SelectItem>}
-            {!existingCategories.includes("Salaries") && (
-              <SelectItem value="Salaries">Salaries</SelectItem>
-            )}
-            {!existingCategories.includes("Supplies") && (
-              <SelectItem value="Supplies">Supplies</SelectItem>
-            )}
           </SelectContent>
         </Select>
         <div className="relative flex-1 max-w-sm min-w-[200px]">

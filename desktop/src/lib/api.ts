@@ -94,12 +94,14 @@ const api = {
   products: {
     list: (): Promise<Product[]> => fetchJson("GET", "/api/products"),
     listAll: (): Promise<Product[]> => fetchJson("GET", "/api/products?includeArchived=true"),
-    listPaginated: async (opts: { page?: number; limit?: number; search?: string; includeArchived?: boolean; archivedOnly?: boolean }): Promise<PaginatedResponse<Product>> => {
+    listPaginated: async (opts: { page?: number; limit?: number; search?: string; includeArchived?: boolean; archivedOnly?: boolean; sortBy?: string; sortOrder?: "asc" | "desc" }): Promise<PaginatedResponse<Product>> => {
       const params = new URLSearchParams();
       params.set("paginated", "true");
       if (opts.page) params.set("page", String(opts.page));
       if (opts.limit) params.set("limit", String(opts.limit));
       if (opts.search) params.set("search", opts.search);
+      if (opts.sortBy) params.set("sortBy", opts.sortBy);
+      if (opts.sortOrder) params.set("sortOrder", opts.sortOrder);
       if (opts.archivedOnly) {
         params.set("archivedOnly", "true");
       } else if (opts.includeArchived) {
@@ -123,6 +125,41 @@ const api = {
     getById: (id: string): Promise<Product> => fetchJson("GET", `/api/products/${id}`),
     getByBarcode: (b: string): Promise<Product | null> =>
       fetchJson("GET", `/api/products/barcode/${encodeURIComponent(b)}`),
+
+    /**
+     * Fast barcode lookup for POS scanning.
+     * Returns only core fields (camelCase from Prisma) to keep the JSON payload tiny.
+     * Use this for high-frequency barcode scans; it skips the full normalization
+     * and prices relation to minimize payload size.
+     */
+    getByBarcodeFast: (b: string): Promise<{
+      id: string;
+      barcode: string;
+      name: string;
+      salePrice: number;
+      purchasePrice: number;
+      stockQty: number;
+      category: string;
+      location: string;
+      active: number;
+      company: { name: string } | null;
+    } | null> =>
+      fetchJson(
+        "GET",
+        `/api/products/barcode-fast/${encodeURIComponent(b)}`
+      ),
+
+    /**
+     * Socket.io barcode scan — uses persistent WebSocket connection instead of HTTP.
+     * Faster for high-frequency POS scans because it avoids HTTP handshake overhead.
+     */
+    socketProductScan: (b: string) => {
+      const s = (window as unknown as { electronAPI?: { socket?: { scanBarcode: (b: string) => Promise<any> } } }).electronAPI?.socket;
+      if (!s) {
+        throw new Error("Socket.io not available in this environment");
+      }
+      return s.scanBarcode(b);
+    },
     create: (p: ProductInput): Promise<Product> => fetchJson("POST", "/api/products", p),
     update: (id: string, p: ProductInput): Promise<Product> =>
       fetchJson("PUT", `/api/products/${id}`, p),
@@ -151,7 +188,7 @@ const api = {
       params.set("tzOffset", String(-new Date().getTimezoneOffset()));
       return fetchJson("GET", `/api/sales${params.toString() ? `?${params.toString()}` : ""}`);
     },
-    listPaginated: async (opts: { page?: number; limit?: number; search?: string; dateFrom?: string; dateTo?: string }): Promise<PaginatedResponse<Sale>> => {
+    listPaginated: async (opts: { page?: number; limit?: number; search?: string; dateFrom?: string; dateTo?: string; sortBy?: string; sortOrder?: "asc" | "desc" }): Promise<PaginatedResponse<Sale>> => {
       const params = new URLSearchParams();
       params.set("paginated", "true");
       if (opts.page) params.set("page", String(opts.page));
@@ -159,6 +196,8 @@ const api = {
       if (opts.search) params.set("search", opts.search);
       if (opts.dateFrom) params.set("dateFrom", opts.dateFrom);
       if (opts.dateTo) params.set("dateTo", opts.dateTo);
+      if (opts.sortBy) params.set("sortBy", opts.sortBy);
+      if (opts.sortOrder) params.set("sortOrder", opts.sortOrder);
       params.set("tzOffset", String(-new Date().getTimezoneOffset()));
       
       const res = await fetchJson<any>("GET", `/api/sales?${params.toString()}`);
@@ -170,12 +209,14 @@ const api = {
   },
   customers: {
     list: (): Promise<Customer[]> => fetchJson("GET", "/api/customers"),
-    listPaginated: async (opts: { page?: number; limit?: number; search?: string; archived?: boolean }): Promise<PaginatedResponse<Customer>> => {
+    listPaginated: async (opts: { page?: number; limit?: number; search?: string; archived?: boolean; sortBy?: string; sortOrder?: "asc" | "desc" }): Promise<PaginatedResponse<Customer>> => {
       const params = new URLSearchParams();
       params.set("paginated", "true");
       if (opts.page) params.set("page", String(opts.page));
       if (opts.limit) params.set("limit", String(opts.limit));
       if (opts.search) params.set("search", opts.search);
+      if (opts.sortBy) params.set("sortBy", opts.sortBy);
+      if (opts.sortOrder) params.set("sortOrder", opts.sortOrder);
       if (opts.archived) params.set("archived", "true");
       
       const res = await fetchJson<any>("GET", `/api/customers?${params.toString()}`);
@@ -202,7 +243,7 @@ const api = {
   arrears: {
     list: (status?: string): Promise<Arrear[]> =>
       fetchJson("GET", `/api/arrears${status ? `?status=${status}` : ""}`),
-    listPaginated: async (opts: { page?: number; limit?: number; search?: string; status?: string; dateFrom?: string; dateTo?: string }): Promise<PaginatedResponse<Arrear>> => {
+    listPaginated: async (opts: { page?: number; limit?: number; search?: string; status?: string; dateFrom?: string; dateTo?: string; sortBy?: string; sortOrder?: "asc" | "desc" }): Promise<PaginatedResponse<Arrear>> => {
       const params = new URLSearchParams();
       params.set("paginated", "true");
       if (opts.page) params.set("page", String(opts.page));
@@ -211,6 +252,8 @@ const api = {
       if (opts.status) params.set("status", opts.status);
       if (opts.dateFrom) params.set("dateFrom", opts.dateFrom);
       if (opts.dateTo) params.set("dateTo", opts.dateTo);
+      if (opts.sortBy) params.set("sortBy", opts.sortBy);
+      if (opts.sortOrder) params.set("sortOrder", opts.sortOrder);
       
       const res = await fetchJson<any>("GET", `/api/arrears?${params.toString()}`);
       if (Array.isArray(res)) {
@@ -234,12 +277,16 @@ const api = {
       limit?: number;
       search?: string;
       status?: string;
+      sortBy?: string;
+      sortOrder?: "asc" | "desc";
     } = {}): Promise<PaginatedResponse<CustomerArrearSummary>> => {
       const params = new URLSearchParams();
       if (opts.page) params.set("page", String(opts.page));
       if (opts.limit) params.set("limit", String(opts.limit));
       if (opts.search) params.set("search", opts.search);
       if (opts.status) params.set("status", opts.status);
+      if (opts.sortBy) params.set("sortBy", opts.sortBy);
+      if (opts.sortOrder) params.set("sortOrder", opts.sortOrder);
 
       return fetchJson<PaginatedResponse<CustomerArrearSummary>>(
         "GET",
@@ -256,7 +303,7 @@ const api = {
   },
   stock: {
     list: (): Promise<StockPurchase[]> => fetchJson("GET", "/api/stock"),
-    listPaginated: async (opts: { page?: number; limit?: number; search?: string; dateFrom?: string; dateTo?: string; archived?: boolean }): Promise<PaginatedResponse<StockPurchase>> => {
+    listPaginated: async (opts: { page?: number; limit?: number; search?: string; dateFrom?: string; dateTo?: string; archived?: boolean; sortBy?: string; sortOrder?: "asc" | "desc" }): Promise<PaginatedResponse<StockPurchase>> => {
       const params = new URLSearchParams();
       params.set("paginated", "true");
       if (opts.page) params.set("page", String(opts.page));
@@ -264,6 +311,8 @@ const api = {
       if (opts.search) params.set("search", opts.search);
       if (opts.dateFrom) params.set("dateFrom", opts.dateFrom);
       if (opts.dateTo) params.set("dateTo", opts.dateTo);
+      if (opts.sortBy) params.set("sortBy", opts.sortBy);
+      if (opts.sortOrder) params.set("sortOrder", opts.sortOrder);
       if (opts.archived) params.set("archived", "true");
       
       const res = await fetchJson<any>("GET", `/api/stock?${params.toString()}`);
@@ -302,12 +351,14 @@ const api = {
   },
   distributors: {
     list: (): Promise<Distributor[]> => fetchJson("GET", "/api/distributors"),
-    listPaginated: async (opts: { page?: number; limit?: number; search?: string; archived?: boolean }): Promise<PaginatedResponse<Distributor>> => {
+    listPaginated: async (opts: { page?: number; limit?: number; search?: string; archived?: boolean; sortBy?: string; sortOrder?: "asc" | "desc" }): Promise<PaginatedResponse<Distributor>> => {
       const params = new URLSearchParams();
       params.set("paginated", "true");
       if (opts.page) params.set("page", String(opts.page));
       if (opts.limit) params.set("limit", String(opts.limit));
       if (opts.search) params.set("search", opts.search);
+      if (opts.sortBy) params.set("sortBy", opts.sortBy);
+      if (opts.sortOrder) params.set("sortOrder", opts.sortOrder);
       if (opts.archived) params.set("archived", "true");
       
       const res = await fetchJson<any>("GET", `/api/distributors?${params.toString()}`);
@@ -331,12 +382,14 @@ const api = {
   },
   companies: {
     list: (): Promise<Company[]> => fetchJson("GET", "/api/companies"),
-    listPaginated: async (opts: { page?: number; limit?: number; search?: string; archived?: boolean }): Promise<PaginatedResponse<Company>> => {
+    listPaginated: async (opts: { page?: number; limit?: number; search?: string; archived?: boolean; sortBy?: string; sortOrder?: "asc" | "desc" }): Promise<PaginatedResponse<Company>> => {
       const params = new URLSearchParams();
       params.set("paginated", "true");
       if (opts.page) params.set("page", String(opts.page));
       if (opts.limit) params.set("limit", String(opts.limit));
       if (opts.search) params.set("search", opts.search);
+      if (opts.sortBy) params.set("sortBy", opts.sortBy);
+      if (opts.sortOrder) params.set("sortOrder", opts.sortOrder);
       if (opts.archived) params.set("archived", "true");
       
       const res = await fetchJson<any>("GET", `/api/companies?${params.toString()}`);
@@ -366,12 +419,14 @@ const api = {
   },
   returns: {
     list: (): Promise<ReturnEntry[]> => fetchJson("GET", "/api/returns"),
-    listPaginated: async (opts: { page?: number; limit?: number; search?: string }): Promise<PaginatedResponse<ReturnEntry>> => {
+    listPaginated: async (opts: { page?: number; limit?: number; search?: string; sortBy?: string; sortOrder?: "asc" | "desc" }): Promise<PaginatedResponse<ReturnEntry>> => {
       const params = new URLSearchParams();
       params.set("paginated", "true");
       if (opts.page) params.set("page", String(opts.page));
       if (opts.limit) params.set("limit", String(opts.limit));
       if (opts.search) params.set("search", opts.search);
+      if (opts.sortBy) params.set("sortBy", opts.sortBy);
+      if (opts.sortOrder) params.set("sortOrder", opts.sortOrder);
       
       const res = await fetchJson<any>("GET", `/api/returns?${params.toString()}`);
       if (Array.isArray(res)) {
@@ -384,7 +439,7 @@ const api = {
   },
   expenses: {
     list: (): Promise<Expense[]> => fetchJson("GET", "/api/expenses"),
-    listPaginated: async (opts: { page?: number; limit?: number; search?: string; dateFrom?: string; dateTo?: string; archived?: boolean }): Promise<PaginatedResponse<Expense>> => {
+    listPaginated: async (opts: { page?: number; limit?: number; search?: string; dateFrom?: string; dateTo?: string; archived?: boolean; sortBy?: string; sortOrder?: "asc" | "desc" }): Promise<PaginatedResponse<Expense>> => {
       const params = new URLSearchParams();
       params.set("paginated", "true");
       if (opts.page) params.set("page", String(opts.page));
@@ -392,6 +447,8 @@ const api = {
       if (opts.search) params.set("search", opts.search);
       if (opts.dateFrom) params.set("dateFrom", opts.dateFrom);
       if (opts.dateTo) params.set("dateTo", opts.dateTo);
+      if (opts.sortBy) params.set("sortBy", opts.sortBy);
+      if (opts.sortOrder) params.set("sortOrder", opts.sortOrder);
       if (opts.archived) params.set("archived", "true");
       
       const res = await fetchJson<any>("GET", `/api/expenses?${params.toString()}`);
@@ -416,12 +473,14 @@ const api = {
   categories: {
     list: (opts?: { archived?: boolean }): Promise<Category[]> =>
       fetchJson("GET", `/api/categories${opts?.archived ? "?archived=true" : ""}`),
-    listPaginated: async (opts: { page?: number; limit?: number; search?: string; archived?: boolean }): Promise<PaginatedResponse<Category>> => {
+    listPaginated: async (opts: { page?: number; limit?: number; search?: string; archived?: boolean; sortBy?: string; sortOrder?: "asc" | "desc" }): Promise<PaginatedResponse<Category>> => {
       const params = new URLSearchParams();
       params.set("paginated", "true");
       if (opts.page) params.set("page", String(opts.page));
       if (opts.limit) params.set("limit", String(opts.limit));
       if (opts.search) params.set("search", opts.search);
+      if (opts.sortBy) params.set("sortBy", opts.sortBy);
+      if (opts.sortOrder) params.set("sortOrder", opts.sortOrder);
       if (opts.archived) params.set("archived", "true");
       
       const res = await fetchJson<any>("GET", `/api/categories?${params.toString()}`);
@@ -482,12 +541,14 @@ const api = {
   barcodes: {
     list: (): Promise<BarcodeEntry[]> => fetchJson("GET", "/api/barcodes"),
     listAll: (): Promise<BarcodeEntry[]> => fetchJson("GET", "/api/barcodes?includeArchived=true"),
-    listPaginated: async (opts: { page?: number; limit?: number; search?: string; includeArchived?: boolean }): Promise<PaginatedResponse<BarcodeEntry>> => {
+    listPaginated: async (opts: { page?: number; limit?: number; search?: string; includeArchived?: boolean; sortBy?: string; sortOrder?: "asc" | "desc" }): Promise<PaginatedResponse<BarcodeEntry>> => {
       const params = new URLSearchParams();
       params.set("paginated", "true");
       if (opts.page) params.set("page", String(opts.page));
       if (opts.limit) params.set("limit", String(opts.limit));
       if (opts.search) params.set("search", opts.search);
+      if (opts.sortBy) params.set("sortBy", opts.sortBy);
+      if (opts.sortOrder) params.set("sortOrder", opts.sortOrder);
       if (opts.includeArchived) params.set("includeArchived", "true");
       
       const res = await fetchJson<any>("GET", `/api/barcodes?${params.toString()}`);

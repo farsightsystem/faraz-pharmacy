@@ -53,12 +53,16 @@ export const companiesService = {
     search,
     includeArchived = false,
     archivedOnly = false,
+    sortBy,
+    sortOrder,
   }: {
     page?: number;
     limit?: number;
     search?: string;
     includeArchived?: boolean;
     archivedOnly?: boolean;
+    sortBy?: string;
+    sortOrder?: "asc" | "desc";
   } = {}) {
     const where: Prisma.CompanyWhereInput = archivedOnly
       ? { active: 0 }
@@ -73,11 +77,18 @@ export const companiesService = {
 
     const skip = (page - 1) * limit;
 
+    let orderBy: Prisma.CompanyOrderByWithRelationInput = { createdAt: sortOrder || "desc" };
+    if (sortBy === "name") {
+      orderBy = { name: sortOrder || "asc" };
+    } else if (sortBy === "createdAt" || sortBy === "created_at") {
+      orderBy = { createdAt: sortOrder || "desc" };
+    }
+
     const [total, data] = await prisma.$transaction([
       prisma.company.count({ where }),
       prisma.company.findMany({
         where,
-        orderBy: { name: "asc" },
+        orderBy,
         skip,
         take: limit,
       }),

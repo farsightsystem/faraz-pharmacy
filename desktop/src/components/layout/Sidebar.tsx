@@ -42,16 +42,16 @@ const navGroups: NavGroup[] = [
     items: [
       { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard, shortcut: "F1" },
       { href: "/pos", label: "POS / Sales", icon: ShoppingCart, shortcut: "F2" },
+      { href: "/products", label: "Products", icon: Package, shortcut: "F7" },
+      { href: "/stock", label: "Stock", icon: Boxes, shortcut: "F8" },
+      { href: "/categories", label: "Product Categories", icon: Tags, shortcut: "" },
+      { href: "/arrears", label: "Arrears", icon: CreditCard, shortcut: "F6" },
       { href: "/invoices", label: "Invoices", icon: Receipt, shortcut: "F3" },
       { href: "/returns", label: "Returns", icon: Undo2, shortcut: "F4" },
       { href: "/customers", label: "Customers", icon: Users, shortcut: "F5" },
-      { href: "/arrears", label: "Arrears", icon: CreditCard, shortcut: "F6" },
-      { href: "/products", label: "Products", icon: Package, shortcut: "F7" },
-      { href: "/stock", label: "Stock", icon: Boxes, shortcut: "F8" },
       { href: "/barcodes", label: "Barcodes", icon: Barcode, shortcut: "F9" },
       { href: "/distributors", label: "Distributors", icon: Factory, shortcut: "F10" },
       { href: "/companies", label: "Companies", icon: Building2, shortcut: "" },
-      { href: "/categories", label: "Categories", icon: Tags, shortcut: "" },
     ],
   },
   {
@@ -108,7 +108,7 @@ export default function Sidebar() {
   return (
     <aside
       className={cn(
-        "h-full bg-gradient-to-b from-[#3612B8] via-[#2A0E94] to-[#1F0875] dark:from-[#0F111E] dark:via-[#111322] dark:to-[#0A0C16] flex flex-col shrink-0 transition-all duration-300 ease-in-out relative select-none z-40 text-white shadow-2xl",
+        "h-full bg-sidebar-primary-foreground dark:bg-[#031336] flex flex-col shrink-0 transition-all duration-300 ease-in-out relative select-none z-40 text-white shadow-2xl",
         isExpanded ? "w-[240px]" : "w-[72px]"
       )}
     >
@@ -251,7 +251,7 @@ export default function Sidebar() {
                           : "justify-between h-10 pl-5 pr-3",
                         isActive
                           ? cn(
-                              "bg-background text-[#3612B8] dark:text-white font-bold shadow-md z-20",
+                              "bg-background dark:bg-[#3612B8] text- dark:text-white font-bold shadow-md z-20",
                               isExpanded ? "rounded-l-2xl mr-0" : "rounded-2xl mx-2"
                             )
                           : cn(
@@ -288,7 +288,7 @@ export default function Sidebar() {
                           className={cn(
                             "h-7 w-7 rounded-lg flex items-center justify-center shrink-0 transition-transform duration-150",
                             isActive
-                              ? "bg-[#3612B8]/10 dark:bg-white/15 text-[#3612B8] dark:text-[#754BFB]"
+                              ? "bg-[#3612B8]/10 dark:bg-white/15 text-[#3612B8] dark:text-white/80"
                               : "text-white/80 group-hover:scale-110"
                           )}
                         >

@@ -306,7 +306,7 @@ export default function ProductReport() {
       key: "status",
       header: "Status",
       cell: (b: any) => (
-        <Badge variant={b.quantity > 0 ? "default" : "secondary"}>
+        <Badge variant={b.quantity > 0 ? "default" : "neutral"}>
           {b.quantity > 0 ? "Active" : "Depleted"}
         </Badge>
       ),
@@ -554,7 +554,7 @@ export default function ProductReport() {
                 <h3 className="text-lg font-bold text-text-primary font-display">
                   {p.name}
                 </h3>
-                <Badge variant={p.stockQty > 10 ? "default" : p.stockQty > 0 ? "secondary" : "destructive"}>
+                <Badge variant={p.stockQty > 10 ? "default" : p.stockQty > 0 ? "warning" : "danger"}>
                   {p.stockQty > 10 ? "In Stock" : p.stockQty > 0 ? "Low Stock" : "Out of Stock"}
                 </Badge>
                 {p.category && (

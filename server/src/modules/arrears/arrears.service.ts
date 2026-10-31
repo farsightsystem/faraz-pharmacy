@@ -19,7 +19,7 @@ function makeSalePrefix(): string {
 }
 
 export const arrearsService = {
-  async list({ status, page = 1, limit = 100000, search, dateFrom, dateTo }: { status?: string; page?: number; limit?: number; search?: string; dateFrom?: string; dateTo?: string } = {}) {
+  async list({ status, page = 1, limit = 100000, search, dateFrom, dateTo, sortBy, sortOrder }: { status?: string; page?: number; limit?: number; search?: string; dateFrom?: string; dateTo?: string; sortBy?: string; sortOrder?: "asc" | "desc" } = {}) {
     const where: Prisma.ArrearWhereInput = status && status !== "all" ? { status } : {};
 
     if (search) {
@@ -42,11 +42,22 @@ export const arrearsService = {
 
     const skip = (page - 1) * limit;
 
+    let orderBy: Prisma.ArrearOrderByWithRelationInput = { createdAt: sortOrder || "desc" };
+    if (sortBy === "customerName" || sortBy === "name") {
+      orderBy = { customer: { name: sortOrder || "asc" } };
+    } else if (sortBy === "totalBill" || sortBy === "total_bill") {
+      orderBy = { totalBill: sortOrder || "desc" };
+    } else if (sortBy === "balanceDue" || sortBy === "balance_due") {
+      orderBy = { balanceDue: sortOrder || "desc" };
+    } else if (sortBy === "createdAt" || sortBy === "created_at") {
+      orderBy = { createdAt: sortOrder || "desc" };
+    }
+
     const [total, data] = await prisma.$transaction([
       prisma.arrear.count({ where }),
       prisma.arrear.findMany({
         where,
-        orderBy: { createdAt: "desc" },
+        orderBy,
         skip,
         take: limit,
         include: {
@@ -245,11 +256,15 @@ export const arrearsService = {
     page = 1,
     limit = 50,
     search,
+    sortBy,
+    sortOrder = "desc",
   }: {
     status?: string;
     page?: number;
     limit?: number;
     search?: string;
+    sortBy?: string;
+    sortOrder?: "asc" | "desc";
   } = {}) {
     const skip = (page - 1) * limit;
     const conditions: string[] = ["EXISTS (SELECT 1 FROM arrears a WHERE a.customer_id = c.id)"];
@@ -272,6 +287,18 @@ export const arrearsService = {
     const countResult = await prisma.$queryRawUnsafe<{ total: number }[]>(countQuery, ...params);
     const total = Number(countResult[0]?.total || 0);
 
+    const dir = sortOrder === "asc" ? "ASC" : "DESC";
+    let orderSql = "ORDER BY latest_date DESC, balance_due DESC";
+    if (sortBy === "customer_name" || sortBy === "name") {
+      orderSql = `ORDER BY c.name ${dir}`;
+    } else if (sortBy === "balance_due" || sortBy === "balanceDue") {
+      orderSql = `ORDER BY balance_due ${dir}, latest_date DESC`;
+    } else if (sortBy === "total_bill" || sortBy === "totalBill") {
+      orderSql = `ORDER BY total_bill ${dir}`;
+    } else if (sortBy === "latest_date" || sortBy === "createdAt" || sortBy === "created_at") {
+      orderSql = `ORDER BY latest_date ${dir}`;
+    }
+
     const dataQuery = `
       SELECT
         c.id AS customer_id,
@@ -292,7 +319,7 @@ export const arrearsService = {
         END AS status
       FROM customers c
       ${whereClause}
-      ORDER BY balance_due DESC, latest_date DESC
+      ${orderSql}
       LIMIT $${params.length + 1} OFFSET $${params.length + 2}
     `;
 

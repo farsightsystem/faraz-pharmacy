@@ -12,6 +12,8 @@ export const expensesController = {
       const dateTo = req.query.dateTo as string | undefined;
       const archivedOnly = req.query.archived === "true" || req.query.archivedOnly === "true";
       const includeArchived = req.query.includeArchived === "true";
+      const sortBy = req.query.sortBy as string | undefined;
+      const sortOrder = req.query.sortOrder === "asc" ? "asc" : (req.query.sortOrder === "desc" ? "desc" : undefined);
 
       const result = await expensesService.list({
         page,
@@ -21,6 +23,8 @@ export const expensesController = {
         dateTo,
         archivedOnly,
         includeArchived,
+        sortBy,
+        sortOrder,
       });
 
       if (isPaginated) {

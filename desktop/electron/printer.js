@@ -2019,9 +2019,9 @@ function generateBarcodeLabelHTML(
 
   const isSmall = h <= 22;
   const isNarrow = w <= 30;
-  const bcHeight = isSmall ? 24 : 36;
+  const bcHeight = isSmall ? 24 : 32;
   const bcFontSize = isNarrow ? 8.5 : isSmall ? 9 : 11;
-  const bcWidth = isNarrow ? 1.05 : isSmall ? 1.2 : 1.4;
+  const bcWidth = isNarrow ? 1.0 : isSmall ? 1.1 : 1.25;
 
   let body;
   if (jsBarcodeSource) {
@@ -2102,55 +2102,54 @@ html, body {
   page-break-after: auto;
   break-after: auto;
 }
-.label .barcode-container {
-  width: 96%;
-  height: 94%;
-  max-height: 94%;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: space-between;
-  overflow: hidden;
-  box-sizing: border-box;
-  padding: 0.5mm 0;
-}
-.label .product-name {
-  font-family: Arial, Helvetica, sans-serif;
-  font-size: ${isNarrow ? "1.9mm" : isSmall ? "2.2mm" : "2.8mm"};
-  line-height: 1.1;
-  max-height: ${isSmall ? "2.6mm" : "3.6mm"};
-  font-weight: bold;
-  text-align: center;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  width: 100%;
-  color: #000;
-  margin-bottom: 0.3mm;
-  flex-shrink: 0;
-}
-.label svg.bc {
-  width: 96%;
-  height: auto;
-  max-height: ${isSmall ? "14.5mm" : "22mm"};
-  flex: 1;
-  display: block;
-}
-.label .barcode {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 96%;
-  height: auto;
-  max-height: ${isSmall ? "14.5mm" : "22mm"};
-  flex: 1;
-  overflow: hidden;
-}
-.label .barcode svg {
-  width: 100%;
-  height: auto;
-  max-height: 100%;
-}
+  .label .barcode-container {
+    width: 98%;
+    height: 96%;
+    max-height: 96%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    overflow: hidden;
+    box-sizing: border-box;
+    padding: 0.2mm 0 0.1mm 0;
+    gap: 0.1mm;
+  }
+  .label .product-name {
+    font-family: Arial, Helvetica, sans-serif;
+    font-size: ${isNarrow ? "1.75mm" : isSmall ? "1.9mm" : "2.35mm"};
+    line-height: 1.06;
+    font-weight: bold;
+    text-align: center;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+    width: 100%;
+    color: #000;
+    margin: 0;
+    flex-shrink: 0;
+  }
+  .label svg.bc {
+    width: 98%;
+    height: auto;
+    max-height: ${isNarrow ? "14mm" : isSmall ? "13mm" : "18mm"};
+    display: block;
+    margin-top: 0;
+  }
+  .label .barcode {
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    width: 98%;
+    height: auto;
+    max-height: ${isNarrow ? "14mm" : isSmall ? "13mm" : "18mm"};
+    overflow: hidden;
+  }
+  .label .barcode svg {
+    width: 100%;
+    height: auto;
+    max-height: 100%;
+  }
 .label .code {
   font-family: Arial, Helvetica, sans-serif;
   font-size: 3mm;

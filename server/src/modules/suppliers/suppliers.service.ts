@@ -9,12 +9,16 @@ export const suppliersService = {
     search,
     includeArchived = false,
     archivedOnly = false,
+    sortBy,
+    sortOrder,
   }: {
     page?: number;
     limit?: number;
     search?: string;
     includeArchived?: boolean;
     archivedOnly?: boolean;
+    sortBy?: string;
+    sortOrder?: "asc" | "desc";
   } = {}) {
     const where: Prisma.DistributorWhereInput = archivedOnly
       ? { active: 0 }
@@ -35,11 +39,22 @@ export const suppliersService = {
 
     const skip = (page - 1) * limit;
 
+    let orderBy: Prisma.DistributorOrderByWithRelationInput = { createdAt: sortOrder || "desc" };
+    if (sortBy === "name") {
+      orderBy = { name: sortOrder || "asc" };
+    } else if (sortBy === "salesmanName") {
+      orderBy = { salesmanName: sortOrder || "asc" };
+    } else if (sortBy === "deliveryManName") {
+      orderBy = { deliveryManName: sortOrder || "asc" };
+    } else if (sortBy === "createdAt" || sortBy === "created_at") {
+      orderBy = { createdAt: sortOrder || "desc" };
+    }
+
     const [total, data] = await prisma.$transaction([
       prisma.distributor.count({ where }),
       prisma.distributor.findMany({
         where,
-        orderBy: { createdAt: "desc" },
+        orderBy,
         skip,
         take: limit,
         include: {

@@ -9,8 +9,10 @@ export const barcodesController = {
       const limit = Math.max(1, parseInt(req.query.limit as string) || (isPaginated ? 50 : 100000));
       const search = req.query.search as string | undefined;
       const includeArchived = req.query.includeArchived === "true";
+      const sortBy = req.query.sortBy as string | undefined;
+      const sortOrder = req.query.sortOrder === "asc" ? "asc" : (req.query.sortOrder === "desc" ? "desc" : undefined);
 
-      const result = await barcodesService.list({ page, limit, search, includeArchived });
+      const result = await barcodesService.list({ page, limit, search, includeArchived, sortBy, sortOrder });
 
       if (isPaginated) {
         res.json(result);

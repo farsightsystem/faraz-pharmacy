@@ -73,45 +73,67 @@ Menu.setApplicationMenu(menu);
 let windowSeq = 0;
 const posWindows = new Map();
 let posWindowCounter = 0;
+const returnWindows = new Map();
+let returnWindowCounter = 0;
 
-function createWindow({ posOnly = false } = {}) {
+function createWindow({ posOnly = false, returnOnly = false } = {}) {
   windowSeq += 1;
   const isPrimary = windowSeq === 1;
-  const posHash = posOnly ? "/pos?pos=1" : "/pos";
+  const targetHash = returnOnly
+    ? "/returns/terminal?standalone=1"
+    : posOnly
+      ? "/pos?pos=1"
+      : "/pos";
 
-  const winOptions = {
-    width: 1440,
-    height: 900,
-    minWidth: 1024,
-    minHeight: 700,
-    title: "Faraz Pharmacy",
-    icon: path.join(__dirname, "..", "src", "asset", "image", "logo.png"),
-    webPreferences: {
-      preload: path.join(__dirname, "preload.cjs"),
-      nodeIntegration: false,
-      contextIsolation: true,
-      sandbox: false,
-    },
-    show: false,
-    titleBarStyle: "hiddenInset",
-    autoHideMenuBar: true,
-  };
+ const winOptions = {
+  width: 1440,
+  height: 900,
+  minWidth: 1024,
+  minHeight: 700,
+  title: "Faraz Pharmacy",
+  movable: true,
+  icon: path.join(__dirname, "..", "src", "asset", "image", "logo.png"),
+  webPreferences: {
+    preload: path.join(__dirname, "preload.cjs"),
+    nodeIntegration: false,
+    contextIsolation: true,
+    sandbox: false,
+  },
+  show: false,
+  autoHideMenuBar: true,
+};
+
+// if (isPrimary) {
+//   winOptions.titleBarStyle = "hiddenInset";
+// }
 
   if (posOnly) {
     posWindowCounter++;
     const { width: screenWidth, height: screenHeight } = screen.getPrimaryDisplay().workAreaSize;
-    const cascadeOffset = (posWindowCounter - 1) * 30;
+    winOptions.width = Math.round(screenWidth * 0.8);
+    winOptions.height = Math.round(screenHeight * 0.8);
+    winOptions.minWidth = Math.round(screenWidth * 0.6);
+    winOptions.minHeight = Math.round(screenHeight * 0.6);
+    const x = Math.round((screenWidth - winOptions.width) / 2);
+    const y = Math.round((screenHeight - winOptions.height) / 2);
+    winOptions.x = x;
+    winOptions.y = y;
+    winOptions.title = `Faraz Pharmacy - Sale ${posWindowCounter}`;
+  } else if (returnOnly) {
+    returnWindowCounter++;
+    const { width: screenWidth, height: screenHeight } = screen.getPrimaryDisplay().workAreaSize;
+    const cascadeOffset = (returnWindowCounter - 1) * 30;
     const x = Math.min(
-      Math.round((screenWidth - winOptions.width) / 2) + cascadeOffset,
+      Math.round((screenWidth - winOptions.width) / 2) + cascadeOffset + 40,
       screenWidth - 200
     );
     const y = Math.min(
-      Math.round((screenHeight - winOptions.height) / 2) + cascadeOffset,
+      Math.round((screenHeight - winOptions.height) / 2) + cascadeOffset + 40,
       screenHeight - 200
     );
     winOptions.x = x;
     winOptions.y = y;
-    winOptions.title = `Faraz Pharmacy - Sale ${posWindowCounter}`;
+    winOptions.title = `Faraz Pharmacy - Returns Desk ${returnWindowCounter}`;
   }
 
   const win = new BrowserWindow(winOptions);
@@ -123,12 +145,19 @@ function createWindow({ posOnly = false } = {}) {
       posWindows.delete(winId);
       if (posWindows.size === 0) posWindowCounter = 0;
     });
+  } else if (returnOnly) {
+    const winId = win.id;
+    returnWindows.set(winId, win);
+    win.on("closed", () => {
+      returnWindows.delete(winId);
+      if (returnWindows.size === 0) returnWindowCounter = 0;
+    });
   }
 
   if (isDev) {
     const DEV_URL = "http://localhost:5173";
     const loadDev = (attempt = 0) => {
-      win.loadURL(`${DEV_URL}/#${posHash}`).catch(() => {
+      win.loadURL(`${DEV_URL}/#${targetHash}`).catch(() => {
         if (attempt < 60) {
           setTimeout(() => loadDev(attempt + 1), 500);
         }
@@ -141,7 +170,7 @@ function createWindow({ posOnly = false } = {}) {
       );
     }
   } else {
-    win.loadFile(path.join(__dirname, "..", "dist", "index.html"), { hash: posHash });
+    win.loadFile(path.join(__dirname, "..", "dist", "index.html"), { hash: targetHash });
   }
 
   win.once("ready-to-show", () => win.show());
@@ -160,6 +189,20 @@ ipcMain.handle("pos:open-window", () => {
 
 ipcMain.handle("pos:window-count", () => {
   return posWindows.size;
+});
+
+ipcMain.handle("returns:open-window", () => {
+  try {
+    const win = createWindow({ returnOnly: true });
+    if (win) return { success: true, windowId: win.id };
+    return { success: false, error: "Could not create window" };
+  } catch (e) {
+    return { success: false, error: e.message };
+  }
+});
+
+ipcMain.handle("returns:window-count", () => {
+  return returnWindows.size;
 });
 
 app.whenReady().then(() => {

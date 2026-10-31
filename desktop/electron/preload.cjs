@@ -1,6 +1,22 @@
 const { contextBridge, ipcRenderer } = require("electron");
+const { io } = require("socket.io-client");
 
 contextBridge.exposeInMainWorld("appConfig", ipcRenderer.sendSync("config:get-sync"));
+
+let socket = null;
+
+function getSocket() {
+  if (!socket) {
+    const serverUrl = (window.appConfig && window.appConfig.serverUrl) || "http://localhost:3001";
+    socket = io(serverUrl, {
+      transports: ["websocket", "polling"],
+      reconnection: true,
+      reconnectionAttempts: 5,
+      reconnectionDelay: 1000,
+    });
+  }
+  return socket;
+}
 
 contextBridge.exposeInMainWorld("electronAPI", {
   printers: {
@@ -21,6 +37,26 @@ contextBridge.exposeInMainWorld("electronAPI", {
   pos: {
     openWindow: () => ipcRenderer.invoke("pos:open-window"),
     getWindowCount: () => ipcRenderer.invoke("pos:window-count"),
+  },
+  socket: {
+    scanBarcode: (barcode) => {
+      return new Promise((resolve, reject) => {
+        try {
+          const s = getSocket();
+          s.emit("product:scan", { barcode }, (result) => {
+            resolve(result);
+          });
+        } catch (err) {
+          reject(err);
+        }
+      });
+    },
+    disconnect: () => {
+      if (socket) {
+        socket.disconnect();
+        socket = null;
+      }
+    },
   },
 });
 
@@ -57,3 +93,5 @@ contextBridge.exposeInMainWorld("toggleFullscreen", () =>
 );
 contextBridge.exposeInMainWorld("openPosWindow", () => ipcRenderer.invoke("pos:open-window"));
 contextBridge.exposeInMainWorld("getPosWindowCount", () => ipcRenderer.invoke("pos:window-count"));
+contextBridge.exposeInMainWorld("openReturnWindow", () => ipcRenderer.invoke("returns:open-window"));
+contextBridge.exposeInMainWorld("getReturnWindowCount", () => ipcRenderer.invoke("returns:window-count"));

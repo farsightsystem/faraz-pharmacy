@@ -280,6 +280,8 @@ export interface StockPurchase {
   quantity: number;
   purchase_price: number;
   sale_price: number;
+  price_tier_id?: string | null;
+  stax?: number;
   expiry?: string;
   total_value: number;
   subtotal?: number;
@@ -301,7 +303,9 @@ export interface StockInput {
   batchNumber?: string;
   purchasePrice?: number;
   salePrice?: number;
+  priceTierId?: string | null;
   quantity: number;
+  stax?: number;
   expiry?: string;
 }
 

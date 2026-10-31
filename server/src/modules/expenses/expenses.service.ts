@@ -11,6 +11,8 @@ export const expensesService = {
     dateTo,
     includeArchived = false,
     archivedOnly = false,
+    sortBy,
+    sortOrder,
   }: {
     page?: number;
     limit?: number;
@@ -19,6 +21,8 @@ export const expensesService = {
     dateTo?: string;
     includeArchived?: boolean;
     archivedOnly?: boolean;
+    sortBy?: string;
+    sortOrder?: "asc" | "desc";
   } = {}) {
     const where: Prisma.ExpenseWhereInput = archivedOnly
       ? { active: 0 }
@@ -46,11 +50,24 @@ export const expensesService = {
 
     const skip = (page - 1) * limit;
 
+    let orderBy: Prisma.ExpenseOrderByWithRelationInput = { createdAt: sortOrder || "desc" };
+    if (sortBy === "title") {
+      orderBy = { title: sortOrder || "asc" };
+    } else if (sortBy === "category") {
+      orderBy = { category: sortOrder || "asc" };
+    } else if (sortBy === "amount") {
+      orderBy = { amount: sortOrder || "desc" };
+    } else if (sortBy === "date") {
+      orderBy = { date: sortOrder || "desc" };
+    } else if (sortBy === "createdAt" || sortBy === "created_at") {
+      orderBy = { createdAt: sortOrder || "desc" };
+    }
+
     const [total, data] = await prisma.$transaction([
       prisma.expense.count({ where }),
       prisma.expense.findMany({
         where,
-        orderBy: { createdAt: "desc" },
+        orderBy,
         skip,
         take: limit,
       }),

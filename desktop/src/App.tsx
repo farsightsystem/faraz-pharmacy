@@ -7,6 +7,7 @@ import { ServerConnectionProvider } from "@/contexts/ServerConnectionContext";
 import { SidebarProvider } from "@/contexts/SidebarContext";
 import PrintPreviewDialog from "@/components/shared/PrintPreviewDialog";
 import { getLastReceipt } from "@/lib/receiptStore";
+import { ensureProductCache } from "@/lib/sync";
 import type { PrinterConfig } from "@/types";
 import Sidebar from "@/components/layout/Sidebar";
 import Topbar from "@/components/layout/Topbar";
@@ -51,13 +52,29 @@ function AppShell() {
   const location = useLocation();
   const navigate = useNavigate();
 
-  const isPosWindow = new URLSearchParams(location.search).has("pos");
+  const searchParams = new URLSearchParams(location.search);
+  const isPosWindow = searchParams.has("pos");
+  const isStandaloneWindow =
+    isPosWindow || searchParams.has("standalone") || location.pathname === "/returns/terminal";
 
   const [reprintOpen, setReprintOpen] = useState(false);
   const [reprintData, setReprintData] = useState<unknown>(null);
 
   useEffect(() => {
-    setReady(true);
+    (async () => {
+      try {
+        const result = await ensureProductCache();
+        if (result.error) {
+          toast.warning(`Offline mode: ${result.error}. Using cached data.`);
+        } else if (!result.fromCache) {
+          toast.success(`Product cache loaded: ${result.count} products`);
+        }
+      } catch {
+        // Silent - app still works, just no cache
+      } finally {
+        setReady(true);
+      }
+    })();
   }, []);
 
   const generateReprintHtml = useCallback(
@@ -262,6 +279,14 @@ function AppShell() {
           }
         />
         <Route
+          path="/returns/terminal"
+          element={
+            <AnimatedPage>
+              <Returns defaultMode="terminal" isStandaloneWindow={isStandaloneWindow} />
+            </AnimatedPage>
+          }
+        />
+        <Route
           path="/expenses"
           element={
             <AnimatedPage>
@@ -305,12 +330,12 @@ function AppShell() {
     </AnimatePresence>
   );
 
-  if (isPosWindow) {
+  if (isStandaloneWindow) {
     return (
       <div className="flex h-screen overflow-hidden">
         <div className="flex flex-1 flex-col overflow-hidden">
           <OfflineBanner />
-          <main className="flex-1 overflow-y-auto p-5 lg:p-6">{routes}</main>
+          <main className="flex-1 overflow-y-auto p-4 lg:p-6">{routes}</main>
         </div>
         <PrintPreviewDialog
           open={reprintOpen}

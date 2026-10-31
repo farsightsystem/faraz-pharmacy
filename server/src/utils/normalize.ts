@@ -64,6 +64,7 @@ export function normalizeStockPurchase(purchase: any): any {
     quantity: purchase.quantity ?? 0,
     purchase_price: purchase.purchasePrice ?? 0,
     sale_price: purchase.salePrice ?? 0,
+    price_tier_id: purchase.priceTierId ?? null,
     expiry: purchase.expiry ?? null,
     active: purchase.active ?? 1,
     total_value: purchase.totalValue ?? 0,

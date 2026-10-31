@@ -30,8 +30,10 @@ export const returnsController = {
       const page = Math.max(1, parseInt(req.query.page as string) || 1);
       const limit = Math.max(1, parseInt(req.query.limit as string) || (isPaginated ? 50 : 100000));
       const search = req.query.search as string | undefined;
+      const sortBy = req.query.sortBy as string | undefined;
+      const sortOrder = (req.query.sortOrder as "asc" | "desc") || undefined;
 
-      const result = await returnsService.list({ page, limit, search });
+      const result = await returnsService.list({ page, limit, search, sortBy, sortOrder });
       const normalizedData = result.data.map(normalizeReturn);
 
       if (isPaginated) {

@@ -260,11 +260,13 @@ export const StockPurchaseScalarFieldEnum = {
   quantity: 'quantity',
   purchasePrice: 'purchasePrice',
   salePrice: 'salePrice',
+  stax: 'stax',
   expiry: 'expiry',
   totalValue: 'totalValue',
   active: 'active',
   batchId: 'batchId',
   batchNumber: 'batchNumber',
+  priceTierId: 'priceTierId',
   createdAt: 'createdAt'
 } as const
 

@@ -96,6 +96,7 @@ export const reportsService = {
     const product = await prisma.product.findUnique({
       where: { id: productId },
       include: {
+        company: { select: { name: true } },
         batches: {
           include: { distributor: { select: { name: true } } },
           orderBy: { expiryDate: "asc" },

@@ -39,27 +39,7 @@ const AlertDialogContent = React.forwardRef<
     <AlertDialogOverlay />
     <AlertDialogPrimitive.Content
       ref={ref}
-      onPointerDownOutside={(e) => {
-        if (isInsideSearchablePanel(e)) {
-          e.preventDefault();
-        } else {
-          props.onPointerDownOutside?.(e);
-        }
-      }}
-      onInteractOutside={(e) => {
-        if (isInsideSearchablePanel(e)) {
-          e.preventDefault();
-        } else {
-          props.onInteractOutside?.(e);
-        }
-      }}
-      onFocusOutside={(e) => {
-        if (isInsideSearchablePanel(e)) {
-          e.preventDefault();
-        } else {
-          props.onFocusOutside?.(e);
-        }
-      }}
+      {...(props as any)}
       className={cn(
         "fixed left-[50%] top-[50%] z-50 grid w-full max-w-md translate-x-[-50%] translate-y-[-50%] gap-0 border border-border/80 bg-surface p-0 shadow-2xl duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:animate-fade-out data-[state=open]:animate-fade-in data-[state=closed]:animate-zoom-out-95 data-[state=open]:animate-zoom-in-95 sm:rounded-2xl overflow-hidden",
         className

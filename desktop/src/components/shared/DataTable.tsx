@@ -8,12 +8,15 @@ import {
 } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
+import { ArrowUp, ArrowDown, ArrowUpDown } from "lucide-react";
 
-interface Column<T> {
+export interface Column<T> {
   key: string;
   header: string;
   cell: (item: T) => React.ReactNode;
   className?: string;
+  sortable?: boolean;
+  sortKey?: string;
 }
 
 interface DataTableProps<T> {
@@ -23,6 +26,9 @@ interface DataTableProps<T> {
   keyExtractor: (item: T) => string;
   onRowClick?: (item: T) => void;
   emptyMessage?: string;
+  sortBy?: string;
+  sortOrder?: "asc" | "desc";
+  onSort?: (sortKey: string) => void;
 }
 
 export default function DataTable<T>({
@@ -32,6 +38,9 @@ export default function DataTable<T>({
   keyExtractor,
   onRowClick,
   emptyMessage,
+  sortBy,
+  sortOrder,
+  onSort,
 }: DataTableProps<T>) {
   if (loading) {
     return (
@@ -63,11 +72,36 @@ export default function DataTable<T>({
       <Table>
         <TableHeader>
           <TableRow className="bg-surface-2/40 hover:bg-surface-2/40">
-            {columns.map((col) => (
-              <TableHead key={col.key} className={col.className}>
-                {col.header}
-              </TableHead>
-            ))}
+            {columns.map((col) => {
+              const isSortable = col.sortable && !!onSort;
+              const fieldKey = col.sortKey || col.key;
+              const isCurrent = sortBy === fieldKey;
+
+              return (
+                <TableHead key={col.key} className={col.className}>
+                  {isSortable ? (
+                    <button
+                      type="button"
+                      onClick={() => onSort(fieldKey)}
+                      className="group inline-flex items-center gap-1.5 font-medium hover:text-text-primary transition-colors cursor-pointer select-none text-left"
+                    >
+                      <span>{col.header}</span>
+                      {isCurrent ? (
+                        sortOrder === "asc" ? (
+                          <ArrowUp className="h-3 w-3 text-brand shrink-0" />
+                        ) : (
+                          <ArrowDown className="h-3 w-3 text-brand shrink-0" />
+                        )
+                      ) : (
+                        <ArrowUpDown className="h-3 w-3 text-text-tertiary/40 group-hover:text-text-secondary shrink-0 transition-opacity opacity-0 group-hover:opacity-100" />
+                      )}
+                    </button>
+                  ) : (
+                    col.header
+                  )}
+                </TableHead>
+              );
+            })}
           </TableRow>
         </TableHeader>
         <TableBody>

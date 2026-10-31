@@ -2,12 +2,19 @@ import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
-import { Building2, Search, Plus, Pencil, Trash2, Download, ChevronLeft, ChevronRight, Calendar, Archive, RotateCcw } from "lucide-react";
+import { Building2, Search, Plus, Pencil, Trash2, Download, ChevronLeft, ChevronRight, Calendar, Archive, RotateCcw, ArrowUpDown } from "lucide-react";
 import PageHeader from "@/components/shared/PageHeader";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { api } from "@/lib/api";
 import { downloadCSV, downloadPDF } from "@/lib/export";
@@ -22,6 +29,8 @@ export default function Companies() {
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(48);
+  const [sortBy, setSortBy] = useState<string>("createdAt");
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
   const [open, setOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [showArchived, setShowArchived] = useState(false);
@@ -37,16 +46,18 @@ export default function Companies() {
 
   useEffect(() => {
     setPage(1);
-  }, [debouncedSearch, limit, showArchived]);
+  }, [debouncedSearch, limit, showArchived, sortBy, sortOrder]);
 
   const { data, isLoading } = useQuery({
-    queryKey: ["companies", page, limit, debouncedSearch, showArchived],
+    queryKey: ["companies", page, limit, debouncedSearch, showArchived, sortBy, sortOrder],
     queryFn: () =>
       api.companies.listPaginated({
         page,
         limit,
         search: debouncedSearch,
         archived: showArchived,
+        sortBy,
+        sortOrder,
       }),
   });
 
@@ -163,18 +174,41 @@ export default function Companies() {
 
       {/* Filter & Export Toolbar */}
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="relative flex-1 max-w-md">
-          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-text-secondary" />
-          <Input
-            autoFocus
-            placeholder="Search companies by name..."
-            value={search}
-            onChange={(e) => {
-              setSearch(e.target.value);
+        <div className="flex flex-wrap items-center gap-2.5 flex-1 max-w-xl">
+          <div className="relative flex-1 min-w-[200px]">
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-text-secondary" />
+            <Input
+              autoFocus
+              placeholder="Search companies by name..."
+              value={search}
+              onChange={(e) => {
+                setSearch(e.target.value);
+                setPage(1);
+              }}
+              className="pl-10 h-10 rounded-full border border-border/80 bg-surface shadow-xs text-xs focus-visible:ring-2 focus-visible:ring-[#4A25E1]/25"
+            />
+          </div>
+          <Select
+            value={sortBy === "createdAt" ? (sortOrder === "desc" ? "recent" : "oldest") : (sortOrder === "asc" ? "name_asc" : "name_desc")}
+            onValueChange={(val) => {
+              if (val === "recent") { setSortBy("createdAt"); setSortOrder("desc"); }
+              else if (val === "oldest") { setSortBy("createdAt"); setSortOrder("asc"); }
+              else if (val === "name_asc") { setSortBy("name"); setSortOrder("asc"); }
+              else if (val === "name_desc") { setSortBy("name"); setSortOrder("desc"); }
               setPage(1);
             }}
-            className="pl-10 h-10 rounded-full border border-border/80 bg-surface shadow-xs text-xs focus-visible:ring-2 focus-visible:ring-[#4A25E1]/25"
-          />
+          >
+            <SelectTrigger className="h-10 w-[145px] rounded-full border border-border/80 bg-surface shadow-xs text-xs shrink-0">
+              <ArrowUpDown className="h-3.5 w-3.5 mr-1 text-text-secondary shrink-0" />
+              <SelectValue placeholder="Sort" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="recent">Recent first</SelectItem>
+              <SelectItem value="oldest">Oldest first</SelectItem>
+              <SelectItem value="name_asc">Name (A-Z)</SelectItem>
+              <SelectItem value="name_desc">Name (Z-A)</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
         <div className="flex items-center gap-2">
           <Button
