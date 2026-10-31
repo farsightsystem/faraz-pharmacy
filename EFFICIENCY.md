@@ -191,7 +191,47 @@ Added `getByBarcodeFast()` to the API layer which calls the new `/api/products/b
 
 ---
 
-### 3.7 PM2 Fork Mode (Not Cluster) on Windows
+### 3.7 Server-Side Memory Cache (node-cache)
+
+Standard PostgreSQL queries hit disk on every request, even for frequently-read data like product listings and barcode lookups. A server-side in-memory cache eliminates redundant database hits for data that changes infrequently.
+
+**New file:** `server/src/utils/cache.ts`
+
+Created a `node-cache` singleton wrapper with TTL-based expiration:
+
+```typescript
+const cache = new NodeCache({
+  stdTTL: 60,        // default TTL: 60 seconds
+  checkperiod: 120,  // check for expired keys every 120 seconds
+  useClones: false,  // don't clone objects on get (faster, safe for read-only)
+});
+```
+
+**Exported helpers:** `cacheGet`, `cacheSet`, `cacheDel`, `cacheDelNamespace`, `cacheFlush`, `cacheStats`, `makeKey`.
+
+**Applied caching to:**
+
+| Service | Method | TTL | Invalidated On |
+|---------|--------|-----|----------------|
+| `medicinesService` | `list()` | 60s | create, update, archive, restore, hardDelete |
+| `medicinesService` | `search()` | 30s | create, update, archive, restore, hardDelete |
+| `medicinesService` | `getByBarcode()` | 60s | create, update, archive, restore, hardDelete |
+| `medicinesService` | `getById()` | 60s | create, update, archive, restore, hardDelete |
+| `customersService` | `list()` | 120s | create, update, archive, restore, hardDelete |
+| `customersService` | `getById()` | 120s | create, update, archive, restore, hardDelete |
+| `purchasesService` | `create()` | — | `cacheDelNamespace("products")` |
+| `purchasesService` | `update()` | — | `cacheDelNamespace("products")` |
+| `purchasesService` | `remove()` | — | `cacheDelNamespace("products")` |
+| `purchasesService` | `restore()` | — | `cacheDelNamespace("products")` |
+| `purchasesService` | `hardDelete()` | — | `cacheDelNamespace("products")` |
+
+**Cache key pattern:** `fz:{namespace}:{params}` (e.g., `fz:products:list:page=1&limit=50`)
+
+**Invalidation strategy:** Any write operation (create/update/delete) clears the entire `products` or `customers` namespace, ensuring stale data is never served. TTLs provide a safety net so cache entries auto-expire even if invalidation is missed.
+
+---
+
+### 3.8 PM2 Fork Mode (Not Cluster) on Windows
 
 Prisma uses a Rust-based engine binary. Running PM2 in cluster mode spawns multiple Node processes, each with its own Prisma connection pool. On Windows with default PostgreSQL `max_connections` (usually 100), 8 cluster forks × 20 pool connections = 160 connections → connection exhaustion.
 
@@ -396,8 +436,8 @@ Offline-first introduces stock conflicts: two terminals selling the same last it
 | **1** | Express `compression` middleware | 15 min | Zero | Medium | ✅ Done |
 | **1** | PM2 fork mode + `connection_limit` in `.env` | 30 min | Low | Medium | ⬜ Pending |
 | **2** | Socket.io for barcode scan / stock check | 2–4 hours | Low | High | ✅ Done |
-| **2** | Server-side memory cache (node-cache) | 1 hour | Low | Medium | ⬜ Pending |
-| **3** | Dexie.js IndexedDB client cache + sync | 1–2 weeks | Medium | Very High | ⬜ Pending |
+| **2** | Server-side memory cache (node-cache) | 1 hour | Low | Medium | ✅ Done |
+| **3** | Dexie.js IndexedDB client cache + sync | 1–2 weeks | Medium | Very High | ✅ Done |
 | **3** | Virtualize large product lists/tables | 4–8 hours | Low | Medium | ⬜ Pending |
 | **3** | PM2 Windows Service + power settings | 30 min | Low | Medium | ⬜ Pending |
 

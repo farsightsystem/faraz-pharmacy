@@ -194,6 +194,7 @@ export const purchasesService = {
         },
       });
 
+      cacheDelNamespace("products"); // invalidate product cache on stock write
       emitEvent("stock:updated", stockPurchase);
       return stockPurchase;
     });
@@ -221,7 +222,7 @@ export const purchasesService = {
     const qtyDiff = (data.quantity ?? old.quantity) - old.quantity;
     const totalValue = (data.quantity ?? old.quantity) * purchasePrice;
 
-    return prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+    const result = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       const updated = await tx.stockPurchase.update({
         where: { id },
         data: {
@@ -268,13 +269,15 @@ export const purchasesService = {
 
       return updated;
     });
+    cacheDelNamespace("products"); // invalidate product cache on stock write
+    return result;
   },
 
   async remove(id: string) {
     const old = await prisma.stockPurchase.findUnique({ where: { id } });
     if (!old) throw new NotFoundError("Stock purchase");
 
-    return prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+    const result = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       await tx.stockPurchase.update({
         where: { id },
         data: { active: 0 },
@@ -302,13 +305,15 @@ export const purchasesService = {
 
       return { success: true };
     });
+    cacheDelNamespace("products"); // invalidate product cache on stock write
+    return result;
   },
 
   async restore(id: string) {
     const old = await prisma.stockPurchase.findUnique({ where: { id } });
     if (!old) throw new NotFoundError("Stock purchase");
 
-    return prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+    const result = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       await tx.stockPurchase.update({
         where: { id },
         data: { active: 1 },
@@ -336,13 +341,15 @@ export const purchasesService = {
 
       return { success: true };
     });
+    cacheDelNamespace("products"); // invalidate product cache on stock write
+    return result;
   },
 
   async hardDelete(id: string) {
     const old = await prisma.stockPurchase.findUnique({ where: { id } });
     if (!old) throw new NotFoundError("Stock purchase");
 
-    return prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+    const result = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       if (old.active === 1) {
         if (old.batchId) {
           await tx.productBatch.update({
@@ -366,6 +373,8 @@ export const purchasesService = {
       await tx.stockPurchase.delete({ where: { id } });
       return { success: true };
     });
+    cacheDelNamespace("products"); // invalidate product cache on stock write
+    return result;
   },
 };
 

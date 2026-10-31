@@ -41,6 +41,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { formatCurrency } from "@/lib/utils";
 import { setLastReceipt } from "@/lib/receiptStore";
+import { getProductByBarcodeLocal } from "@/lib/sync";
 import { toast } from "sonner";
 import type { Product, PrinterConfig, ProductPrice, Customer } from "@/types";
 
@@ -95,6 +96,84 @@ export default function POS() {
   useEffect(() => {
     focusSearch();
   }, [focusSearch]);
+
+  /**
+   * Find product by barcode with offline-first fallback chain:
+   * 1. Local IndexedDB cache (~1ms) - instant, works offline
+   * 2. Socket.io WebSocket - fast, no HTTP overhead
+   * 3. REST /barcode-fast/ - HTTP fallback
+   */
+  const findProductByBarcode = useCallback(async (barcode: string): Promise<Product | null> => {
+    // Step 1: Local IndexedDB cache first
+    const local = await getProductByBarcodeLocal(barcode);
+    if (local) {
+      return {
+        id: local.id,
+        barcode: local.barcode,
+        name: local.name,
+        sale_price: local.sale_price,
+        purchase_price: local.purchase_price,
+        stock_qty: local.stock_qty,
+        category: local.category,
+        location: local.location,
+        active: local.active,
+        company: local.company || "",
+        prices: local.prices || [],
+        markup_percent: local.markup_percent,
+        created_at: local.created_at,
+      };
+    }
+
+    // Step 2: Socket.io WebSocket
+    try {
+      const socketResult = await api.products.socketProductScan(barcode);
+      if (socketResult) {
+        return {
+          id: socketResult.id,
+          barcode: socketResult.barcode,
+          name: socketResult.name,
+          sale_price: socketResult.salePrice,
+          purchase_price: socketResult.purchasePrice,
+          stock_qty: socketResult.stockQty,
+          category: socketResult.category,
+          location: socketResult.location,
+          active: socketResult.active,
+          company: socketResult.company?.name || "",
+          prices: [],
+          markup_percent: 20,
+          created_at: new Date().toISOString(),
+        };
+      }
+    } catch {
+      // Socket.io unavailable, fall through to REST
+    }
+
+    // Step 3: REST /barcode-fast/ fallback
+    try {
+      const restResult = await api.products.getByBarcodeFast(barcode);
+      if (restResult) {
+        return {
+          id: restResult.id,
+          barcode: restResult.barcode,
+          name: restResult.name,
+          sale_price: restResult.salePrice,
+          purchase_price: restResult.purchasePrice,
+          stock_qty: restResult.stockQty,
+          category: restResult.category,
+          location: restResult.location,
+          active: restResult.active,
+          company: restResult.company?.name || "",
+          prices: [],
+          markup_percent: 20,
+          created_at: new Date().toISOString(),
+        };
+      }
+    } catch {
+      // Not found
+    }
+
+    return null;
+  }, []);
 
   // Show inline error near search input
   const showInlineError = useCallback((msg: string) => {
@@ -287,65 +366,19 @@ export default function POS() {
       }
 
       try {
-        const barcodeProduct = await api.products.socketProductScan(trimmed);
+        const barcodeProduct = await findProductByBarcode(trimmed);
         if (barcodeProduct) {
-          // Map camelCase fast response to snake_case Product shape
-          const mapped: Product = {
-            id: barcodeProduct.id,
-            barcode: barcodeProduct.barcode,
-            name: barcodeProduct.name,
-            sale_price: barcodeProduct.salePrice,
-            purchase_price: barcodeProduct.purchasePrice,
-            stock_qty: barcodeProduct.stockQty,
-            category: barcodeProduct.category,
-            location: barcodeProduct.location,
-            active: barcodeProduct.active,
-            company: barcodeProduct.company?.name || "",
-            prices: [],
-            markup_percent: 20,
-            created_at: new Date().toISOString(),
-          };
-          if (mapped.stock_qty <= 0) {
+          if (barcodeProduct.stock_qty <= 0) {
             showInlineError("Out of stock");
             setSearch("");
             focusSearch();
             return;
           }
-          promptPriceTier(mapped);
+          promptPriceTier(barcodeProduct);
           return;
         }
       } catch {
-        // Socket.io not available or scan failed, fall through to REST fast endpoint
-        try {
-          const barcodeProduct = await api.products.getByBarcodeFast(trimmed);
-          if (barcodeProduct) {
-            const mapped: Product = {
-              id: barcodeProduct.id,
-              barcode: barcodeProduct.barcode,
-              name: barcodeProduct.name,
-              sale_price: barcodeProduct.salePrice,
-              purchase_price: barcodeProduct.purchasePrice,
-              stock_qty: barcodeProduct.stockQty,
-              category: barcodeProduct.category,
-              location: barcodeProduct.location,
-              active: barcodeProduct.active,
-              company: barcodeProduct.company?.name || "",
-              prices: [],
-              markup_percent: 20,
-              created_at: new Date().toISOString(),
-            };
-            if (mapped.stock_qty <= 0) {
-              showInlineError("Out of stock");
-              setSearch("");
-              focusSearch();
-              return;
-            }
-            promptPriceTier(mapped);
-            return;
-          }
-        } catch {
-          // Not a barcode match, fall through to search results
-        }
+        // Not a barcode match, fall through to search results
       }
 
       // 2. If dropdown is open and user navigates or selects

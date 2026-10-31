@@ -7,6 +7,7 @@ import { ServerConnectionProvider } from "@/contexts/ServerConnectionContext";
 import { SidebarProvider } from "@/contexts/SidebarContext";
 import PrintPreviewDialog from "@/components/shared/PrintPreviewDialog";
 import { getLastReceipt } from "@/lib/receiptStore";
+import { ensureProductCache } from "@/lib/sync";
 import type { PrinterConfig } from "@/types";
 import Sidebar from "@/components/layout/Sidebar";
 import Topbar from "@/components/layout/Topbar";
@@ -60,7 +61,20 @@ function AppShell() {
   const [reprintData, setReprintData] = useState<unknown>(null);
 
   useEffect(() => {
-    setReady(true);
+    (async () => {
+      try {
+        const result = await ensureProductCache();
+        if (result.error) {
+          toast.warning(`Offline mode: ${result.error}. Using cached data.`);
+        } else if (!result.fromCache) {
+          toast.success(`Product cache loaded: ${result.count} products`);
+        }
+      } catch {
+        // Silent - app still works, just no cache
+      } finally {
+        setReady(true);
+      }
+    })();
   }, []);
 
   const generateReprintHtml = useCallback(
