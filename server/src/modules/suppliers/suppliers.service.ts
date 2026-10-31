@@ -50,7 +50,7 @@ export const suppliersService = {
       orderBy = { createdAt: sortOrder || "desc" };
     }
 
-    const [total, data] = await prisma.$transaction([
+    const [total, data] = await Promise.all([
       prisma.distributor.count({ where }),
       prisma.distributor.findMany({
         where,

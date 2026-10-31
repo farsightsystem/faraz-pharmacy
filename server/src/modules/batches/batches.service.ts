@@ -104,7 +104,7 @@ export const batchesService = {
     }
 
     const skip = (page - 1) * limit;
-    const [total, data] = await prisma.$transaction([
+    const [total, data] = await Promise.all([
       prisma.productBatch.count({ where }),
       prisma.productBatch.findMany({
         where,
