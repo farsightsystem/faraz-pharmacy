@@ -184,6 +184,8 @@ export const salesService = {
     tzOffsetMinutes?: number;
     page?: number;
     limit?: number;
+    sortBy?: string;
+    sortOrder?: "asc" | "desc";
   }) {
     const where: Record<string, unknown> = {};
     const offsetMs = (opts?.tzOffsetMinutes ?? 0) * 60000;
@@ -217,11 +219,22 @@ export const salesService = {
     const limit = opts?.limit || 100000;
     const skip = (page - 1) * limit;
 
+    let orderBy: Prisma.SaleOrderByWithRelationInput = { createdAt: opts?.sortOrder || "desc" };
+    if (opts?.sortBy === "total") {
+      orderBy = { total: opts?.sortOrder || "desc" };
+    } else if (opts?.sortBy === "discount") {
+      orderBy = { discount: opts?.sortOrder || "desc" };
+    } else if (opts?.sortBy === "subtotal") {
+      orderBy = { subtotal: opts?.sortOrder || "desc" };
+    } else if (opts?.sortBy === "createdAt" || opts?.sortBy === "created_at" || opts?.sortBy === "date") {
+      orderBy = { createdAt: opts?.sortOrder || "desc" };
+    }
+
     const [total, sales] = await prisma.$transaction([
       prisma.sale.count({ where }),
       prisma.sale.findMany({
         where,
-        orderBy: { createdAt: "desc" },
+        orderBy,
         take: limit,
         skip,
         include: {

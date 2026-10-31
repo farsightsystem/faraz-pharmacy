@@ -20,6 +20,7 @@ import {
   X,
   Receipt,
   RotateCcw as ReturnIcon,
+  ArrowUpDown,
 } from "lucide-react";
 import PageHeader from "@/components/shared/PageHeader";
 import DataTable from "@/components/shared/DataTable";
@@ -28,6 +29,13 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatCurrency, formatDateTime, formatDate } from "@/lib/utils";
 import { api } from "@/lib/api";
@@ -60,7 +68,23 @@ export default function Returns({
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(50);
+  const [sortBy, setSortBy] = useState<string>("createdAt");
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
   const debouncedSearch = useDebounce(search, 300);
+
+  const handleSort = (key: string) => {
+    if (sortBy === key) {
+      setSortOrder((prev) => (prev === "asc" ? "desc" : "asc"));
+    } else {
+      setSortBy(key);
+      setSortOrder(key === "refundAmount" ? "desc" : "desc");
+    }
+    setPage(1);
+  };
+
+  useEffect(() => {
+    setPage(1);
+  }, [debouncedSearch, limit, sortBy, sortOrder]);
 
   // Terminal active return state
   const [selectedSaleId, setSelectedSaleId] = useState("");
@@ -86,8 +110,8 @@ export default function Returns({
 
   // Queries
   const { data: paginatedData, isLoading } = useQuery({
-    queryKey: ["returns", page, limit, debouncedSearch],
-    queryFn: () => api.returns.listPaginated({ page, limit, search: debouncedSearch }),
+    queryKey: ["returns", page, limit, debouncedSearch, sortBy, sortOrder],
+    queryFn: () => api.returns.listPaginated({ page, limit, search: debouncedSearch, sortBy, sortOrder }),
   });
 
   const returns = paginatedData?.data || [];
@@ -442,6 +466,8 @@ export default function Returns({
   const columns = [
     {
       key: "created_at",
+      sortKey: "createdAt",
+      sortable: true,
       header: "Date & Time",
       cell: (r: ReturnEntry) => (
         <span className="font-mono text-xs text-text-secondary">
@@ -465,6 +491,8 @@ export default function Returns({
     },
     {
       key: "refund_amount",
+      sortKey: "refundAmount",
+      sortable: true,
       header: "Refund Amount",
       cell: (r: ReturnEntry) => (
         <span className="font-mono font-bold text-danger">{formatCurrency(r.refund_amount)}</span>
@@ -1334,16 +1362,58 @@ export default function Returns({
 
       {/* Toolbar & KPI Header */}
       <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
-        <div className="relative flex-1 max-w-md">
-          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-text-secondary" />
-          <Input
-            autoFocus
-            ref={historySearchRef}
-            placeholder="Search returns by customer, medicine, sale ID, or reason..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pl-10 h-10 rounded-full border border-border/80 bg-surface shadow-xs text-xs focus-visible:ring-2 focus-visible:ring-brand"
-          />
+        <div className="flex flex-wrap items-center gap-2 flex-1 max-w-lg">
+          <div className="relative min-w-[200px] flex-1">
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-text-secondary pointer-events-none" />
+            <Input
+              autoFocus
+              ref={historySearchRef}
+              placeholder="Search returns by customer, medicine, sale ID, or reason..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="pl-10 h-10 rounded-full border border-border/80 bg-surface shadow-xs text-xs focus-visible:ring-2 focus-visible:ring-brand"
+            />
+          </div>
+          <Select
+            value={
+              sortBy === "createdAt" && sortOrder === "desc"
+                ? "recent"
+                : sortBy === "createdAt" && sortOrder === "asc"
+                ? "oldest"
+                : sortBy === "refundAmount" && sortOrder === "desc"
+                ? "refund_desc"
+                : sortBy === "refundAmount" && sortOrder === "asc"
+                ? "refund_asc"
+                : "recent"
+            }
+            onValueChange={(val) => {
+              if (val === "recent") {
+                setSortBy("createdAt");
+                setSortOrder("desc");
+              } else if (val === "oldest") {
+                setSortBy("createdAt");
+                setSortOrder("asc");
+              } else if (val === "refund_desc") {
+                setSortBy("refundAmount");
+                setSortOrder("desc");
+              } else if (val === "refund_asc") {
+                setSortBy("refundAmount");
+                setSortOrder("asc");
+              }
+              setPage(1);
+            }}
+          >
+            <SelectTrigger className="w-[145px] h-10 rounded-full border border-border/80 bg-surface shadow-xs text-xs shrink-0">
+              <ArrowUpDown className="h-3.5 w-3.5 mr-1 text-text-secondary shrink-0" />
+              <SelectValue placeholder="Sort" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="recent">Recent first</SelectItem>
+              <SelectItem value="oldest">Oldest first</SelectItem>
+              <SelectItem value="refund_desc">Highest Refund</SelectItem>
+              <SelectItem value="refund_asc">Lowest Refund</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
         <div className="flex items-center gap-2">
           <Button
@@ -1368,6 +1438,9 @@ export default function Returns({
           loading={isLoading}
           keyExtractor={(r: ReturnEntry) => r.id}
           onRowClick={(r: ReturnEntry) => setSelectedReturn(r)}
+          sortBy={sortBy}
+          sortOrder={sortOrder}
+          onSort={handleSort}
         />
 
         {/* Pagination Bar */}

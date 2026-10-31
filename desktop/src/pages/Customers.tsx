@@ -3,7 +3,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { useDebounce } from "@/hooks/useDebounce";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Search, Plus, Phone, MapPin, Pencil, Trash2, LayoutGrid, List, Eye, Archive, RotateCcw } from "lucide-react";
+import { Search, Plus, Phone, MapPin, Pencil, Trash2, LayoutGrid, List, Eye, Archive, RotateCcw, ArrowUpDown } from "lucide-react";
 import PageHeader from "@/components/shared/PageHeader";
 import DataTable from "@/components/shared/DataTable";
 import { Input } from "@/components/ui/input";
@@ -11,6 +11,13 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import { api } from "@/lib/api";
@@ -26,6 +33,8 @@ export default function Customers() {
   const location = useLocation();
   const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
+  const [sortBy, setSortBy] = useState<string>("createdAt");
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
   const [open, setOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [name, setName] = useState("");
@@ -43,18 +52,34 @@ export default function Customers() {
   const [viewMode, setViewMode] = useState<"grid" | "list">("list");
   const searchRef = useRef<HTMLInputElement>(null);
 
+  const handleSort = (key: string) => {
+    if (sortBy === key) {
+      setSortOrder((prev) => (prev === "asc" ? "desc" : "asc"));
+    } else {
+      setSortBy(key);
+      setSortOrder(key === "name" ? "asc" : "desc");
+    }
+    setPage(1);
+  };
+
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(50);
   const debouncedSearch = useDebounce(search, 300);
 
+  useEffect(() => {
+    setPage(1);
+  }, [debouncedSearch, limit, showArchived, sortBy, sortOrder]);
+
   const { data: paginatedData, isLoading } = useQuery({
-    queryKey: ["customers", page, limit, debouncedSearch, showArchived],
+    queryKey: ["customers", page, limit, debouncedSearch, showArchived, sortBy, sortOrder],
     queryFn: () =>
       api.customers.listPaginated({
         page,
         limit,
         search: debouncedSearch,
         archived: showArchived,
+        sortBy,
+        sortOrder,
       }),
   });
 
@@ -175,6 +200,8 @@ export default function Customers() {
   const columns = [
     {
       key: "name",
+      sortKey: "name",
+      sortable: true,
       header: "Name",
       cell: (c: Customer) => <span className="font-medium text-text-primary">{c.name}</span>,
     },
@@ -371,16 +398,58 @@ export default function Customers() {
 
       {/* Toolbar */}
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="relative flex-1 max-w-md">
-          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-text-secondary" />
-          <Input
-            autoFocus
-            ref={searchRef}
-            placeholder="Search by customer name or phone..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pl-10 h-10 rounded-full border border-border/80 bg-surface shadow-xs text-xs focus-visible:ring-2 focus-visible:ring-[#4A25E1]/25"
-          />
+        <div className="flex flex-wrap items-center gap-2 flex-1 max-w-lg">
+          <div className="relative min-w-[200px] flex-1">
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-text-secondary pointer-events-none" />
+            <Input
+              autoFocus
+              ref={searchRef}
+              placeholder="Search by customer name or phone..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="pl-10 h-10 rounded-full border border-border/80 bg-surface shadow-xs text-xs focus-visible:ring-2 focus-visible:ring-[#4A25E1]/25"
+            />
+          </div>
+          <Select
+            value={
+              sortBy === "createdAt" && sortOrder === "desc"
+                ? "recent"
+                : sortBy === "createdAt" && sortOrder === "asc"
+                ? "oldest"
+                : sortBy === "name" && sortOrder === "asc"
+                ? "name_asc"
+                : sortBy === "name" && sortOrder === "desc"
+                ? "name_desc"
+                : "recent"
+            }
+            onValueChange={(val) => {
+              if (val === "recent") {
+                setSortBy("createdAt");
+                setSortOrder("desc");
+              } else if (val === "oldest") {
+                setSortBy("createdAt");
+                setSortOrder("asc");
+              } else if (val === "name_asc") {
+                setSortBy("name");
+                setSortOrder("asc");
+              } else if (val === "name_desc") {
+                setSortBy("name");
+                setSortOrder("desc");
+              }
+              setPage(1);
+            }}
+          >
+            <SelectTrigger className="w-[145px] h-10 rounded-full border border-border/80 bg-surface shadow-xs text-xs shrink-0">
+              <ArrowUpDown className="h-3.5 w-3.5 mr-1 text-text-secondary shrink-0" />
+              <SelectValue placeholder="Sort" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="recent">Recent first</SelectItem>
+              <SelectItem value="oldest">Oldest first</SelectItem>
+              <SelectItem value="name_asc">Name (A-Z)</SelectItem>
+              <SelectItem value="name_desc">Name (Z-A)</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
         <div className="flex items-center gap-2">
           <Button
@@ -436,6 +505,9 @@ export default function Customers() {
           loading={isLoading}
           keyExtractor={(c: Customer) => c.id}
           onRowClick={(c: Customer) => navigate(`/customers/${c.id}`)}
+          sortBy={sortBy}
+          sortOrder={sortOrder}
+          onSort={handleSort}
         />
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">

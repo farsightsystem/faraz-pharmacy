@@ -9,6 +9,8 @@ export const categoriesController = {
       const search = req.query.search as string | undefined;
       const archivedOnly = req.query.archived === "true" || req.query.archivedOnly === "true";
       const includeArchived = req.query.includeArchived === "true";
+      const sortBy = req.query.sortBy as string | undefined;
+      const sortOrder = req.query.sortOrder === "asc" ? "asc" : (req.query.sortOrder === "desc" ? "desc" : undefined);
 
       const result = await categoriesService.list({
         page,
@@ -16,6 +18,8 @@ export const categoriesController = {
         search,
         archivedOnly,
         includeArchived,
+        sortBy,
+        sortOrder,
       });
       res.json(result);
     } catch (err) {

@@ -86,6 +86,22 @@ pm2 delete 0           # by ID
 pm2 delete all         # remove all processes
 ```
 
+
+---
+
+
+### Quick Reference (Windows)
+
+* `npm i -g pm2` — Install PM2 globally
+* `pm2 start ecosystem.config.cjs` — Start app via ecosystem config
+* `pm2 list` — List running processes
+* `pm2 logs [app-name]` — View application logs
+* `pm2 restart [app-name]` — Restart process
+* `pm2 save` — Save current process list
+* `npx pm2-windows-startup install` — Enable auto-start on Windows reboot
+* `pm2 monit` — Open live resource dashboard
+
+
 ### Monitor processes (live dashboard)
 
 ```bash

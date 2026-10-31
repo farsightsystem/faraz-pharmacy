@@ -31,8 +31,10 @@ export const arrearsController = {
       const status = req.query.status as string | undefined;
       const dateFrom = req.query.dateFrom as string | undefined;
       const dateTo = req.query.dateTo as string | undefined;
+      const sortBy = req.query.sortBy as string | undefined;
+      const sortOrder = req.query.sortOrder === "asc" ? "asc" : (req.query.sortOrder === "desc" ? "desc" : undefined);
 
-      const result = await arrearsService.list({ status, page, limit, search, dateFrom, dateTo });
+      const result = await arrearsService.list({ status, page, limit, search, dateFrom, dateTo, sortBy, sortOrder });
       const normalizedData = result.data.map(normalizeArrear);
 
       if (isPaginated) {
@@ -94,8 +96,10 @@ export const arrearsController = {
       const limit = Math.max(1, parseInt(req.query.limit as string) || 50);
       const search = req.query.search as string | undefined;
       const status = req.query.status as string | undefined;
+      const sortBy = req.query.sortBy as string | undefined;
+      const sortOrder = req.query.sortOrder === "asc" ? "asc" : (req.query.sortOrder === "desc" ? "desc" : undefined);
 
-      const result = await arrearsService.listByCustomer({ status, page, limit, search });
+      const result = await arrearsService.listByCustomer({ status, page, limit, search, sortBy, sortOrder });
       res.json(result);
     } catch (err) {
       next(err);

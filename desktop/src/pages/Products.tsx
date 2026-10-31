@@ -12,6 +12,7 @@ import {
   Trash2,
   Tags,
   Barcode,
+  ArrowUpDown,
 } from "lucide-react";
 import PageHeader from "@/components/shared/PageHeader";
 import DataTable from "@/components/shared/DataTable";
@@ -199,19 +200,33 @@ export default function Products() {
 
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(50);
+  const [sortBy, setSortBy] = useState<string>("createdAt");
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
   const debouncedSearch = useDebounce(search, 300);
+
+  const handleSort = (key: string) => {
+    if (sortBy === key) {
+      setSortOrder((prev) => (prev === "asc" ? "desc" : "asc"));
+    } else {
+      setSortBy(key);
+      setSortOrder(key === "name" ? "asc" : "desc");
+    }
+    setPage(1);
+  };
 
   useEffect(() => {
     setPage(1);
-  }, [debouncedSearch, showArchived, limit]);
+  }, [debouncedSearch, showArchived, limit, sortBy, sortOrder]);
 
   const { data: paginatedData, isLoading } = useQuery({
-    queryKey: ["products", showArchived, page, limit, debouncedSearch],
+    queryKey: ["products", showArchived, page, limit, debouncedSearch, sortBy, sortOrder],
     queryFn: () => api.products.listPaginated({
       page,
       limit,
       search: debouncedSearch,
       archivedOnly: showArchived,
+      sortBy,
+      sortOrder,
     }),
   });
 
@@ -718,6 +733,8 @@ export default function Products() {
     {
       key: "name",
       header: "Name",
+      sortable: true,
+      sortKey: "name",
       cell: (p: Product) => (
         <span
           className={`text-xs ${p.active ? "font-medium text-text-primary" : "text-text-secondary line-through"}`}
@@ -752,6 +769,8 @@ export default function Products() {
     {
       key: "prices",
       header: "Prices",
+      sortable: true,
+      sortKey: "salePrice",
       cell: (p: Product) => {
         const allPrices = (p as any).prices as
           { purchasePrice: number; salePrice: number; label?: string }[] | undefined;
@@ -779,6 +798,8 @@ export default function Products() {
     {
       key: "stockQty",
       header: "Stock",
+      sortable: true,
+      sortKey: "stockQty",
       cell: (p: Product) => (
         <span
           className={`font-mono text-xs font-semibold ${p.stock_qty <= 5 ? "text-danger" : p.active ? "text-text-primary" : "text-text-secondary"}`}
@@ -979,25 +1000,51 @@ export default function Products() {
 
       {/* Products Toolbar */}
       <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
-        <div className="relative flex-1 max-w-md">
-          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-text-secondary" />
-          <Input
-            ref={searchRef}
-            autoFocus
-            placeholder="Search products or scan barcode..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            onKeyDown={async (e) => {
-              if (e.key === "Enter" && search.trim()) {
-                const product = await api.products.getByBarcode(search.trim());
-                if (product) {
-                  toast.success(`Found: ${product.name}`);
-                  setSearch(product.barcode);
+        <div className="flex flex-wrap items-center gap-2 flex-1 max-w-xl">
+          <div className="relative flex-1 min-w-[200px]">
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-text-secondary" />
+            <Input
+              ref={searchRef}
+              autoFocus
+              placeholder="Search products or scan barcode..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              onKeyDown={async (e) => {
+                if (e.key === "Enter" && search.trim()) {
+                  const product = await api.products.getByBarcode(search.trim());
+                  if (product) {
+                    toast.success(`Found: ${product.name}`);
+                    setSearch(product.barcode);
+                  }
                 }
-              }
+              }}
+              className="pl-10 h-10 rounded-full border border-border/80 bg-surface shadow-xs text-xs focus-visible:ring-2 focus-visible:ring-[#4A25E1]/25"
+            />
+          </div>
+          <Select
+            value={sortBy === "createdAt" ? (sortOrder === "desc" ? "recent" : "oldest") : (sortBy === "name" ? (sortOrder === "asc" ? "name_asc" : "name_desc") : "custom")}
+            onValueChange={(val) => {
+              if (val === "recent") { setSortBy("createdAt"); setSortOrder("desc"); }
+              else if (val === "oldest") { setSortBy("createdAt"); setSortOrder("asc"); }
+              else if (val === "name_asc") { setSortBy("name"); setSortOrder("asc"); }
+              else if (val === "name_desc") { setSortBy("name"); setSortOrder("desc"); }
+              setPage(1);
             }}
-            className="pl-10 h-10 rounded-full border border-border/80 bg-surface shadow-xs text-xs focus-visible:ring-2 focus-visible:ring-[#4A25E1]/25"
-          />
+          >
+            <SelectTrigger className="h-10 w-[140px] rounded-full border border-border/80 bg-surface shadow-xs text-xs shrink-0">
+              <ArrowUpDown className="h-3.5 w-3.5 mr-1 text-text-secondary shrink-0" />
+              <SelectValue placeholder="Sort" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="recent">Recent first</SelectItem>
+              <SelectItem value="oldest">Oldest first</SelectItem>
+              <SelectItem value="name_asc">Name (A-Z)</SelectItem>
+              <SelectItem value="name_desc">Name (Z-A)</SelectItem>
+              {sortBy !== "createdAt" && sortBy !== "name" && (
+                <SelectItem value="custom">Sort: {sortBy} ({sortOrder})</SelectItem>
+              )}
+            </SelectContent>
+          </Select>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <Button
@@ -1041,6 +1088,9 @@ export default function Products() {
           data={products}
           loading={isLoading}
           keyExtractor={(p: Product) => p.id}
+          sortBy={sortBy}
+          sortOrder={sortOrder}
+          onSort={handleSort}
         />
         
         {/* Pagination Bar */}

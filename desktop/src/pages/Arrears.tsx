@@ -14,6 +14,7 @@ import {
   FileText,
   Users,
   ChevronRight,
+  ArrowUpDown,
 } from "lucide-react";
 import PageHeader from "@/components/shared/PageHeader";
 import ExportButton from "@/components/shared/ExportButton";
@@ -30,6 +31,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { cn, formatCurrency, formatDate, formatDateTime } from "@/lib/utils";
 import { downloadPDF, downloadCSV } from "@/lib/export";
 import { useModuleShortcuts } from "@/hooks/useModuleShortcuts";
@@ -51,20 +59,34 @@ export default function Arrears() {
 
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(50);
+  const [sortBy, setSortBy] = useState<string>("latest_date");
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
   const debouncedSearch = useDebounce(search, 300);
+
+  const handleSort = (key: string) => {
+    if (sortBy === key) {
+      setSortOrder((prev) => (prev === "asc" ? "desc" : "asc"));
+    } else {
+      setSortBy(key);
+      setSortOrder(key === "name" ? "asc" : "desc");
+    }
+    setPage(1);
+  };
 
   useEffect(() => {
     setPage(1);
-  }, [debouncedSearch, filter, limit]);
+  }, [debouncedSearch, filter, limit, sortBy, sortOrder]);
 
   const { data: paginatedData, isLoading } = useQuery({
-    queryKey: ["arrears-by-customer", filter, page, limit, debouncedSearch],
+    queryKey: ["arrears-by-customer", filter, page, limit, debouncedSearch, sortBy, sortOrder],
     queryFn: () =>
       api.arrears.listByCustomer({
         status: filter === "all" ? undefined : filter,
         page,
         limit,
         search: debouncedSearch || undefined,
+        sortBy,
+        sortOrder,
       }),
   });
 
@@ -150,6 +172,8 @@ export default function Arrears() {
     {
       key: "customer_name",
       header: "Customer",
+      sortable: true,
+      sortKey: "name",
       cell: (row: CustomerArrearSummary) => (
         <div
           onClick={() => setSelectedCustomerId(row.customer_id)}
@@ -168,6 +192,8 @@ export default function Arrears() {
     {
       key: "total_bill",
       header: "Total Credit",
+      sortable: true,
+      sortKey: "total_bill",
       cell: (row: CustomerArrearSummary) => (
         <span className="font-mono text-xs">{formatCurrency(row.total_bill)}</span>
       ),
@@ -182,6 +208,8 @@ export default function Arrears() {
     {
       key: "balance_due",
       header: "Balance Due",
+      sortable: true,
+      sortKey: "balance_due",
       cell: (row: CustomerArrearSummary) => (
         <span className="font-mono text-xs font-bold text-warning">
           {formatCurrency(row.balance_due)}
@@ -205,6 +233,8 @@ export default function Arrears() {
     {
       key: "latest_date",
       header: "Last Activity",
+      sortable: true,
+      sortKey: "latest_date",
       cell: (row: CustomerArrearSummary) => (
         <span className="font-mono text-[11px] text-text-secondary">
           {row.latest_date ? formatDate(row.latest_date) : "—"}
@@ -285,15 +315,41 @@ export default function Arrears() {
       </div>
 
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="relative flex-1 max-w-md">
-          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-text-secondary" />
-          <Input
-            ref={searchRef}
-            placeholder="Search by customer name, phone, or father name..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pl-10 h-10 rounded-full border border-border/80 bg-surface shadow-xs text-xs focus-visible:ring-2 focus-visible:ring-[#4A25E1]/25"
-          />
+        <div className="flex flex-wrap items-center gap-2.5 flex-1 max-w-xl">
+          <div className="relative flex-1 min-w-[240px]">
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-text-secondary" />
+            <Input
+              ref={searchRef}
+              placeholder="Search by customer name, phone, or father name..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="pl-10 h-10 rounded-full border border-border/80 bg-surface shadow-xs text-xs focus-visible:ring-2 focus-visible:ring-[#4A25E1]/25"
+            />
+          </div>
+          <Select
+            value={sortBy === "latest_date" ? "recent" : (sortBy === "name" ? (sortOrder === "asc" ? "name_asc" : "name_desc") : (sortBy === "balance_due" ? "due_desc" : "custom"))}
+            onValueChange={(val) => {
+              if (val === "recent") { setSortBy("latest_date"); setSortOrder("desc"); }
+              else if (val === "due_desc") { setSortBy("balance_due"); setSortOrder("desc"); }
+              else if (val === "name_asc") { setSortBy("name"); setSortOrder("asc"); }
+              else if (val === "name_desc") { setSortBy("name"); setSortOrder("desc"); }
+              setPage(1);
+            }}
+          >
+            <SelectTrigger className="h-10 w-[145px] rounded-full border border-border/80 bg-surface shadow-xs text-xs shrink-0">
+              <ArrowUpDown className="h-3.5 w-3.5 mr-1 text-text-secondary shrink-0" />
+              <SelectValue placeholder="Sort" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="recent">Recent activity</SelectItem>
+              <SelectItem value="due_desc">Balance due</SelectItem>
+              <SelectItem value="name_asc">Name (A-Z)</SelectItem>
+              <SelectItem value="name_desc">Name (Z-A)</SelectItem>
+              {sortBy !== "latest_date" && sortBy !== "name" && sortBy !== "balance_due" && (
+                <SelectItem value="custom">Sort: {sortBy} ({sortOrder})</SelectItem>
+              )}
+            </SelectContent>
+          </Select>
         </div>
         <div className="flex items-center gap-2">
           <ExportButton type="pdf" onClick={handleExportPDF} />
@@ -333,6 +389,9 @@ export default function Arrears() {
           data={customerLedgers}
           loading={isLoading}
           keyExtractor={(c: CustomerArrearSummary) => c.customer_id}
+          sortBy={sortBy}
+          sortOrder={sortOrder}
+          onSort={handleSort}
         />
 
         {/* Pagination Bar */}

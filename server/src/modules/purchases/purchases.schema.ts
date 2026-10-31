@@ -9,6 +9,7 @@ export const createStockSchema = z.object({
   quantity: z.number().int().positive(),
   stax: z.number().min(0).optional().default(0),
   expiry: z.string().optional(),
+  priceTierId: z.string().optional(),
 });
 
 export const updateStockSchema = z.object({
@@ -19,6 +20,7 @@ export const updateStockSchema = z.object({
   company: z.string().optional(),
   invoiceNumber: z.string().optional(),
   distributorId: z.string().optional(),
+  priceTierId: z.string().optional().nullable(),
 });
 
 export type CreateStockInput = z.infer<typeof createStockSchema>;

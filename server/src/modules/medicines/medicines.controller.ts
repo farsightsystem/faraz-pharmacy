@@ -11,8 +11,10 @@ export const medicinesController = {
       const search = req.query.search as string | undefined;
       const includeArchived = req.query.includeArchived === "true";
       const archivedOnly = req.query.archivedOnly === "true" || req.query.archived === "true";
+      const sortBy = req.query.sortBy as string | undefined;
+      const sortOrder = (req.query.sortOrder === "asc" ? "asc" : "desc") as "asc" | "desc";
       
-      const result = await medicinesService.list({ page, limit, search, includeArchived, archivedOnly });
+      const result = await medicinesService.list({ page, limit, search, includeArchived, archivedOnly, sortBy, sortOrder });
       result.data = normalizeProductList(result.data) as any[];
       
       if (isPaginated) {
@@ -40,6 +42,15 @@ export const medicinesController = {
     try {
       const product = await medicinesService.getByBarcode(req.params.b);
       res.json(normalizeProduct(product));
+    } catch (err) {
+      next(err);
+    }
+  },
+
+  async getByBarcodeFast(req: Request, res: Response, next: NextFunction) {
+    try {
+      const product = await medicinesService.getByBarcodeFast(req.params.b);
+      res.json(product);
     } catch (err) {
       next(err);
     }

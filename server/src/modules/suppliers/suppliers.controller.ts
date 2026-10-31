@@ -11,6 +11,8 @@ export const suppliersController = {
       const search = req.query.search as string | undefined;
       const archivedOnly = req.query.archived === "true" || req.query.archivedOnly === "true";
       const includeArchived = req.query.includeArchived === "true";
+      const sortBy = req.query.sortBy as string | undefined;
+      const sortOrder = req.query.sortOrder === "asc" ? "asc" : (req.query.sortOrder === "desc" ? "desc" : undefined);
 
       const result = await suppliersService.list({
         page,
@@ -18,6 +20,8 @@ export const suppliersController = {
         search,
         archivedOnly,
         includeArchived,
+        sortBy,
+        sortOrder,
       });
       const normalized = normalizeDistributorList(result.data);
 

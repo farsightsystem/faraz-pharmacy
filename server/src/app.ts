@@ -1,6 +1,7 @@
 import express from "express";
 import cors from "cors";
 import helmet from "helmet";
+import compression from "compression";
 import { errorHandler } from "./middleware/errors";
 import { authRoutes } from "./modules/auth/auth.routes";
 import { medicinesRoutes } from "./modules/medicines/medicines.routes";
@@ -22,6 +23,7 @@ const app = express();
 
 app.use(cors());
 app.use(helmet());
+app.use(compression());
 app.use(express.json());
 
 app.get("/api/health", (_req, res) => {

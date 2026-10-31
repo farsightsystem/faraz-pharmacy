@@ -1,6 +1,7 @@
 import { prisma, Prisma } from "../../services/prisma";
 import { NotFoundError } from "../../utils/errors";
 import { emitEvent } from "../../socket";
+import { cacheDelNamespace } from "../../utils/cache";
 import type { CreateStockInput } from "./purchases.schema";
 
 export const purchasesService = {
@@ -11,6 +12,8 @@ export const purchasesService = {
     dateFrom,
     dateTo,
     archived = false,
+    sortBy,
+    sortOrder,
   }: {
     page?: number;
     limit?: number;
@@ -18,6 +21,8 @@ export const purchasesService = {
     dateFrom?: string;
     dateTo?: string;
     archived?: boolean;
+    sortBy?: string;
+    sortOrder?: "asc" | "desc";
   } = {}) {
     const where: Prisma.StockPurchaseWhereInput = {
       active: archived ? 0 : 1,
@@ -45,11 +50,24 @@ export const purchasesService = {
 
     const skip = (page - 1) * limit;
 
+    let orderBy: Prisma.StockPurchaseOrderByWithRelationInput = { createdAt: sortOrder || "desc" };
+    if (sortBy === "productName" || sortBy === "name") {
+      orderBy = { product: { name: sortOrder || "asc" } };
+    } else if (sortBy === "invoiceNumber") {
+      orderBy = { invoiceNumber: sortOrder || "desc" };
+    } else if (sortBy === "batchNumber") {
+      orderBy = { batchNumber: sortOrder || "asc" };
+    } else if (sortBy === "quantity") {
+      orderBy = { quantity: sortOrder || "desc" };
+    } else if (sortBy === "createdAt" || sortBy === "created_at") {
+      orderBy = { createdAt: sortOrder || "desc" };
+    }
+
     const [total, data] = await prisma.$transaction([
       prisma.stockPurchase.count({ where }),
       prisma.stockPurchase.findMany({
         where,
-        orderBy: { createdAt: "desc" },
+        orderBy,
         skip,
         take: limit,
         include: {
@@ -71,13 +89,26 @@ export const purchasesService = {
   },
 
   async create(data: CreateStockInput) {
-    const product = await prisma.product.findUnique({
-      where: { id: data.productId },
-      select: { purchasePrice: true, salePrice: true },
-    });
+    // Resolve prices: use selected price tier if provided, else fall back to product defaults
+    let price = 0;
+    let salePrice = 0;
 
-    const price = product?.purchasePrice ?? 0;
-    const salePrice = product?.salePrice ?? 0;
+    if (data.priceTierId) {
+      const priceTier = await prisma.productPrice.findUnique({
+        where: { id: data.priceTierId },
+        select: { purchasePrice: true, salePrice: true },
+      });
+      price = priceTier?.purchasePrice ?? 0;
+      salePrice = priceTier?.salePrice ?? 0;
+    } else {
+      const product = await prisma.product.findUnique({
+        where: { id: data.productId },
+        select: { purchasePrice: true, salePrice: true },
+      });
+      price = product?.purchasePrice ?? 0;
+      salePrice = product?.salePrice ?? 0;
+    }
+
     const totalValue = data.quantity * price;
     const batchNo =
       data.batchNumber?.trim() ||
@@ -140,11 +171,13 @@ export const purchasesService = {
           stax: data.stax ?? 0,
           expiry,
           totalValue,
+          priceTierId: data.priceTierId ?? null,
         },
         include: {
           product: { select: { name: true } },
           distributor: { select: { name: true } },
           batch: true,
+          priceTier: true,
         },
       });
 
@@ -161,6 +194,7 @@ export const purchasesService = {
         },
       });
 
+      cacheDelNamespace("products"); // invalidate product cache on stock write
       emitEvent("stock:updated", stockPurchase);
       return stockPurchase;
     });
@@ -170,10 +204,25 @@ export const purchasesService = {
     const old = await prisma.stockPurchase.findUnique({ where: { id } });
     if (!old) throw new NotFoundError("Stock purchase");
 
-    const qtyDiff = (data.quantity ?? old.quantity) - old.quantity;
-    const totalValue = (data.quantity ?? old.quantity) * old.purchasePrice;
+    // Resolve prices: use selected price tier if provided, else keep existing prices
+    let purchasePrice = old.purchasePrice;
+    let salePrice = old.salePrice;
 
-    return prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+    if (data.priceTierId !== undefined && data.priceTierId !== null) {
+      const priceTier = await prisma.productPrice.findUnique({
+        where: { id: data.priceTierId },
+        select: { purchasePrice: true, salePrice: true },
+      });
+      if (priceTier) {
+        purchasePrice = priceTier.purchasePrice;
+        salePrice = priceTier.salePrice;
+      }
+    }
+
+    const qtyDiff = (data.quantity ?? old.quantity) - old.quantity;
+    const totalValue = (data.quantity ?? old.quantity) * purchasePrice;
+
+    const result = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       const updated = await tx.stockPurchase.update({
         where: { id },
         data: {
@@ -183,11 +232,15 @@ export const purchasesService = {
           invoiceNumber: data.invoiceNumber ?? old.invoiceNumber,
           distributorId: data.distributorId ?? old.distributorId,
           stax: data.stax !== undefined ? data.stax : (old as any).stax ?? 0,
+          purchasePrice,
+          salePrice,
+          ...(data.priceTierId !== undefined ? { priceTierId: data.priceTierId } : {}),
         },
         include: {
           product: { select: { name: true } },
           distributor: { select: { name: true } },
           batch: true,
+          priceTier: true,
         },
       });
 
@@ -216,13 +269,15 @@ export const purchasesService = {
 
       return updated;
     });
+    cacheDelNamespace("products"); // invalidate product cache on stock write
+    return result;
   },
 
   async remove(id: string) {
     const old = await prisma.stockPurchase.findUnique({ where: { id } });
     if (!old) throw new NotFoundError("Stock purchase");
 
-    return prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+    const result = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       await tx.stockPurchase.update({
         where: { id },
         data: { active: 0 },
@@ -250,13 +305,15 @@ export const purchasesService = {
 
       return { success: true };
     });
+    cacheDelNamespace("products"); // invalidate product cache on stock write
+    return result;
   },
 
   async restore(id: string) {
     const old = await prisma.stockPurchase.findUnique({ where: { id } });
     if (!old) throw new NotFoundError("Stock purchase");
 
-    return prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+    const result = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       await tx.stockPurchase.update({
         where: { id },
         data: { active: 1 },
@@ -284,13 +341,15 @@ export const purchasesService = {
 
       return { success: true };
     });
+    cacheDelNamespace("products"); // invalidate product cache on stock write
+    return result;
   },
 
   async hardDelete(id: string) {
     const old = await prisma.stockPurchase.findUnique({ where: { id } });
     if (!old) throw new NotFoundError("Stock purchase");
 
-    return prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+    const result = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       if (old.active === 1) {
         if (old.batchId) {
           await tx.productBatch.update({
@@ -314,6 +373,8 @@ export const purchasesService = {
       await tx.stockPurchase.delete({ where: { id } });
       return { success: true };
     });
+    cacheDelNamespace("products"); // invalidate product cache on stock write
+    return result;
   },
 };
 

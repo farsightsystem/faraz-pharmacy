@@ -1,13 +1,20 @@
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { useDebounce } from "@/hooks/useDebounce";
-import { Search, Calendar, Printer, Eye, RotateCcw } from "lucide-react";
+import { Search, Calendar, Printer, Eye, RotateCcw, ArrowUpDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import PageHeader from "@/components/shared/PageHeader";
 import ExportButton from "@/components/shared/ExportButton";
 import DataTable from "@/components/shared/DataTable";
 import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { formatCurrency, formatDateTime, cn } from "@/lib/utils";
 import { api } from "@/lib/api";
 import { downloadCSV, downloadPDF } from "@/lib/export";
@@ -29,12 +36,24 @@ export default function Invoices() {
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
   const [activePreset, setActivePreset] = useState<"all" | "today" | "week" | "month" | "custom">("all");
+  const [sortBy, setSortBy] = useState<string>("createdAt");
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
   const [printSale, setPrintSale] = useState<Sale | null>(null);
   const [showProfitId, setShowProfitId] = useState<string | null>(null);
 
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(50);
   const debouncedSearch = useDebounce(search, 300);
+
+  const handleSort = (key: string) => {
+    if (sortBy === key) {
+      setSortOrder((prev) => (prev === "asc" ? "desc" : "asc"));
+    } else {
+      setSortBy(key);
+      setSortOrder(key === "total" || key === "discount" ? "desc" : "desc");
+    }
+    setPage(1);
+  };
 
   const handlePresetSelect = (preset: "all" | "today" | "week" | "month") => {
     setActivePreset(preset);
@@ -66,11 +85,17 @@ export default function Invoices() {
     setDateFrom("");
     setDateTo("");
     setActivePreset("all");
+    setSortBy("createdAt");
+    setSortOrder("desc");
     setPage(1);
   };
 
+  useEffect(() => {
+    setPage(1);
+  }, [debouncedSearch, dateFrom, dateTo, sortBy, sortOrder]);
+
   const { data: paginatedData, isLoading } = useQuery({
-    queryKey: ["invoices", page, limit, debouncedSearch, dateFrom, dateTo],
+    queryKey: ["invoices", page, limit, debouncedSearch, dateFrom, dateTo, sortBy, sortOrder],
     queryFn: () =>
       api.sales.listPaginated({
         search: debouncedSearch || undefined,
@@ -78,6 +103,8 @@ export default function Invoices() {
         dateTo: dateTo || undefined,
         page,
         limit,
+        sortBy,
+        sortOrder,
       }),
   });
 
@@ -205,6 +232,8 @@ export default function Invoices() {
   const columns = [
     {
       key: "created_at",
+      sortKey: "createdAt",
+      sortable: true,
       header: "Date",
       cell: (s: Sale) => (
         <span className="font-mono text-xs text-text-secondary">
@@ -233,6 +262,8 @@ export default function Invoices() {
     },
     {
       key: "total",
+      sortKey: "total",
+      sortable: true,
       header: "Total",
       cell: (s: Sale) => <span className="font-mono font-medium">{formatCurrency(s.total)}</span>,
     },
@@ -294,10 +325,10 @@ export default function Invoices() {
       {/* Toolbar & Filters */}
       <div className="flex flex-col gap-3 mb-5">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          {/* Search Bar */}
-          <div className="flex-1 min-w-[260px] max-w-md">
-            <div className="relative">
-              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-text-secondary" />
+          {/* Search Bar & Sort */}
+          <div className="flex flex-wrap items-center gap-2 flex-1 max-w-lg">
+            <div className="relative min-w-[200px] flex-1">
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-text-secondary pointer-events-none" />
               <Input
                 ref={searchRef}
                 autoFocus
@@ -307,9 +338,49 @@ export default function Invoices() {
                   setSearch(e.target.value);
                   setPage(1);
                 }}
-                className="pl-10 h-10 rounded-2xl border border-border/80 bg-surface shadow-xs text-xs focus-visible:ring-2 focus-visible:ring-brand/30"
+                className="pl-10 h-10 rounded-full border border-border/80 bg-surface shadow-xs text-xs focus-visible:ring-2 focus-visible:ring-brand/30"
               />
             </div>
+            <Select
+              value={
+                sortBy === "createdAt" && sortOrder === "desc"
+                  ? "recent"
+                  : sortBy === "createdAt" && sortOrder === "asc"
+                  ? "oldest"
+                  : sortBy === "total" && sortOrder === "desc"
+                  ? "total_desc"
+                  : sortBy === "total" && sortOrder === "asc"
+                  ? "total_asc"
+                  : "recent"
+              }
+              onValueChange={(val) => {
+                if (val === "recent") {
+                  setSortBy("createdAt");
+                  setSortOrder("desc");
+                } else if (val === "oldest") {
+                  setSortBy("createdAt");
+                  setSortOrder("asc");
+                } else if (val === "total_desc") {
+                  setSortBy("total");
+                  setSortOrder("desc");
+                } else if (val === "total_asc") {
+                  setSortBy("total");
+                  setSortOrder("asc");
+                }
+                setPage(1);
+              }}
+            >
+              <SelectTrigger className="w-[145px] h-10 rounded-full border border-border/80 bg-surface shadow-xs text-xs shrink-0">
+                <ArrowUpDown className="h-3.5 w-3.5 mr-1 text-text-secondary shrink-0" />
+                <SelectValue placeholder="Sort" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="recent">Recent first</SelectItem>
+                <SelectItem value="oldest">Oldest first</SelectItem>
+                <SelectItem value="total_desc">Highest Total</SelectItem>
+                <SelectItem value="total_asc">Lowest Total</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
 
           {/* Export Actions & Reset */}
@@ -400,6 +471,9 @@ export default function Invoices() {
           loading={isLoading}
           keyExtractor={(s: Sale) => s.id}
           onRowClick={(s: Sale) => navigate(`/invoices/${s.id}`)}
+          sortBy={sortBy}
+          sortOrder={sortOrder}
+          onSort={handleSort}
         />
         
         {/* Pagination Bar */}

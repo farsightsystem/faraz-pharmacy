@@ -10,6 +10,8 @@ export const customersController = {
       const search = req.query.search as string | undefined;
       const archivedOnly = req.query.archived === "true" || req.query.archivedOnly === "true";
       const includeArchived = req.query.includeArchived === "true";
+      const sortBy = req.query.sortBy as string | undefined;
+      const sortOrder = (req.query.sortOrder === "asc" ? "asc" : "desc") as "asc" | "desc";
       
       const result = await customersService.list({
         page,
@@ -17,6 +19,8 @@ export const customersController = {
         search,
         archivedOnly,
         includeArchived,
+        sortBy,
+        sortOrder,
       });
       
       if (isPaginated) {

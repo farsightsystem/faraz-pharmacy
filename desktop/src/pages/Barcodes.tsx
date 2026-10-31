@@ -13,10 +13,20 @@ import {
   RotateCcw,
   ChevronLeft,
   ChevronRight,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
 } from "lucide-react";
 import { motion, Variants } from "framer-motion";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import PasswordConfirmDialog from "@/components/shared/PasswordConfirmDialog";
 import { api } from "@/lib/api";
 import { cn, renderBarcode } from "@/lib/utils";
@@ -42,6 +52,8 @@ export default function Barcodes() {
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(50);
+  const [sortBy, setSortBy] = useState<string>("createdAt");
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
   const [view, setView] = useState<"grid" | "list">("grid");
   const [showArchived, setShowArchived] = useState(false);
   const [printTarget, setPrintTarget] = useState<
@@ -60,20 +72,32 @@ export default function Barcodes() {
     onExportCSV: handleExportCSV,
   });
 
+  const handleSort = (key: string) => {
+    if (sortBy === key) {
+      setSortOrder((prev) => (prev === "asc" ? "desc" : "asc"));
+    } else {
+      setSortBy(key);
+      setSortOrder(key === "name" || key === "code" ? "asc" : "desc");
+    }
+    setPage(1);
+  };
+
   const debouncedSearch = useDebounce(search, 300);
 
   useEffect(() => {
     setPage(1);
-  }, [debouncedSearch, showArchived, limit]);
+  }, [debouncedSearch, showArchived, limit, sortBy, sortOrder]);
 
   const { data: paginatedData, isLoading } = useQuery({
-    queryKey: ["barcodes", page, limit, debouncedSearch, showArchived],
+    queryKey: ["barcodes", page, limit, debouncedSearch, showArchived, sortBy, sortOrder],
     queryFn: () =>
       api.barcodes.listPaginated({
         page,
         limit,
         search: debouncedSearch,
         includeArchived: showArchived,
+        sortBy,
+        sortOrder,
       }),
   });
 
@@ -217,16 +241,70 @@ export default function Barcodes() {
   return (
     <div className="flex flex-col h-full space-y-4 pb-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-2 relative flex-1 max-w-md">
-          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-text-secondary pointer-events-none" />
-          <Input
-            ref={searchRef}
-            autoFocus
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search by barcode or medicine name..."
-            className="pl-10 h-10 rounded-full border border-border/80 bg-surface shadow-xs text-xs focus-visible:ring-2 focus-visible:ring-[#4A25E1]/25"
-          />
+        <div className="flex flex-wrap items-center gap-2 flex-1 max-w-lg">
+          <div className="relative min-w-[200px] flex-1">
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-text-secondary pointer-events-none" />
+            <Input
+              ref={searchRef}
+              autoFocus
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search by barcode or medicine name..."
+              className="pl-10 h-10 rounded-full border border-border/80 bg-surface shadow-xs text-xs focus-visible:ring-2 focus-visible:ring-[#4A25E1]/25"
+            />
+          </div>
+          <Select
+            value={
+              sortBy === "createdAt" && sortOrder === "desc"
+                ? "recent"
+                : sortBy === "createdAt" && sortOrder === "asc"
+                ? "oldest"
+                : sortBy === "name" && sortOrder === "asc"
+                ? "name_asc"
+                : sortBy === "name" && sortOrder === "desc"
+                ? "name_desc"
+                : sortBy === "code" && sortOrder === "asc"
+                ? "code_asc"
+                : sortBy === "code" && sortOrder === "desc"
+                ? "code_desc"
+                : "recent"
+            }
+            onValueChange={(val) => {
+              if (val === "recent") {
+                setSortBy("createdAt");
+                setSortOrder("desc");
+              } else if (val === "oldest") {
+                setSortBy("createdAt");
+                setSortOrder("asc");
+              } else if (val === "name_asc") {
+                setSortBy("name");
+                setSortOrder("asc");
+              } else if (val === "name_desc") {
+                setSortBy("name");
+                setSortOrder("desc");
+              } else if (val === "code_asc") {
+                setSortBy("code");
+                setSortOrder("asc");
+              } else if (val === "code_desc") {
+                setSortBy("code");
+                setSortOrder("desc");
+              }
+              setPage(1);
+            }}
+          >
+            <SelectTrigger className="w-[145px] h-10 rounded-full border border-border/80 bg-surface shadow-xs text-xs shrink-0">
+              <ArrowUpDown className="h-3.5 w-3.5 mr-1 text-text-secondary shrink-0" />
+              <SelectValue placeholder="Sort" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="recent">Recent first</SelectItem>
+              <SelectItem value="oldest">Oldest first</SelectItem>
+              <SelectItem value="name_asc">Product (A-Z)</SelectItem>
+              <SelectItem value="name_desc">Product (Z-A)</SelectItem>
+              <SelectItem value="code_asc">Barcode (Asc)</SelectItem>
+              <SelectItem value="code_desc">Barcode (Desc)</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <div className="flex items-center border border-border/80 rounded-xl overflow-hidden bg-surface shadow-xs p-0.5">
@@ -363,10 +441,40 @@ export default function Barcodes() {
               <thead>
                 <tr className="border-b border-border bg-surface-2">
                   <th className="text-[10px] font-medium text-text-secondary text-left px-3 py-2">
-                    Barcode
+                    <button
+                      type="button"
+                      onClick={() => handleSort("code")}
+                      className="group inline-flex items-center gap-1 font-semibold uppercase tracking-wider hover:text-text-primary transition-colors cursor-pointer select-none"
+                    >
+                      Barcode
+                      {sortBy === "code" ? (
+                        sortOrder === "asc" ? (
+                          <ArrowUp className="h-3 w-3 text-brand" />
+                        ) : (
+                          <ArrowDown className="h-3 w-3 text-brand" />
+                        )
+                      ) : (
+                        <ArrowUpDown className="h-3 w-3 opacity-0 group-hover:opacity-100 text-text-secondary transition-opacity" />
+                      )}
+                    </button>
                   </th>
                   <th className="text-[10px] font-medium text-text-secondary text-left px-3 py-2">
-                    Product
+                    <button
+                      type="button"
+                      onClick={() => handleSort("name")}
+                      className="group inline-flex items-center gap-1 font-semibold uppercase tracking-wider hover:text-text-primary transition-colors cursor-pointer select-none"
+                    >
+                      Product
+                      {sortBy === "name" ? (
+                        sortOrder === "asc" ? (
+                          <ArrowUp className="h-3 w-3 text-brand" />
+                        ) : (
+                          <ArrowDown className="h-3 w-3 text-brand" />
+                        )
+                      ) : (
+                        <ArrowUpDown className="h-3 w-3 opacity-0 group-hover:opacity-100 text-text-secondary transition-opacity" />
+                      )}
+                    </button>
                   </th>
                   <th className="text-[10px] font-medium text-text-secondary text-right px-3 py-2 w-36">
                     Actions

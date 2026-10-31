@@ -12,8 +12,10 @@ export const purchasesController = {
       const dateFrom = req.query.dateFrom as string | undefined;
       const dateTo = req.query.dateTo as string | undefined;
       const archived = req.query.archived === "true" || req.query.archivedOnly === "true";
+      const sortBy = req.query.sortBy as string | undefined;
+      const sortOrder = req.query.sortOrder === "asc" ? "asc" : (req.query.sortOrder === "desc" ? "desc" : undefined);
 
-      const result = await purchasesService.list({ page, limit, search, dateFrom, dateTo, archived });
+      const result = await purchasesService.list({ page, limit, search, dateFrom, dateTo, archived, sortBy, sortOrder });
       const normalizedData = normalizeStockPurchaseList(result.data);
 
       if (isPaginated) {

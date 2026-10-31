@@ -93,6 +93,8 @@ export const salesController = {
       const isPaginated = req.query.paginated === "true";
       const page = Math.max(1, parseInt(req.query.page as string) || 1);
       const limit = Math.max(1, parseInt(req.query.limit as string) || (isPaginated ? 50 : 100000));
+      const sortBy = req.query.sortBy as string | undefined;
+      const sortOrder = (req.query.sortOrder as "asc" | "desc") || undefined;
 
       const result = await salesService.listAll({
         search: req.query.search as string,
@@ -101,6 +103,8 @@ export const salesController = {
         tzOffsetMinutes: parseInt(req.query.tzOffset as string, 10) || 0,
         page,
         limit,
+        sortBy,
+        sortOrder,
       });
 
       const normalizedData = result.data.map(normalizeSale);

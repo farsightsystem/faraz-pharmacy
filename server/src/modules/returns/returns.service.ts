@@ -5,7 +5,19 @@ import type { CreateReturnInput } from "./returns.schema";
 import { Prisma } from "../../generated/prisma/client";
 
 export const returnsService = {
-  async list({ page = 1, limit = 100000, search }: { page?: number; limit?: number; search?: string } = {}) {
+  async list({
+    page = 1,
+    limit = 100000,
+    search,
+    sortBy,
+    sortOrder,
+  }: {
+    page?: number;
+    limit?: number;
+    search?: string;
+    sortBy?: string;
+    sortOrder?: "asc" | "desc";
+  } = {}) {
     const where: Prisma.ReturnEntryWhereInput = {};
 
     if (search) {
@@ -21,11 +33,18 @@ export const returnsService = {
 
     const skip = (page - 1) * limit;
 
+    let orderBy: Prisma.ReturnEntryOrderByWithRelationInput = { createdAt: sortOrder || "desc" };
+    if (sortBy === "refundAmount" || sortBy === "refund_amount") {
+      orderBy = { refundAmount: sortOrder || "desc" };
+    } else if (sortBy === "createdAt" || sortBy === "created_at" || sortBy === "date") {
+      orderBy = { createdAt: sortOrder || "desc" };
+    }
+
     const [total, data] = await prisma.$transaction([
       prisma.returnEntry.count({ where }),
       prisma.returnEntry.findMany({
         where,
-        orderBy: { createdAt: "desc" },
+        orderBy,
         skip,
         take: limit,
         include: {

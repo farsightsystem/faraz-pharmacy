@@ -16,6 +16,7 @@ import {
   ShieldAlert,
   Sparkles,
   FileText,
+  ArrowUpDown,
 } from "lucide-react";
 import PageHeader from "@/components/shared/PageHeader";
 import DataTable from "@/components/shared/DataTable";
@@ -25,6 +26,13 @@ import { Label } from "@/components/ui/label";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { Card, CardContent } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { formatCurrency, formatDate, cn } from "@/lib/utils";
 import { api } from "@/lib/api";
 import { downloadCSV, downloadPDF, downloadExcel } from "@/lib/export";
@@ -58,6 +66,7 @@ export default function Stock() {
     quantity: "",
     stax: "",
     expiry: "",
+    priceTierId: "" as string | null,
   });
 
   const stockHeaders = [
@@ -112,20 +121,34 @@ export default function Stock() {
 
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(50);
+  const [sortBy, setSortBy] = useState<string>("createdAt");
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
   const debouncedSearch = useDebounce(search, 300);
+
+  const handleSort = (key: string) => {
+    if (sortBy === key) {
+      setSortOrder((prev) => (prev === "asc" ? "desc" : "asc"));
+    } else {
+      setSortBy(key);
+      setSortOrder(key === "productName" ? "asc" : "desc");
+    }
+    setPage(1);
+  };
 
   useEffect(() => {
     setPage(1);
-  }, [debouncedSearch, showArchived, limit]);
+  }, [debouncedSearch, showArchived, limit, sortBy, sortOrder]);
 
   const { data: paginatedData, isLoading } = useQuery({
-    queryKey: ["stock", page, limit, debouncedSearch, showArchived],
+    queryKey: ["stock", page, limit, debouncedSearch, showArchived, sortBy, sortOrder],
     queryFn: () =>
       api.stock.listPaginated({
         page,
         limit,
         search: debouncedSearch,
         archived: showArchived,
+        sortBy,
+        sortOrder,
       }),
   });
 
@@ -203,6 +226,7 @@ export default function Stock() {
         quantity: Number(form.quantity),
         stax: form.stax ? Number(form.stax) : 0,
         expiry: form.expiry || undefined,
+        priceTierId: form.priceTierId || undefined,
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["stock"] });
@@ -218,6 +242,7 @@ export default function Stock() {
           batchNumber: "",
           quantity: "",
           expiry: "",
+          priceTierId: null,
         }));
         toast.success(`Saved ${prodName}! Ready for next item on Invoice ${form.invoiceNumber || "Consignment"}.`);
         setTimeout(() => {
@@ -233,6 +258,7 @@ export default function Stock() {
           quantity: "",
           stax: "",
           expiry: "",
+          priceTierId: "",
         });
         toast.success("Stock purchase recorded");
       }
@@ -306,6 +332,7 @@ export default function Stock() {
         quantity: Number(form.quantity),
         stax: form.stax ? Number(form.stax) : 0,
         expiry: form.expiry || undefined,
+        priceTierId: form.priceTierId || undefined,
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["stock"] });
@@ -321,6 +348,7 @@ export default function Stock() {
         quantity: "",
         stax: "",
         expiry: "",
+        priceTierId: "",
       });
       toast.success("Stock purchase updated");
     },
@@ -356,8 +384,16 @@ export default function Stock() {
     const purchasesList: StockPurchase[] = recentPurchasesData?.data || stockEntries;
     const lastPurchase = purchasesList.find((s: StockPurchase) => s.product_id === productId);
 
+    // Determine default price tier: prefer last purchase's tier, else first available tier, else null
+    let defaultPriceTierId: string | null = null;
+    if (lastPurchase?.price_tier_id) {
+      defaultPriceTierId = lastPurchase.price_tier_id;
+    } else if (product?.prices && product.prices.length > 0) {
+      defaultPriceTierId = product.prices[0].id;
+    }
+
     setForm((prev) => {
-      const updated = { ...prev, productId };
+      const updated = { ...prev, productId, priceTierId: defaultPriceTierId };
 
       // Pre-fill batch from last purchase if empty
       if (!updated.batchNumber && lastPurchase?.batch_number) {
@@ -388,7 +424,7 @@ export default function Stock() {
   }
 
   async function handleScan(value: string) {
-    const product = await api.products.getByBarcode(value.trim());
+    const product = await api.products.getByBarcodeFast(value.trim());
     if (product) {
       handleSelectProduct(product.id);
       toast.success(`Found: ${product.name}`);
@@ -400,7 +436,7 @@ export default function Stock() {
   }
 
   async function handleToolbarScan(barcode: string) {
-    const product = await api.products.getByBarcode(barcode.trim());
+    const product = await api.products.getByBarcodeFast(barcode.trim());
     if (product) {
       openAdd();
       handleSelectProduct(product.id);
@@ -431,6 +467,7 @@ export default function Stock() {
         quantity: "",
         stax: targetInv.stax !== undefined && targetInv.stax !== null ? String(targetInv.stax) : "",
         expiry: "",
+        priceTierId: "",
       });
       setInvoiceMode("recent");
     } else {
@@ -442,6 +479,7 @@ export default function Stock() {
         quantity: "",
         stax: "",
         expiry: "",
+        priceTierId: "",
       });
       setInvoiceMode("new");
     }
@@ -458,6 +496,7 @@ export default function Stock() {
       quantity: String(entry.quantity),
       stax: entry.stax !== undefined && entry.stax !== null ? String(entry.stax) : "",
       expiry: entry.expiry || "",
+      priceTierId: entry.price_tier_id ?? null,
     });
     setInvoiceMode(
       recentInvoices.some((i) => i.invoiceNumber.toLowerCase() === (entry.invoice_number || "").toLowerCase().trim())
@@ -471,6 +510,8 @@ export default function Stock() {
     {
       key: "created_at",
       header: "Date",
+      sortable: true,
+      sortKey: "createdAt",
       cell: (s: StockPurchase) => (
         <span className="font-mono text-[11px] text-text-secondary">
           {formatDate(s.created_at)}
@@ -480,6 +521,8 @@ export default function Stock() {
     {
       key: "product_name",
       header: "Product",
+      sortable: true,
+      sortKey: "productName",
       cell: (s: StockPurchase) => (
         <span className="text-xs font-medium text-text-primary">{s.product_name}</span>
       ),
@@ -494,6 +537,8 @@ export default function Stock() {
     {
       key: "invoice_number",
       header: "Invoice",
+      sortable: true,
+      sortKey: "invoiceNumber",
       cell: (s: StockPurchase) => (
         <span className="font-mono text-[11px] text-text-secondary">
           {s.invoice_number || "\u2014"}
@@ -503,6 +548,8 @@ export default function Stock() {
     {
       key: "batch_number",
       header: "Batch #",
+      sortable: true,
+      sortKey: "batchNumber",
       cell: (s: StockPurchase) => (
         <button
           onClick={() => {
@@ -527,6 +574,8 @@ export default function Stock() {
     {
       key: "quantity",
       header: "Qty",
+      sortable: true,
+      sortKey: "quantity",
       cell: (s: StockPurchase) => (
         <span className="font-mono text-xs font-semibold">{s.quantity}</span>
       ),
@@ -693,6 +742,30 @@ export default function Stock() {
               className="pl-10 h-10 rounded-full border border-border/80 bg-surface shadow-xs text-xs focus-visible:ring-2 focus-visible:ring-[#4A25E1]/25"
             />
           </div>
+          <Select
+            value={sortBy === "createdAt" ? (sortOrder === "desc" ? "recent" : "oldest") : (sortBy === "productName" ? (sortOrder === "asc" ? "name_asc" : "name_desc") : "custom")}
+            onValueChange={(val) => {
+              if (val === "recent") { setSortBy("createdAt"); setSortOrder("desc"); }
+              else if (val === "oldest") { setSortBy("createdAt"); setSortOrder("asc"); }
+              else if (val === "name_asc") { setSortBy("productName"); setSortOrder("asc"); }
+              else if (val === "name_desc") { setSortBy("productName"); setSortOrder("desc"); }
+              setPage(1);
+            }}
+          >
+            <SelectTrigger className="h-10 w-[140px] rounded-full border border-border/80 bg-surface shadow-xs text-xs shrink-0">
+              <ArrowUpDown className="h-3.5 w-3.5 mr-1 text-text-secondary shrink-0" />
+              <SelectValue placeholder="Sort" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="recent">Recent first</SelectItem>
+              <SelectItem value="oldest">Oldest first</SelectItem>
+              <SelectItem value="name_asc">Product (A-Z)</SelectItem>
+              <SelectItem value="name_desc">Product (Z-A)</SelectItem>
+              {sortBy !== "createdAt" && sortBy !== "productName" && (
+                <SelectItem value="custom">Sort: {sortBy} ({sortOrder})</SelectItem>
+              )}
+            </SelectContent>
+          </Select>
         </div>
         <div className="flex items-center gap-2">
           <Button
@@ -732,6 +805,9 @@ export default function Stock() {
           data={stockEntries}
           loading={isLoading}
           keyExtractor={(s: StockPurchase) => s.id}
+          sortBy={sortBy}
+          sortOrder={sortOrder}
+          onSort={handleSort}
         />
 
         {/* Pagination Bar */}
@@ -993,6 +1069,52 @@ export default function Stock() {
                   placeholder="Select product"
                 />
               </div>
+
+              {/* Price Tier Selection */}
+              {form.productId && (
+                <div className="space-y-1">
+                  <Label className="text-xs">Price Tier</Label>
+                  <Select
+                    value={form.priceTierId || ""}
+                    onValueChange={(v) => setForm({ ...form, priceTierId: v || null })}
+                  >
+                    <SelectTrigger className="h-9 text-xs rounded-xl">
+                      <SelectValue placeholder="Use default price" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {(() => {
+                        const product = products.find((p: Product) => p.id === form.productId);
+                        const tiers = product?.prices ?? [];
+                        if (tiers.length === 0) {
+                          return (
+                            <SelectItem disabled value="none">
+                              No price tiers configured for this product
+                            </SelectItem>
+                          );
+                        }
+                        return tiers.map((tier) => (
+                          <SelectItem key={tier.id} value={tier.id}>
+                            <div className="flex justify-between w-full text-xs">
+                              <span className="font-medium">{tier.label}</span>
+                              <span className="font-mono text-text-secondary">
+                                {formatCurrency(tier.purchasePrice)} / {formatCurrency(tier.salePrice)}
+                              </span>
+                            </div>
+                            <div className="text-[10px] text-text-secondary">
+                              Purchase: {formatCurrency(tier.purchasePrice)} &nbsp;•&nbsp; Sale: {formatCurrency(tier.salePrice)}
+                            </div>
+                          </SelectItem>
+                        ));
+                      })()}
+                    </SelectContent>
+                  </Select>
+                  {form.priceTierId && (
+                    <p className="text-[10px] text-text-secondary">
+                      Selected tier will be used for purchase &amp; sale prices on this stock entry.
+                    </p>
+                  )}
+                </div>
+              )}
 
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">

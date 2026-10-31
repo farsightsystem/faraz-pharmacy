@@ -4,6 +4,7 @@ import { cn } from "@/lib/utils";
 interface KPICardProps {
   title: string;
   value: string | number;
+  subtitle?: string;
   icon?: React.ReactNode;
   trend?: { value: number; isPositive: boolean };
   className?: string;
@@ -13,6 +14,7 @@ interface KPICardProps {
 export default function KPICard({
   title,
   value,
+  subtitle,
   icon,
   trend,
   className,
@@ -28,6 +30,9 @@ export default function KPICard({
       </CardHeader>
       <CardContent>
         <p className={cn("text-2xl font-bold font-mono tracking-tight", valueClassName)}>{value}</p>
+        {subtitle && (
+          <p className="text-[11px] mt-1 text-text-secondary truncate">{subtitle}</p>
+        )}
         {trend && (
           <p
             className={cn(

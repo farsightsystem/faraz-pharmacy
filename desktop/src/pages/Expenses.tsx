@@ -1,8 +1,8 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { toast } from "sonner";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useDebounce } from "@/hooks/useDebounce";
-import { Plus, Wallet, Pencil, Trash2, Search, Archive, RotateCcw } from "lucide-react";
+import { Plus, Wallet, Pencil, Trash2, Search, Archive, RotateCcw, ArrowUpDown } from "lucide-react";
 import PageHeader from "@/components/shared/PageHeader";
 import DataTable from "@/components/shared/DataTable";
 import StatCard from "@/components/shared/StatCard";
@@ -52,14 +52,26 @@ export default function Expenses() {
   const [hardDeletePasswordOpen, setHardDeletePasswordOpen] = useState(false);
   const [category, setCategory] = useState("All");
   const [search, setSearch] = useState("");
+  const [sortBy, setSortBy] = useState<string>("createdAt");
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
   const [form, setForm] = useState({
     title: "",
-    category: EXPENSE_CATEGORIES[0],
+    category: EXPENSE_CATEGORIES[0] as string,
     amount: "",
     notes: "",
     date: new Date().toISOString().split("T")[0],
   });
   const searchRef = useRef<HTMLInputElement>(null);
+
+  const handleSort = (key: string) => {
+    if (sortBy === key) {
+      setSortOrder((prev) => (prev === "asc" ? "desc" : "asc"));
+    } else {
+      setSortBy(key);
+      setSortOrder(key === "title" || key === "category" ? "asc" : "desc");
+    }
+    setPage(1);
+  };
 
   function handleExportPDF() {
     const headers = ["Date", "Title", "Category", "Amount", "Status"];
@@ -108,14 +120,20 @@ export default function Expenses() {
   const [limit, setLimit] = useState(50);
   const debouncedSearch = useDebounce(search, 300);
 
+  useEffect(() => {
+    setPage(1);
+  }, [debouncedSearch, limit, category, showArchived, sortBy, sortOrder]);
+
   const { data: paginatedData, isLoading } = useQuery({
-    queryKey: ["expenses", page, limit, debouncedSearch, category, showArchived],
+    queryKey: ["expenses", page, limit, debouncedSearch, category, showArchived, sortBy, sortOrder],
     queryFn: () =>
       api.expenses.listPaginated({
         page,
         limit,
         search: debouncedSearch,
         archived: showArchived,
+        sortBy,
+        sortOrder,
       }),
   });
 
@@ -239,6 +257,8 @@ export default function Expenses() {
   const columns = [
     {
       key: "date",
+      sortKey: "date",
+      sortable: true,
       header: "Date",
       cell: (e: Expense) => (
         <span className="font-mono text-xs text-text-secondary">{formatDate(e.date)}</span>
@@ -246,11 +266,15 @@ export default function Expenses() {
     },
     {
       key: "title",
+      sortKey: "title",
+      sortable: true,
       header: "Title",
       cell: (e: Expense) => <span className="font-medium text-text-primary">{e.title}</span>,
     },
     {
       key: "category",
+      sortKey: "category",
+      sortable: true,
       header: "Category",
       cell: (e: Expense) => (
         <span className="text-xs px-2 py-0.5 rounded-full bg-surface-2 text-text-secondary font-medium">
@@ -260,6 +284,8 @@ export default function Expenses() {
     },
     {
       key: "amount",
+      sortKey: "amount",
+      sortable: true,
       header: "Amount",
       cell: (e: Expense) => (
         <span className="font-mono font-medium">{formatCurrency(e.amount)}</span>
@@ -375,6 +401,58 @@ export default function Expenses() {
               className="pl-10 h-10 rounded-full border border-border/80 bg-surface shadow-xs text-xs focus-visible:ring-2 focus-visible:ring-[#4A25E1]/25"
             />
           </div>
+          <Select
+            value={
+              sortBy === "createdAt" && sortOrder === "desc"
+                ? "recent"
+                : sortBy === "createdAt" && sortOrder === "asc"
+                ? "oldest"
+                : sortBy === "title" && sortOrder === "asc"
+                ? "title_asc"
+                : sortBy === "title" && sortOrder === "desc"
+                ? "title_desc"
+                : sortBy === "amount" && sortOrder === "desc"
+                ? "amount_high"
+                : sortBy === "amount" && sortOrder === "asc"
+                ? "amount_low"
+                : "recent"
+            }
+            onValueChange={(val) => {
+              if (val === "recent") {
+                setSortBy("createdAt");
+                setSortOrder("desc");
+              } else if (val === "oldest") {
+                setSortBy("createdAt");
+                setSortOrder("asc");
+              } else if (val === "title_asc") {
+                setSortBy("title");
+                setSortOrder("asc");
+              } else if (val === "title_desc") {
+                setSortBy("title");
+                setSortOrder("desc");
+              } else if (val === "amount_high") {
+                setSortBy("amount");
+                setSortOrder("desc");
+              } else if (val === "amount_low") {
+                setSortBy("amount");
+                setSortOrder("asc");
+              }
+              setPage(1);
+            }}
+          >
+            <SelectTrigger className="w-[145px] h-10 rounded-full border border-border/80 bg-surface shadow-xs text-xs">
+              <ArrowUpDown className="h-3.5 w-3.5 mr-1 text-text-secondary shrink-0" />
+              <SelectValue placeholder="Sort" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="recent">Recent first</SelectItem>
+              <SelectItem value="oldest">Oldest first</SelectItem>
+              <SelectItem value="title_asc">Title (A-Z)</SelectItem>
+              <SelectItem value="title_desc">Title (Z-A)</SelectItem>
+              <SelectItem value="amount_high">Highest Amount</SelectItem>
+              <SelectItem value="amount_low">Lowest Amount</SelectItem>
+            </SelectContent>
+          </Select>
           <Button
             variant="outline"
             size="sm"
@@ -403,6 +481,9 @@ export default function Expenses() {
           data={filtered}
           loading={isLoading}
           keyExtractor={(e: Expense) => e.id}
+          sortBy={sortBy}
+          sortOrder={sortOrder}
+          onSort={handleSort}
         />
         
         {/* Pagination Bar */}
