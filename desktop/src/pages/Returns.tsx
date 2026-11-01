@@ -402,6 +402,7 @@ export default function Returns({
       queryClient.invalidateQueries({ queryKey: ["sales"] });
       queryClient.invalidateQueries({ queryKey: ["arrears"] });
       queryClient.invalidateQueries({ queryKey: ["arrears-by-customer"] });
+      queryClient.invalidateQueries({ queryKey: ["customer-ledger"] });
       queryClient.invalidateQueries({ queryKey: ["batches"] });
 
       setPendingReturnData(returnData);

@@ -44,6 +44,11 @@ contextBridge.exposeInMainWorld("electronAPI", {
       s.on("inventory:updated", callback);
       return () => s.off("inventory:updated", callback);
     },
+    onReturnCreated: (callback) => {
+      const s = getSocket();
+      s.on("return:created", callback);
+      return () => s.off("return:created", callback);
+    },
     scanBarcode: (barcode) => {
       return new Promise((resolve, reject) => {
         try {

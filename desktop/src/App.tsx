@@ -90,6 +90,17 @@ function AppShell() {
     });
   }, [isAuthenticated, queryClient]);
 
+  useEffect(() => {
+    if (!isAuthenticated || !window.electronAPI?.socket) return;
+    return window.electronAPI.socket.onReturnCreated(() => {
+      void queryClient.invalidateQueries({ queryKey: ["arrears-by-customer"] });
+      void queryClient.invalidateQueries({ queryKey: ["customer-ledger"] });
+      void queryClient.invalidateQueries({ queryKey: ["arrears"] });
+      void queryClient.invalidateQueries({ queryKey: ["customers"] });
+      void queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] });
+    });
+  }, [isAuthenticated, queryClient]);
+
   const generateReprintHtml = useCallback(
     async (paperSize: string): Promise<string> => {
       if (!reprintData) return "";

@@ -35,6 +35,7 @@ export interface ElectronAPI {
       prices: ProductPrice[];
     } | null>;
     onInventoryUpdated(callback: () => void): () => void;
+    onReturnCreated(callback: () => void): () => void;
     disconnect(): void;
   };
 }
