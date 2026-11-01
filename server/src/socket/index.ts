@@ -25,7 +25,25 @@ export function initializeSocket(httpServer: HttpServer) {
       "product:scan",
       async (
         data: { barcode: string },
-        callback: (result: { id: string; barcode: string; name: string; salePrice: number; purchasePrice: number; stockQty: number; category: string; location: string; active: number; company: { name: string } | null } | null) => void
+        callback: (result: {
+          id: string;
+          barcode: string;
+          name: string;
+          salePrice: number;
+          purchasePrice: number;
+          stockQty: number;
+          category: string;
+          location: string;
+          active: number;
+          company: { name: string } | null;
+          prices: {
+            id: string;
+            productId: string;
+            label: string;
+            purchasePrice: number;
+            salePrice: number;
+          }[];
+        } | null) => void
       ) => {
         try {
           const trimmed = data.barcode.trim();
@@ -46,6 +64,16 @@ export function initializeSocket(httpServer: HttpServer) {
               active: true,
               company: {
                 select: { name: true },
+              },
+              prices: {
+                orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+                select: {
+                  id: true,
+                  productId: true,
+                  label: true,
+                  purchasePrice: true,
+                  salePrice: true,
+                },
               },
             },
           });

@@ -397,25 +397,27 @@ export interface ReturnEntry {
   sale_id: string;
   customer_name?: string;
   refund_amount: number;
+  credit_applied: number;
+  cash_refunded: number;
   reason: string;
   created_at: string;
   items?: Array<{
+    id: string;
     product_name: string;
     quantity: number;
     refund_amount: number;
+    inventory_status: "quarantined" | "restocked" | "disposed";
+    batch_id: string | null;
   }>;
 }
 
 export interface ReturnItemInput {
   productId: string;
-  productName: string;
   quantity: number;
-  refundAmount: number;
 }
 
 export interface ReturnInput {
   saleId: string;
-  refundAmount: number;
   reason: string;
   items: ReturnItemInput[];
 }

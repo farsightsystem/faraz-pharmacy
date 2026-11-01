@@ -28,16 +28,22 @@ export type AggregateReturnEntry = {
 
 export type ReturnEntryAvgAggregateOutputType = {
   refundAmount: number | null
+  creditApplied: number | null
+  cashRefunded: number | null
 }
 
 export type ReturnEntrySumAggregateOutputType = {
   refundAmount: number | null
+  creditApplied: number | null
+  cashRefunded: number | null
 }
 
 export type ReturnEntryMinAggregateOutputType = {
   id: string | null
   saleId: string | null
   refundAmount: number | null
+  creditApplied: number | null
+  cashRefunded: number | null
   reason: string | null
   createdAt: Date | null
 }
@@ -46,6 +52,8 @@ export type ReturnEntryMaxAggregateOutputType = {
   id: string | null
   saleId: string | null
   refundAmount: number | null
+  creditApplied: number | null
+  cashRefunded: number | null
   reason: string | null
   createdAt: Date | null
 }
@@ -54,6 +62,8 @@ export type ReturnEntryCountAggregateOutputType = {
   id: number
   saleId: number
   refundAmount: number
+  creditApplied: number
+  cashRefunded: number
   reason: number
   createdAt: number
   _all: number
@@ -62,16 +72,22 @@ export type ReturnEntryCountAggregateOutputType = {
 
 export type ReturnEntryAvgAggregateInputType = {
   refundAmount?: true
+  creditApplied?: true
+  cashRefunded?: true
 }
 
 export type ReturnEntrySumAggregateInputType = {
   refundAmount?: true
+  creditApplied?: true
+  cashRefunded?: true
 }
 
 export type ReturnEntryMinAggregateInputType = {
   id?: true
   saleId?: true
   refundAmount?: true
+  creditApplied?: true
+  cashRefunded?: true
   reason?: true
   createdAt?: true
 }
@@ -80,6 +96,8 @@ export type ReturnEntryMaxAggregateInputType = {
   id?: true
   saleId?: true
   refundAmount?: true
+  creditApplied?: true
+  cashRefunded?: true
   reason?: true
   createdAt?: true
 }
@@ -88,6 +106,8 @@ export type ReturnEntryCountAggregateInputType = {
   id?: true
   saleId?: true
   refundAmount?: true
+  creditApplied?: true
+  cashRefunded?: true
   reason?: true
   createdAt?: true
   _all?: true
@@ -183,6 +203,8 @@ export type ReturnEntryGroupByOutputType = {
   id: string
   saleId: string
   refundAmount: number
+  creditApplied: number
+  cashRefunded: number
   reason: string
   createdAt: Date
   _count: ReturnEntryCountAggregateOutputType | null
@@ -214,6 +236,8 @@ export type ReturnEntryWhereInput = {
   id?: Prisma.StringFilter<"ReturnEntry"> | string
   saleId?: Prisma.StringFilter<"ReturnEntry"> | string
   refundAmount?: Prisma.FloatFilter<"ReturnEntry"> | number
+  creditApplied?: Prisma.FloatFilter<"ReturnEntry"> | number
+  cashRefunded?: Prisma.FloatFilter<"ReturnEntry"> | number
   reason?: Prisma.StringFilter<"ReturnEntry"> | string
   createdAt?: Prisma.DateTimeFilter<"ReturnEntry"> | Date | string
   items?: Prisma.ReturnItemListRelationFilter
@@ -224,6 +248,8 @@ export type ReturnEntryOrderByWithRelationInput = {
   id?: Prisma.SortOrder
   saleId?: Prisma.SortOrder
   refundAmount?: Prisma.SortOrder
+  creditApplied?: Prisma.SortOrder
+  cashRefunded?: Prisma.SortOrder
   reason?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   items?: Prisma.ReturnItemOrderByRelationAggregateInput
@@ -237,6 +263,8 @@ export type ReturnEntryWhereUniqueInput = Prisma.AtLeast<{
   NOT?: Prisma.ReturnEntryWhereInput | Prisma.ReturnEntryWhereInput[]
   saleId?: Prisma.StringFilter<"ReturnEntry"> | string
   refundAmount?: Prisma.FloatFilter<"ReturnEntry"> | number
+  creditApplied?: Prisma.FloatFilter<"ReturnEntry"> | number
+  cashRefunded?: Prisma.FloatFilter<"ReturnEntry"> | number
   reason?: Prisma.StringFilter<"ReturnEntry"> | string
   createdAt?: Prisma.DateTimeFilter<"ReturnEntry"> | Date | string
   items?: Prisma.ReturnItemListRelationFilter
@@ -247,6 +275,8 @@ export type ReturnEntryOrderByWithAggregationInput = {
   id?: Prisma.SortOrder
   saleId?: Prisma.SortOrder
   refundAmount?: Prisma.SortOrder
+  creditApplied?: Prisma.SortOrder
+  cashRefunded?: Prisma.SortOrder
   reason?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   _count?: Prisma.ReturnEntryCountOrderByAggregateInput
@@ -263,6 +293,8 @@ export type ReturnEntryScalarWhereWithAggregatesInput = {
   id?: Prisma.StringWithAggregatesFilter<"ReturnEntry"> | string
   saleId?: Prisma.StringWithAggregatesFilter<"ReturnEntry"> | string
   refundAmount?: Prisma.FloatWithAggregatesFilter<"ReturnEntry"> | number
+  creditApplied?: Prisma.FloatWithAggregatesFilter<"ReturnEntry"> | number
+  cashRefunded?: Prisma.FloatWithAggregatesFilter<"ReturnEntry"> | number
   reason?: Prisma.StringWithAggregatesFilter<"ReturnEntry"> | string
   createdAt?: Prisma.DateTimeWithAggregatesFilter<"ReturnEntry"> | Date | string
 }
@@ -270,6 +302,8 @@ export type ReturnEntryScalarWhereWithAggregatesInput = {
 export type ReturnEntryCreateInput = {
   id?: string
   refundAmount?: number
+  creditApplied?: number
+  cashRefunded?: number
   reason?: string
   createdAt?: Date | string
   items?: Prisma.ReturnItemCreateNestedManyWithoutReturnEntryInput
@@ -280,6 +314,8 @@ export type ReturnEntryUncheckedCreateInput = {
   id?: string
   saleId: string
   refundAmount?: number
+  creditApplied?: number
+  cashRefunded?: number
   reason?: string
   createdAt?: Date | string
   items?: Prisma.ReturnItemUncheckedCreateNestedManyWithoutReturnEntryInput
@@ -288,6 +324,8 @@ export type ReturnEntryUncheckedCreateInput = {
 export type ReturnEntryUpdateInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   refundAmount?: Prisma.FloatFieldUpdateOperationsInput | number
+  creditApplied?: Prisma.FloatFieldUpdateOperationsInput | number
+  cashRefunded?: Prisma.FloatFieldUpdateOperationsInput | number
   reason?: Prisma.StringFieldUpdateOperationsInput | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   items?: Prisma.ReturnItemUpdateManyWithoutReturnEntryNestedInput
@@ -298,6 +336,8 @@ export type ReturnEntryUncheckedUpdateInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   saleId?: Prisma.StringFieldUpdateOperationsInput | string
   refundAmount?: Prisma.FloatFieldUpdateOperationsInput | number
+  creditApplied?: Prisma.FloatFieldUpdateOperationsInput | number
+  cashRefunded?: Prisma.FloatFieldUpdateOperationsInput | number
   reason?: Prisma.StringFieldUpdateOperationsInput | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   items?: Prisma.ReturnItemUncheckedUpdateManyWithoutReturnEntryNestedInput
@@ -307,6 +347,8 @@ export type ReturnEntryCreateManyInput = {
   id?: string
   saleId: string
   refundAmount?: number
+  creditApplied?: number
+  cashRefunded?: number
   reason?: string
   createdAt?: Date | string
 }
@@ -314,6 +356,8 @@ export type ReturnEntryCreateManyInput = {
 export type ReturnEntryUpdateManyMutationInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   refundAmount?: Prisma.FloatFieldUpdateOperationsInput | number
+  creditApplied?: Prisma.FloatFieldUpdateOperationsInput | number
+  cashRefunded?: Prisma.FloatFieldUpdateOperationsInput | number
   reason?: Prisma.StringFieldUpdateOperationsInput | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -322,6 +366,8 @@ export type ReturnEntryUncheckedUpdateManyInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   saleId?: Prisma.StringFieldUpdateOperationsInput | string
   refundAmount?: Prisma.FloatFieldUpdateOperationsInput | number
+  creditApplied?: Prisma.FloatFieldUpdateOperationsInput | number
+  cashRefunded?: Prisma.FloatFieldUpdateOperationsInput | number
   reason?: Prisma.StringFieldUpdateOperationsInput | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -340,18 +386,24 @@ export type ReturnEntryCountOrderByAggregateInput = {
   id?: Prisma.SortOrder
   saleId?: Prisma.SortOrder
   refundAmount?: Prisma.SortOrder
+  creditApplied?: Prisma.SortOrder
+  cashRefunded?: Prisma.SortOrder
   reason?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
 }
 
 export type ReturnEntryAvgOrderByAggregateInput = {
   refundAmount?: Prisma.SortOrder
+  creditApplied?: Prisma.SortOrder
+  cashRefunded?: Prisma.SortOrder
 }
 
 export type ReturnEntryMaxOrderByAggregateInput = {
   id?: Prisma.SortOrder
   saleId?: Prisma.SortOrder
   refundAmount?: Prisma.SortOrder
+  creditApplied?: Prisma.SortOrder
+  cashRefunded?: Prisma.SortOrder
   reason?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
 }
@@ -360,12 +412,16 @@ export type ReturnEntryMinOrderByAggregateInput = {
   id?: Prisma.SortOrder
   saleId?: Prisma.SortOrder
   refundAmount?: Prisma.SortOrder
+  creditApplied?: Prisma.SortOrder
+  cashRefunded?: Prisma.SortOrder
   reason?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
 }
 
 export type ReturnEntrySumOrderByAggregateInput = {
   refundAmount?: Prisma.SortOrder
+  creditApplied?: Prisma.SortOrder
+  cashRefunded?: Prisma.SortOrder
 }
 
 export type ReturnEntryScalarRelationFilter = {
@@ -432,6 +488,8 @@ export type ReturnEntryUpdateOneRequiredWithoutItemsNestedInput = {
 export type ReturnEntryCreateWithoutSaleInput = {
   id?: string
   refundAmount?: number
+  creditApplied?: number
+  cashRefunded?: number
   reason?: string
   createdAt?: Date | string
   items?: Prisma.ReturnItemCreateNestedManyWithoutReturnEntryInput
@@ -440,6 +498,8 @@ export type ReturnEntryCreateWithoutSaleInput = {
 export type ReturnEntryUncheckedCreateWithoutSaleInput = {
   id?: string
   refundAmount?: number
+  creditApplied?: number
+  cashRefunded?: number
   reason?: string
   createdAt?: Date | string
   items?: Prisma.ReturnItemUncheckedCreateNestedManyWithoutReturnEntryInput
@@ -478,6 +538,8 @@ export type ReturnEntryScalarWhereInput = {
   id?: Prisma.StringFilter<"ReturnEntry"> | string
   saleId?: Prisma.StringFilter<"ReturnEntry"> | string
   refundAmount?: Prisma.FloatFilter<"ReturnEntry"> | number
+  creditApplied?: Prisma.FloatFilter<"ReturnEntry"> | number
+  cashRefunded?: Prisma.FloatFilter<"ReturnEntry"> | number
   reason?: Prisma.StringFilter<"ReturnEntry"> | string
   createdAt?: Prisma.DateTimeFilter<"ReturnEntry"> | Date | string
 }
@@ -485,6 +547,8 @@ export type ReturnEntryScalarWhereInput = {
 export type ReturnEntryCreateWithoutItemsInput = {
   id?: string
   refundAmount?: number
+  creditApplied?: number
+  cashRefunded?: number
   reason?: string
   createdAt?: Date | string
   sale: Prisma.SaleCreateNestedOneWithoutReturnsInput
@@ -494,6 +558,8 @@ export type ReturnEntryUncheckedCreateWithoutItemsInput = {
   id?: string
   saleId: string
   refundAmount?: number
+  creditApplied?: number
+  cashRefunded?: number
   reason?: string
   createdAt?: Date | string
 }
@@ -517,6 +583,8 @@ export type ReturnEntryUpdateToOneWithWhereWithoutItemsInput = {
 export type ReturnEntryUpdateWithoutItemsInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   refundAmount?: Prisma.FloatFieldUpdateOperationsInput | number
+  creditApplied?: Prisma.FloatFieldUpdateOperationsInput | number
+  cashRefunded?: Prisma.FloatFieldUpdateOperationsInput | number
   reason?: Prisma.StringFieldUpdateOperationsInput | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   sale?: Prisma.SaleUpdateOneRequiredWithoutReturnsNestedInput
@@ -526,6 +594,8 @@ export type ReturnEntryUncheckedUpdateWithoutItemsInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   saleId?: Prisma.StringFieldUpdateOperationsInput | string
   refundAmount?: Prisma.FloatFieldUpdateOperationsInput | number
+  creditApplied?: Prisma.FloatFieldUpdateOperationsInput | number
+  cashRefunded?: Prisma.FloatFieldUpdateOperationsInput | number
   reason?: Prisma.StringFieldUpdateOperationsInput | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -533,6 +603,8 @@ export type ReturnEntryUncheckedUpdateWithoutItemsInput = {
 export type ReturnEntryCreateManySaleInput = {
   id?: string
   refundAmount?: number
+  creditApplied?: number
+  cashRefunded?: number
   reason?: string
   createdAt?: Date | string
 }
@@ -540,6 +612,8 @@ export type ReturnEntryCreateManySaleInput = {
 export type ReturnEntryUpdateWithoutSaleInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   refundAmount?: Prisma.FloatFieldUpdateOperationsInput | number
+  creditApplied?: Prisma.FloatFieldUpdateOperationsInput | number
+  cashRefunded?: Prisma.FloatFieldUpdateOperationsInput | number
   reason?: Prisma.StringFieldUpdateOperationsInput | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   items?: Prisma.ReturnItemUpdateManyWithoutReturnEntryNestedInput
@@ -548,6 +622,8 @@ export type ReturnEntryUpdateWithoutSaleInput = {
 export type ReturnEntryUncheckedUpdateWithoutSaleInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   refundAmount?: Prisma.FloatFieldUpdateOperationsInput | number
+  creditApplied?: Prisma.FloatFieldUpdateOperationsInput | number
+  cashRefunded?: Prisma.FloatFieldUpdateOperationsInput | number
   reason?: Prisma.StringFieldUpdateOperationsInput | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   items?: Prisma.ReturnItemUncheckedUpdateManyWithoutReturnEntryNestedInput
@@ -556,6 +632,8 @@ export type ReturnEntryUncheckedUpdateWithoutSaleInput = {
 export type ReturnEntryUncheckedUpdateManyWithoutSaleInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   refundAmount?: Prisma.FloatFieldUpdateOperationsInput | number
+  creditApplied?: Prisma.FloatFieldUpdateOperationsInput | number
+  cashRefunded?: Prisma.FloatFieldUpdateOperationsInput | number
   reason?: Prisma.StringFieldUpdateOperationsInput | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -595,6 +673,8 @@ export type ReturnEntrySelect<ExtArgs extends runtime.Types.Extensions.InternalA
   id?: boolean
   saleId?: boolean
   refundAmount?: boolean
+  creditApplied?: boolean
+  cashRefunded?: boolean
   reason?: boolean
   createdAt?: boolean
   items?: boolean | Prisma.ReturnEntry$itemsArgs<ExtArgs>
@@ -606,6 +686,8 @@ export type ReturnEntrySelectCreateManyAndReturn<ExtArgs extends runtime.Types.E
   id?: boolean
   saleId?: boolean
   refundAmount?: boolean
+  creditApplied?: boolean
+  cashRefunded?: boolean
   reason?: boolean
   createdAt?: boolean
   sale?: boolean | Prisma.SaleDefaultArgs<ExtArgs>
@@ -615,6 +697,8 @@ export type ReturnEntrySelectUpdateManyAndReturn<ExtArgs extends runtime.Types.E
   id?: boolean
   saleId?: boolean
   refundAmount?: boolean
+  creditApplied?: boolean
+  cashRefunded?: boolean
   reason?: boolean
   createdAt?: boolean
   sale?: boolean | Prisma.SaleDefaultArgs<ExtArgs>
@@ -624,11 +708,13 @@ export type ReturnEntrySelectScalar = {
   id?: boolean
   saleId?: boolean
   refundAmount?: boolean
+  creditApplied?: boolean
+  cashRefunded?: boolean
   reason?: boolean
   createdAt?: boolean
 }
 
-export type ReturnEntryOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "saleId" | "refundAmount" | "reason" | "createdAt", ExtArgs["result"]["returnEntry"]>
+export type ReturnEntryOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "saleId" | "refundAmount" | "creditApplied" | "cashRefunded" | "reason" | "createdAt", ExtArgs["result"]["returnEntry"]>
 export type ReturnEntryInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   items?: boolean | Prisma.ReturnEntry$itemsArgs<ExtArgs>
   sale?: boolean | Prisma.SaleDefaultArgs<ExtArgs>
@@ -651,6 +737,8 @@ export type $ReturnEntryPayload<ExtArgs extends runtime.Types.Extensions.Interna
     id: string
     saleId: string
     refundAmount: number
+    creditApplied: number
+    cashRefunded: number
     reason: string
     createdAt: Date
   }, ExtArgs["result"]["returnEntry"]>
@@ -1081,6 +1169,8 @@ export interface ReturnEntryFieldRefs {
   readonly id: Prisma.FieldRef<"ReturnEntry", 'String'>
   readonly saleId: Prisma.FieldRef<"ReturnEntry", 'String'>
   readonly refundAmount: Prisma.FieldRef<"ReturnEntry", 'Float'>
+  readonly creditApplied: Prisma.FieldRef<"ReturnEntry", 'Float'>
+  readonly cashRefunded: Prisma.FieldRef<"ReturnEntry", 'Float'>
   readonly reason: Prisma.FieldRef<"ReturnEntry", 'String'>
   readonly createdAt: Prisma.FieldRef<"ReturnEntry", 'DateTime'>
 }

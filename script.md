@@ -163,3 +163,131 @@ Phase 4/real-hardware validation has **not** been completed by this work. The us
 - [desktop/src/lib/sync.ts](./desktop/src/lib/sync.ts) and [desktop/src/lib/localDb.ts](./desktop/src/lib/localDb.ts) — client catalog cache.
 - [desktop/src/App.tsx](./desktop/src/App.tsx) and [desktop/vite.config.ts](./desktop/vite.config.ts) — lazy route loading and build chunking.
 
+## 10. Business-Logic Hardening
+
+The user asked for a product/business-logic audit and approved implementing the suggested fixes. The confirmed return policies are:
+
+- Apply return value to the original invoice's outstanding arrears first; refund any remaining eligible amount in cash.
+- Keep returned medicine quarantined until an authorized inspection decision.
+- Allow an explicitly unknown expiry date rather than inventing one.
+
+The current worktree implements:
+
+- Product edits no longer overwrite inventory quantity or expiry.
+- Sales validate invoice arithmetic and require a customer when any invoice balance remains unpaid. Checkout atomically guards product and batch stock, rejects expired lots, allocates stock by FEFO with unknown-expiry batches last, and records the sale-time purchase cost.
+- Purchase edits/removals/restores preserve inventory consistency and reject reversal when stock has already been consumed. Selected price tiers are validated as belonging to the purchased product.
+- Arrear payments use the shared transaction-scoped sale ID allocator, preserve partial status, record initial partial-sale collections in the payment history, and protect financial history from deletion.
+- Returns derive line values from the original sale, prevent over-return, reconcile return value against arrears and collected cash, and quarantine inventory. Inspected items can be restocked to their original eligible batch (or an unknown-expiry return batch) or disposed.
+- Sales/dashboard/report figures exclude arrear payment receipts, net return values, and use sale-time costs for profit calculations. Return profit adjustments account for sales tax and whether inspection restored the returned item's cost to inventory. Customer purchase counts and last-purchase dates exclude arrear payment receipts.
+- The Returns UI and printed return receipts show the refund/arrears-credit/cash-refund breakdown and support inspection disposition.
+
+Schema changes are in `server/prisma/migrations/20261102110000_reconcile_inventory_and_returns/migration.sql`. After the user authorized deployment to the development database, the migration was applied to PostgreSQL database `faraz-pharmacy` at `localhost:5432`; `prisma migrate status` confirmed the database is up to date. It makes batch expiry nullable, classifies arrear payment receipt sales, adds sale-time costs and return settlement/quarantine fields, and backfills legacy sale-item costs from batch/product costs. Existing return items are marked as already restocked to avoid adding their stock twice. Historical return settlement splits are not reconstructed, and legacy sale costs are best-effort where no batch cost was recorded.
+
+Key implementation files include:
+
+- `server/src/modules/sales/sales.service.ts` and `sales.schema.ts` — invoice validation, stock allocation/decrement, sale cost snapshots, payment receipt-history rows.
+- `server/src/modules/sales/sales-id.ts` — shared PostgreSQL advisory-lock allocator for sale and arrear receipt IDs.
+- `server/src/modules/purchases/purchases.service.ts` — stock-safe purchase edit/remove/restore and product-specific price-tier checks.
+- `server/src/modules/returns/returns.service.ts` — source-invoice valuation, repeat-return accounting, arrears/cash reconciliation, quarantine and inspection disposition.
+- `server/src/modules/arrears/arrears.service.ts` — serialized payments, payment receipt classification, partial status, and financial-history deletion safeguards.
+- `server/src/modules/reports/reports.service.ts` and `customers.service.ts` — exclude receipt-only sales from purchase metrics, net returns in revenue, and use recorded sale costs for profit.
+- `desktop/src/pages/Returns.tsx`, `desktop/src/lib/api.ts`, `desktop/src/types/index.ts`, and `desktop/electron/printer.js` — return terminal, inspection actions, API types, and receipt settlement breakdown.
+
+Verification performed after the final code changes:
+
+- `cd server && npm run lint` — passed.
+- `cd server && ./node_modules/.bin/prisma validate --schema prisma/schema.prisma` — passed.
+- `cd server && npm run build` — passed after applying the migration to the confirmed development database.
+- `cd server && ./node_modules/.bin/prisma migrate status` — database up to date.
+- `cd desktop && npm exec -- tsc --noEmit && npm run build:renderer` — passed.
+- `node --check desktop/electron/printer.js` and `git diff --check` — passed.
+- Prisma Client generation — succeeded after the schema changes.
+
+The migration was applied only to the confirmed local development database; no production/LAN database was touched. No full manual POS/LAN workflow test has been performed. Manual follow-up should cover: partial/full arrears collections and receipt history; sales with exact, insufficient, and split FEFO batch stock; expired and unknown-expiry batches; return value against remaining arrears versus already-collected cash; repeated/over-quantity returns; quarantine, restock, and disposal; purchase reversal after stock consumption; and sales/report totals after receipts and returns. Sale price overrides remain possible; whether checkout must enforce configured price tiers was not established as policy and should be decided separately.
+
+## 11. POS Price-Tier Selection and Product/Stock Review
+
+The user clarified that the POS price picker should retain both the product's `Standard` sale price and configured tier prices. The cashier should see sale prices only, and once a product is already in the active cart, selecting/scanning that same product again should add one unit at its existing cart price without reopening the picker.
+
+Implemented in the current worktree:
+
+- The POS picker is titled “Choose sale price” and displays the Standard price and each configured tier's sale price. It does not show purchase prices; those remain internal cost values.
+- A tiered product in search results is marked “Price options” instead of presenting the product-level Standard price as if it were the only choice.
+- Existing cart rows are reused on repeat selection, preserving the first chosen unit price. Removing the row and selecting the product again allows a new price choice. Cart choice is independent per active sale.
+- Barcode lookup returns the configured tiers through both Socket.IO and REST fallback, matching the IndexedDB and typed-search paths. Tier options are sorted consistently by creation time and ID. Tier records with generic legacy “Standard” labels display as Price 1, Price 2, etc.
+- Product and tier price inputs reject negative values server-side and set a nonnegative minimum in the product form.
+- Product tier replacement and product hard deletion now run transactionally so a failed update/delete does not leave tiers/barcodes partially removed.
+
+No Prisma schema or migration change was needed for this work. Server type-check and build, desktop type-check and renderer build, the exact advisory-lock query against the local development database, and `git diff --check` passed. Manual testing is still needed for choosing Standard versus each tier through typed search, local barcode lookup, Socket.IO scan, and REST scan; repeated selection within the same cart; and switching between multi-sale carts.
+
+The user later provided the complete checkout error: Prisma `P2010` / `UnsupportedNativeDataType`, “Failed to deserialize column of type 'void',” originating in `nextSaleId`. PostgreSQL `pg_advisory_xact_lock(...)` returns `void`, which Prisma `$queryRaw` tried to deserialize. The allocator now calls the same transaction-scoped lock through `$executeRaw`, avoiding result-column deserialization while keeping the lock semantics. The exact `$executeRaw` lock query succeeded in a transaction against the configured local development database. This was not the earlier missing-column `P2022`; no migration was needed or run for this error. Restart the API process to load the fix.
+
+Stock review also found a valuation edge case not changed here: editing an existing stock purchase's selected price tier updates the purchase record, while its linked batch's stored purchase cost remains unchanged. Since one batch can aggregate multiple stock purchases, updating the batch cost from one edited purchase could misstate other stock; defining the desired cost-layer/valuation behavior is needed before changing this path.
+
+## 12. POS Availability and Global Search Review
+
+The user reported that a product could intermittently appear out of stock after selecting it and searching for it again. The review found two stale-result paths:
+
+- POS typed search could keep showing results for the previous input during the 100 ms debounce and while fresh results were loading. Pressing Enter during that interval could select a stale result.
+- Barcode lookup returned IndexedDB stock before checking the server. That local catalog is refreshed periodically, so stock changes from another LAN terminal could leave barcode results outdated.
+- Global Search used the same debounced-result timing issue and the default 30-second query freshness, allowing stale stock labels after another terminal changed inventory.
+
+Implemented:
+
+- POS typed search now hides results until they correspond to the current input and the latest request finishes. Enter during a pending search fetches the current query before selecting.
+- Barcode lookup now uses live Socket.IO/REST stock first and uses IndexedDB only when the server is unavailable. Socket acknowledgement and REST barcode requests have bounded timeouts to prevent scans from hanging while offline.
+- Global Search suppresses results from the prior query while input is debouncing or data is refreshing, refreshes on window focus, and labels tiered products as “Price options” instead of showing the Standard price as the only price.
+- Completing a sale invalidates the POS and global-search product query caches.
+- Multi-sale cart state now clamps discounts to the subtotal (or 100% for percentage discounts) and disallows negative tax values, including when a cart is reduced after a discount was entered.
+
+No schema or migration change was needed. Remaining business-rule caveat: product-level `stock_qty` can diverge from currently sellable batch quantity (for example expired-only batches or pre-existing inventory reconciliation errors). Checkout applies stricter batch and product guards than the search labels, so a separate stock reconciliation/available-quantity policy may be needed if those cases occur. Manual testing should include repeated typed searches while typing quickly, barcode scans after another terminal sells or receives stock, a disconnected server/cache fallback, discounts after removing cart lines, and final checkout with low or expired-batch inventory.
+
+## 13. Sale Price Must Exceed Purchase Price
+
+The user reported that the product form accepted sale prices below purchase cost and requested a strict rule: every configured sale price must be greater than its corresponding purchase price.
+
+Implemented in the current worktree:
+
+- The product form validates the base price and each additional price tier as the user edits them, shows an inline error when a positive sale price is equal to or below cost, and disables save while such an error exists.
+- Blank or zero sale price continues to mean “calculate automatically.” The form now explains this behavior.
+- CSV import preview marks rows with invalid sale prices, including sale prices equal to or below purchase cost.
+- The product API schema enforces the comparison for base and tier prices, so non-UI clients cannot submit an invalid explicit price.
+- Automatic sale-price calculation now guarantees a value strictly above cost even when rounding would otherwise make the computed amount equal to cost.
+- Stock receipt rejects a product or selected legacy tier whose stored sale price is not above purchase cost, with a message to correct product pricing first.
+
+No Prisma schema or migration change is needed. Existing legacy products/tiers are not bulk-modified; edit and save them with valid prices before receiving stock against an invalid product/tier. Validate with server type-check/build, desktop type-check/renderer build, and `git diff --check`. Manual verification should include explicit lower/equal prices, valid prices, blank/zero automatic prices (including very small costs), CSV rows with invalid prices, and stock receipt for a legacy invalid tier.
+
+## 14. POS Search Reusing Old Stock Results
+
+The user reported that a product with 12 units could be added to the cart, then show zero stock when searched again.
+
+The POS search used a 100 ms debounced query key based only on the debounced text. Clearing the search after selecting a product and retyping the same text before the debounce timer elapsed could leave the query key unchanged, causing the old cached result to be reused without a new request.
+
+Implemented in the current worktree:
+
+- Added a search-session component to the POS product-search query key. Starting a new search after clearing the input now uses a fresh key even if the debounce value still matches the previous search.
+- The Enter-key fetch uses the same query key as the visible search results.
+- If an availability refresh fails, the POS now hides any old cached results and displays a clear inline refresh error instead of presenting stale stock as current.
+
+Validation passed: desktop TypeScript check, renderer production build, and `git diff --check`. A live browser check could not be completed because the local API at `localhost:3001` refused the connection when the shared app page was opened. Manual POS verification should add/select a product, immediately retype the same search before the debounce settles, and confirm the result refreshes with current stock; also test another terminal receiving/selling stock and a disconnected API.
+
+## 15. Stock Receipt Price Selection
+
+The user reported that the stock-receipt price selector showed only one configured price when a product had both its base prices and an additional price tier. The requested UI is a simple two-column list with Purchase and Sale values and no “Standard” or tier names.
+
+Implemented in the current worktree:
+
+- The stock-receipt price dropdown now includes the product’s base purchase/sale prices plus every configured tier.
+- Choices are displayed as rows under Purchase and Sale columns; tier names are omitted.
+- If no previous stock entry has a still-configured tier, the base product prices are selected by default. A previous valid tier remains the default when present.
+- Editing an existing stock entry can select the base-price row; the API update now resolves that explicit null tier choice to the product’s base prices and validates the pair.
+
+No schema or migration change is needed. Verify with a product that has only base prices, one with base plus multiple tiers, and editing a tier-priced stock entry to choose the base row. Desktop TypeScript/renderer build and server TypeScript/build checks are required; live UI verification depends on the local API being available.
+
+## 16. Company Dialog Spacing
+
+The user reported spacing issues in the Add Company dialog.
+
+The dialog header uses the shared component's horizontal inset, but the form lacked horizontal and bottom padding. This misaligned the company field and action buttons against the title and left the footer crowded against the dialog edge.
+
+Updated the form to align with the header's horizontal padding, added balanced vertical spacing, and separated the action row with a subtle divider and consistent top padding. Desktop TypeScript check, renderer build, and `git diff --check` passed.

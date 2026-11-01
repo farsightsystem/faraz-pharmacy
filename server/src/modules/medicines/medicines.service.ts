@@ -12,6 +12,18 @@ function formatProduct(p: any) {
   };
 }
 
+function resolveSalePrice(
+  purchasePrice: number,
+  salePrice: number | undefined,
+  markupPercent: number
+) {
+  if (salePrice && salePrice > 0) return salePrice;
+  return Math.max(
+    purchasePrice + 0.01,
+    Math.round(purchasePrice * (1 + markupPercent / 100))
+  );
+}
+
 // The product form picks from the company list, so this only ever resolves an
 // existing company. It used to create one on the fly, which let a typo silently
 // add a new manufacturer to the company module.
@@ -51,6 +63,7 @@ export const medicinesService = {
         updatedAt: true,
         company: { select: { name: true } },
         prices: {
+          orderBy: [{ createdAt: "asc" }, { id: "asc" }],
           select: {
             id: true,
             productId: true,
@@ -143,7 +156,10 @@ export const medicinesService = {
         skip,
         take: limit,
         orderBy,
-        include: { prices: true, company: true },
+        include: {
+          prices: { orderBy: [{ createdAt: "asc" }, { id: "asc" }] },
+          company: true,
+        },
       }),
     ]);
 
@@ -186,7 +202,7 @@ export const medicinesService = {
         active: 1,
         barcode: { equals: trimmed, mode: "insensitive" },
       },
-      include: { prices: true },
+      include: { prices: { orderBy: [{ createdAt: "asc" }, { id: "asc" }] } },
     });
     const formatted = formatProduct(product);
     cacheSet(cacheKey, formatted, 60); // cache barcode lookup for 60 seconds
@@ -217,6 +233,16 @@ export const medicinesService = {
         company: {
           select: { name: true },
         },
+        prices: {
+          orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+          select: {
+            id: true,
+            productId: true,
+            label: true,
+            purchasePrice: true,
+            salePrice: true,
+          },
+        },
       },
     });
   },
@@ -228,7 +254,7 @@ export const medicinesService = {
 
     const product = await prisma.product.findUnique({
       where: { id },
-      include: { prices: true },
+      include: { prices: { orderBy: [{ createdAt: "asc" }, { id: "asc" }] } },
     });
     if (!product) throw new NotFoundError("Product");
     const formatted = formatProduct(product);
@@ -237,20 +263,15 @@ export const medicinesService = {
   },
 
   async create(data: CreateProductInput) {
-    const salePrice =
-      data.salePrice && data.salePrice > 0
-        ? data.salePrice
-        : Math.round(data.purchasePrice * (1 + (data.markupPercent ?? 20) / 100));
+    const markupPercent = data.markupPercent ?? 20;
+    const salePrice = resolveSalePrice(data.purchasePrice, data.salePrice, markupPercent);
 
     const pricesData =
       data.prices && data.prices.length > 0
         ? data.prices.map((p) => ({
             label: p.label ?? "Standard",
             purchasePrice: p.purchasePrice,
-            salePrice:
-              p.salePrice && p.salePrice > 0
-                ? p.salePrice
-                : Math.round(p.purchasePrice * (1 + (data.markupPercent ?? 20) / 100)),
+            salePrice: resolveSalePrice(p.purchasePrice, p.salePrice, markupPercent),
           }))
         : [];
 
@@ -277,7 +298,10 @@ export const medicinesService = {
           },
         },
       },
-      include: { prices: true, company: true },
+      include: {
+        prices: { orderBy: [{ createdAt: "asc" }, { id: "asc" }] },
+        company: true,
+      },
     });
     cacheDelNamespace("products"); // invalidate product cache on write
     return formatProduct(product);
@@ -287,10 +311,8 @@ export const medicinesService = {
     const old = await prisma.product.findUnique({ where: { id } });
     if (!old) throw new NotFoundError("Product");
 
-    const salePrice =
-      data.salePrice && data.salePrice > 0
-        ? data.salePrice
-        : Math.round(data.purchasePrice * (1 + (data.markupPercent ?? old.markupPercent) / 100));
+    const markupPercent = data.markupPercent ?? old.markupPercent;
+    const salePrice = resolveSalePrice(data.purchasePrice, data.salePrice, markupPercent);
 
     const companyId = await resolveCompanyId(data.company);
 
@@ -303,19 +325,14 @@ export const medicinesService = {
       distributorId: data.distributorId ?? null,
       salePrice,
       purchasePrice: data.purchasePrice,
-      markupPercent: data.markupPercent ?? old.markupPercent,
-      stockQty: data.stockQty ?? 0,
-      expiry: data.expiry ?? null,
+      markupPercent,
     };
 
     if (data.prices) {
       const pricesData = data.prices.map((p) => ({
         label: p.label ?? "Standard",
         purchasePrice: p.purchasePrice,
-        salePrice:
-          p.salePrice && p.salePrice > 0
-            ? p.salePrice
-            : Math.round(p.purchasePrice * (1 + (data.markupPercent ?? old.markupPercent) / 100)),
+        salePrice: resolveSalePrice(p.purchasePrice, p.salePrice, markupPercent),
       }));
 
       await prisma.productPrice.deleteMany({ where: { productId: id } });
@@ -329,10 +346,19 @@ export const medicinesService = {
       },
     };
 
-    const product = await prisma.product.update({
-      where: { id },
-      data: updateData as any,
-      include: { prices: true, company: true },
+    const product = await prisma.$transaction(async (tx) => {
+      if (data.prices) {
+        await tx.productPrice.deleteMany({ where: { productId: id } });
+      }
+
+      return tx.product.update({
+        where: { id },
+        data: updateData as any,
+        include: {
+          prices: { orderBy: [{ createdAt: "asc" }, { id: "asc" }] },
+          company: true,
+        },
+      });
     });
     cacheDelNamespace("products"); // invalidate product cache on write
     return formatProduct(product);
@@ -358,14 +384,11 @@ export const medicinesService = {
     const product = await prisma.product.findUnique({ where: { id } });
     if (!product) throw new NotFoundError("Product");
 
-    // Delete linked barcodes first
-    await prisma.barcode.deleteMany({ where: { productId: id } });
-
-    // Delete price tiers
-    await prisma.productPrice.deleteMany({ where: { productId: id } });
-
-    // Delete the product
-    await prisma.product.delete({ where: { id } });
+    await prisma.$transaction(async (tx) => {
+      await tx.barcode.deleteMany({ where: { productId: id } });
+      await tx.productPrice.deleteMany({ where: { productId: id } });
+      await tx.product.delete({ where: { id } });
+    });
 
     cacheDelNamespace("products"); // invalidate product cache on write
     return { success: true };

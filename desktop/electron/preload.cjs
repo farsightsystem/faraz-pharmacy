@@ -43,7 +43,11 @@ contextBridge.exposeInMainWorld("electronAPI", {
       return new Promise((resolve, reject) => {
         try {
           const s = getSocket();
-          s.emit("product:scan", { barcode }, (result) => {
+          s.timeout(1000).emit("product:scan", { barcode }, (error, result) => {
+            if (error) {
+              reject(error);
+              return;
+            }
             resolve(result);
           });
         } catch (err) {

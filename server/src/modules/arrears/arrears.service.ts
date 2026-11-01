@@ -3,21 +3,7 @@ import { BadRequestError, NotFoundError, UnauthorizedError } from "../../utils/e
 import { Prisma } from "../../generated/prisma/client";
 import { authService } from "../auth/auth.service";
 import { clampPageSize } from "../../utils/pagination";
-
-function generateSaleId(prefix: string, lastId: string | null) {
-  let nextNum = 1;
-  if (lastId) {
-    nextNum = parseInt(lastId.slice(-6), 10) + 1;
-  }
-  return `${prefix}${nextNum.toString().padStart(6, "0")}`;
-}
-
-function makeSalePrefix(): string {
-  const now = new Date();
-  const yy = now.getFullYear().toString().slice(-2);
-  const mm = (now.getMonth() + 1).toString().padStart(2, "0");
-  return `${yy}${mm}-`;
-}
+import { nextSaleId } from "../sales/sales-id";
 
 export const arrearsService = {
   async list({ status, page = 1, limit = 200, search, dateFrom, dateTo, sortBy, sortOrder }: { status?: string; page?: number; limit?: number; search?: string; dateFrom?: string; dateTo?: string; sortBy?: string; sortOrder?: "asc" | "desc" } = {}) {
@@ -124,21 +110,21 @@ export const arrearsService = {
     const { valid } = await authService.verifyPassword(password);
     if (!valid) throw new UnauthorizedError("Invalid admin password");
 
-    const arrear = await prisma.arrear.findUnique({
-      where: { id },
-      include: { customer: { select: { name: true } } },
-    });
-    if (!arrear) throw new NotFoundError("Arrear");
-
-    if (amount > arrear.balanceDue) {
-      throw new BadRequestError(`Payment cannot exceed the balance due of ${arrear.balanceDue}`);
-    }
-
-    const newPaid = arrear.amountPaid + amount;
-    const newBalance = Math.max(0, arrear.totalBill - newPaid);
-    const newStatus = newBalance <= 0 ? "settled" : "pending";
-
     return prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+      await tx.$queryRaw`SELECT id FROM arrears WHERE id = ${id} FOR UPDATE`;
+      const arrear = await tx.arrear.findUnique({
+        where: { id },
+        include: { customer: { select: { name: true } } },
+      });
+      if (!arrear) throw new NotFoundError("Arrear");
+      if (amount > arrear.balanceDue) {
+        throw new BadRequestError(`Payment cannot exceed the balance due of ${arrear.balanceDue}`);
+      }
+
+      const newPaid = arrear.amountPaid + amount;
+      const newBalance = Math.max(0, arrear.totalBill - newPaid);
+      const newStatus = newBalance <= 0 ? "settled" : "pending";
+
       const updated = await tx.arrear.update({
         where: { id },
         data: { amountPaid: newPaid, balanceDue: newBalance, status: newStatus },
@@ -146,19 +132,18 @@ export const arrearsService = {
       });
 
       if (arrear.saleId) {
-        await tx.sale.update({ where: { id: arrear.saleId }, data: { status: "paid" } });
+        await tx.sale.update({
+          where: { id: arrear.saleId },
+          data: { status: newBalance <= 0 ? "paid" : "partial" },
+        });
       }
 
-      const prefix = makeSalePrefix();
-      const last = await tx.sale.findFirst({
-        where: { id: { startsWith: prefix } },
-        orderBy: { id: "desc" },
-      });
-      const saleId = generateSaleId(prefix, last?.id ?? null);
+      const saleId = await nextSaleId(tx);
 
       const paymentSale = await tx.sale.create({
         data: {
           id: saleId,
+          kind: "arrear_payment",
           customerId: arrear.customerId,
           subtotal: amount,
           discount: 0,
@@ -189,15 +174,15 @@ export const arrearsService = {
     const { valid } = await authService.verifyPassword(password);
     if (!valid) throw new UnauthorizedError("Invalid admin password");
 
-    const arrear = await prisma.arrear.findUnique({
-      where: { id },
-      include: { customer: { select: { name: true } } },
-    });
-    if (!arrear) throw new NotFoundError("Arrear");
-
-    const settleAmount = arrear.balanceDue;
-
     return prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+      await tx.$queryRaw`SELECT id FROM arrears WHERE id = ${id} FOR UPDATE`;
+      const arrear = await tx.arrear.findUnique({
+        where: { id },
+        include: { customer: { select: { name: true } } },
+      });
+      if (!arrear) throw new NotFoundError("Arrear");
+      const settleAmount = arrear.balanceDue;
+
       const updated = await tx.arrear.update({
         where: { id },
         data: { amountPaid: arrear.totalBill, balanceDue: 0, status: "settled" },
@@ -208,16 +193,12 @@ export const arrearsService = {
         await tx.sale.update({ where: { id: arrear.saleId }, data: { status: "paid" } });
       }
 
-      const prefix = makeSalePrefix();
-      const last = await tx.sale.findFirst({
-        where: { id: { startsWith: prefix } },
-        orderBy: { id: "desc" },
-      });
-      const saleId = generateSaleId(prefix, last?.id ?? null);
+      const saleId = await nextSaleId(tx);
 
       const paymentSale = await tx.sale.create({
         data: {
           id: saleId,
+          kind: "arrear_payment",
           customerId: arrear.customerId,
           subtotal: settleAmount,
           discount: 0,
@@ -249,6 +230,10 @@ export const arrearsService = {
   async delete(id: string) {
     const arrear = await prisma.arrear.findUnique({ where: { id } });
     if (!arrear) throw new NotFoundError("Arrear");
+    const hasPaymentHistory = await prisma.arrearPayment.count({ where: { arrearId: id } });
+    if (arrear.saleId || hasPaymentHistory > 0 || arrear.balanceDue > 0) {
+      throw new BadRequestError("Arrears linked to a sale, payments, or outstanding balance cannot be deleted");
+    }
     await prisma.arrear.delete({ where: { id } });
     return { success: true };
   },
@@ -448,28 +433,28 @@ export const arrearsService = {
       throw new BadRequestError("Payment amount must be greater than 0");
     }
 
-    const pendingArrears = await prisma.arrear.findMany({
-      where: { customerId, status: "pending" },
-      orderBy: { createdAt: "asc" },
-    });
-
-    const totalBalanceDue = pendingArrears.reduce((sum, a) => sum + a.balanceDue, 0);
-
-    if (amount > totalBalanceDue + 0.001) {
-      throw new BadRequestError(`Payment cannot exceed total balance due of PKR ${totalBalanceDue}`);
-    }
-
     return prisma.$transaction(async (tx: Prisma.TransactionClient) => {
-      const prefix = makeSalePrefix();
-      const last = await tx.sale.findFirst({
-        where: { id: { startsWith: prefix } },
-        orderBy: { id: "desc" },
+      await tx.$queryRaw`
+        SELECT id FROM arrears
+        WHERE customer_id = ${customerId} AND status = 'pending'
+        ORDER BY created_at ASC
+        FOR UPDATE
+      `;
+      const pendingArrears = await tx.arrear.findMany({
+        where: { customerId, status: "pending" },
+        orderBy: { createdAt: "asc" },
       });
-      const saleId = generateSaleId(prefix, last?.id ?? null);
+      const totalBalanceDue = pendingArrears.reduce((sum, arrear) => sum + arrear.balanceDue, 0);
+      if (amount > totalBalanceDue + 0.001) {
+        throw new BadRequestError(`Payment cannot exceed total balance due of PKR ${totalBalanceDue}`);
+      }
+
+      const saleId = await nextSaleId(tx);
 
       const paymentSale = await tx.sale.create({
         data: {
           id: saleId,
+          kind: "arrear_payment",
           customerId,
           subtotal: amount,
           discount: 0,
@@ -499,10 +484,10 @@ export const arrearsService = {
           },
         });
 
-        if (arrear.saleId && newStatus === "settled") {
+        if (arrear.saleId) {
           await tx.sale.update({
             where: { id: arrear.saleId },
-            data: { status: "paid" },
+            data: { status: newStatus === "settled" ? "paid" : "partial" },
           });
         }
 

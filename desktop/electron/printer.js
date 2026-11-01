@@ -1044,19 +1044,22 @@ body {
 
 
   <!-- =====================================
-       TOTAL REFUND
+       RETURN VALUE AND SETTLEMENT
   ====================================== -->
 
   <div class="total">
 
-    <span class="total-label">
-      Total Refund :
-    </span>
+    <span class="total-label">Return Value:</span>
+    <span class="total-value">Rs ${totalRefund.toFixed(0)}</span>
 
-    <span class="total-value">
-      Rs ${totalRefund.toFixed(0)}
-    </span>
-
+  </div>
+  <div class="total">
+    <span class="total-label">Applied to Arrears:</span>
+    <span class="total-value">Rs ${Number(returnData.credit_applied ?? returnData.creditApplied ?? 0).toFixed(0)}</span>
+  </div>
+  <div class="total">
+    <span class="total-label">Cash Refunded:</span>
+    <span class="total-value">Rs ${Number(returnData.cash_refunded ?? returnData.cashRefunded ?? 0).toFixed(0)}</span>
   </div>
 
 
@@ -1977,10 +1980,26 @@ function generateESCPOSReturnReceipt(returnData, sale) {
 
   parts.push(escposLine("-", L));
   parts.push(escposBold(1));
-  const totalLabel = "Total Refund".padEnd(colName);
+  const totalLabel = "Return value".padEnd(colName);
   const totalRefund = Number(returnData.refund_amount ?? returnData.refundAmount ?? 0);
   const totalVal = totalRefund.toFixed(0).padStart(colAmt);
   parts.push(escposText(totalLabel + totalVal));
+  parts.push(
+    escposText(
+      "Applied to arrears".padEnd(colName) +
+        Number(returnData.credit_applied ?? returnData.creditApplied ?? 0)
+          .toFixed(0)
+          .padStart(colAmt)
+    )
+  );
+  parts.push(
+    escposText(
+      "Cash refunded".padEnd(colName) +
+        Number(returnData.cash_refunded ?? returnData.cashRefunded ?? 0)
+          .toFixed(0)
+          .padStart(colAmt)
+    )
+  );
   parts.push(escposBold(0));
   parts.push(escposText("Reason: " + (returnData.reason || "N/A")));
   parts.push(escposLine("=", L));

@@ -12,9 +12,17 @@ interface CustomerStats {
 }
 
 const customerStatsSelect = `
-  (SELECT COUNT(*)::int FROM sales s WHERE s.customer_id = c.id) AS total_purchases,
+  (SELECT COUNT(*)::int
+   FROM sales s
+   WHERE s.customer_id = c.id
+     AND s.kind = 'sale'
+     AND EXISTS (SELECT 1 FROM sale_items si WHERE si.sale_id = s.id)) AS total_purchases,
   COALESCE((SELECT SUM(a.balance_due) FROM arrears a WHERE a.customer_id = c.id AND a.status = 'pending'), 0) AS outstanding_arrear,
-  (SELECT MAX(s.created_at) FROM sales s WHERE s.customer_id = c.id) AS last_purchase`;
+  (SELECT MAX(s.created_at)
+   FROM sales s
+   WHERE s.customer_id = c.id
+     AND s.kind = 'sale'
+     AND EXISTS (SELECT 1 FROM sale_items si WHERE si.sale_id = s.id)) AS last_purchase`;
 
 export const customersService = {
   async list({
@@ -256,9 +264,15 @@ export const customersService = {
     const customer = await prisma.customer.findUnique({ where: { id } });
     if (!customer) throw new NotFoundError("Customer");
 
+    const [saleCount, arrearCount] = await Promise.all([
+      prisma.sale.count({ where: { customerId: id } }),
+      prisma.arrear.count({ where: { customerId: id } }),
+    ]);
+    if (saleCount > 0 || arrearCount > 0) {
+      throw new BadRequestError("Customers with sales or arrears history cannot be permanently deleted; archive the customer instead");
+    }
+
     const result = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
-      await tx.sale.updateMany({ where: { customerId: id }, data: { customerId: null } });
-      await tx.arrear.deleteMany({ where: { customerId: id } });
       await tx.customer.delete({ where: { id } });
       return { success: true };
     });

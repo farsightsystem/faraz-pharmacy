@@ -46,12 +46,15 @@ export default function GlobalSearch() {
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const debouncedQuery = useDebounce(query.trim(), 150);
+  const isSearching = query.trim().length >= 1;
+  const isSearchSettled = query.trim().toLowerCase() === debouncedQuery.toLowerCase();
 
   // Fetch initial pool of products for random suggestions
   const { data: initialProductsData, isLoading: loadingInitial } = useQuery({
     queryKey: ["global-search-catalog-sample"],
     queryFn: () => api.products.listPaginated({ page: 1, limit: 50 }),
-    staleTime: 60_000,
+    staleTime: 0,
+    refetchOnWindowFocus: true,
   });
 
   // Pick 5 random products from the catalog to show on focus when query is empty
@@ -64,8 +67,11 @@ export default function GlobalSearch() {
   }, [initialProductsData]);
 
   // Search products when user types (triggers on 1st character)
-  const isSearching = debouncedQuery.length >= 1;
-  const { data: searchResults = [], isLoading: loadingSearch } = useQuery({
+  const {
+    data: searchResults = [],
+    isLoading: loadingSearch,
+    isFetching: fetchingSearch,
+  } = useQuery({
     queryKey: ["global-search-products", debouncedQuery],
     queryFn: async () => {
       if (!isSearching) return [];
@@ -73,17 +79,21 @@ export default function GlobalSearch() {
       return (res || []).map(normalizeProduct);
     },
     enabled: isSearching,
+    staleTime: 0,
+    refetchOnWindowFocus: true,
   });
 
-  const isLoading = isSearching ? loadingSearch : loadingInitial;
+  const isLoading = isSearching
+    ? !isSearchSettled || loadingSearch || fetchingSearch
+    : loadingInitial;
 
   // The active list of products to display: either live search results or 5 random picks
   const activeProducts = useMemo(() => {
     if (isSearching) {
-      return searchResults;
+      return isSearchSettled && !fetchingSearch ? searchResults : [];
     }
     return randomProducts;
-  }, [isSearching, searchResults, randomProducts]);
+  }, [isSearching, isSearchSettled, fetchingSearch, searchResults, randomProducts]);
 
   // Handle opening product drawer
   const handleOpenProduct = (product: Product) => {
@@ -288,7 +298,9 @@ export default function GlobalSearch() {
                         <div className="flex items-center gap-3 shrink-0">
                           <div className="text-right">
                             <span className="text-xs font-bold text-text-primary font-display block">
-                              {formatCurrency(product.sale_price)}
+                              {product.prices?.length
+                                ? "Price options"
+                                : formatCurrency(product.sale_price)}
                             </span>
                             <span
                               className={`text-[10px] font-semibold px-2 py-0.5 rounded-full inline-block mt-0.5 ${

@@ -9,6 +9,8 @@ function normalizeReturnItem(i: any) {
     product_name: i.productName,
     quantity: i.quantity,
     refund_amount: i.refundAmount,
+    inventory_status: i.inventoryStatus,
+    batch_id: i.batchId ?? null,
   };
 }
 
@@ -18,6 +20,8 @@ function normalizeReturn(r: any) {
     sale_id: r.saleId,
     customer_name: r.sale?.customer?.name ?? null,
     refund_amount: r.refundAmount,
+    credit_applied: r.creditApplied,
+    cash_refunded: r.cashRefunded,
     reason: r.reason,
     created_at: r.createdAt,
     items: (r.items ?? []).map(normalizeReturnItem),
@@ -62,6 +66,19 @@ export const returnsController = {
     try {
       const result = await returnsService.create(req.body);
       res.json(normalizeReturn(result));
+    } catch (err) {
+      next(err);
+    }
+  },
+
+  async setDisposition(req: Request, res: Response, next: NextFunction) {
+    try {
+      const result = await returnsService.setDisposition(req.params.itemId, req.body.action);
+      res.json({
+        id: result.id,
+        inventory_status: result.inventoryStatus,
+        batch_id: result.batchId ?? null,
+      });
     } catch (err) {
       next(err);
     }

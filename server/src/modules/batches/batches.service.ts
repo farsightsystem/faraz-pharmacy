@@ -1,14 +1,22 @@
 import { prisma } from "../../services/prisma";
 
+function dateKey(date: Date): string {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(
+    date.getDate()
+  ).padStart(2, "0")}`;
+}
+
 export const batchesService = {
   async listByProduct(productId: string) {
+    const today = dateKey(new Date());
     return prisma.productBatch.findMany({
       where: {
         productId,
         active: 1,
         quantity: { gt: 0 },
+        OR: [{ expiryDate: null }, { expiryDate: { gte: today } }],
       },
-      orderBy: { expiryDate: "asc" },
+      orderBy: { expiryDate: { sort: "asc", nulls: "last" } },
       include: {
         distributor: { select: { id: true, name: true } },
       },
@@ -20,13 +28,14 @@ export const batchesService = {
     const targetDate = new Date();
     targetDate.setDate(targetDate.getDate() + days);
 
-    const targetDateStr = targetDate.toISOString().slice(0, 10);
+    const today = dateKey(now);
+    const targetDateStr = dateKey(targetDate);
 
     return prisma.productBatch.findMany({
       where: {
         active: 1,
         quantity: { gt: 0 },
-        expiryDate: { lte: targetDateStr },
+        expiryDate: { gte: today, lte: targetDateStr },
       },
       orderBy: { expiryDate: "asc" },
       include: {
@@ -110,7 +119,10 @@ export const batchesService = {
         where,
         skip,
         take: limit,
-        orderBy: [{ expiryDate: "asc" }, { createdAt: "desc" }],
+        orderBy: [
+          { expiryDate: { sort: "asc", nulls: "last" } },
+          { createdAt: "desc" },
+        ],
         include: {
           product: { select: { id: true, name: true, barcode: true } },
           distributor: { select: { id: true, name: true } },

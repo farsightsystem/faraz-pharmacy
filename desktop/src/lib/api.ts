@@ -1,6 +1,7 @@
 import type {
   PaginatedResponse,
   Product,
+  ProductPrice,
   ProductInput,
   Customer,
   CustomerInput,
@@ -46,7 +47,13 @@ function getToken(): string | null {
   return localStorage.getItem("faraz_access_token");
 }
 
-async function fetchJson<T>(method: string, path: string, body?: unknown, auth = true): Promise<T> {
+async function fetchJson<T>(
+  method: string,
+  path: string,
+  body?: unknown,
+  auth = true,
+  timeoutMs?: number
+): Promise<T> {
   const headers: Record<string, string> = { "Content-Type": "application/json" };
   if (auth) {
     const token = getToken();
@@ -56,6 +63,7 @@ async function fetchJson<T>(method: string, path: string, body?: unknown, auth =
     method,
     headers,
     body: body ? JSON.stringify(body) : undefined,
+    signal: timeoutMs ? AbortSignal.timeout(timeoutMs) : undefined,
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({ error: `HTTP ${res.status}` }));
@@ -87,6 +95,20 @@ async function fetchAllPages<T>(path: string, filters = new URLSearchParams()): 
     page += 1;
   }
 }
+
+type ProductBarcodeLookup = {
+  id: string;
+  barcode: string;
+  name: string;
+  salePrice: number;
+  purchasePrice: number;
+  stockQty: number;
+  category: string;
+  location: string;
+  active: number;
+  company: { name: string } | null;
+  prices: ProductPrice[];
+};
 
 const api = {
   auth: {
@@ -166,33 +188,25 @@ const api = {
 
     /**
      * Fast barcode lookup for POS scanning.
-     * Returns only core fields (camelCase from Prisma) to keep the JSON payload tiny.
-     * Use this for high-frequency barcode scans; it skips the full normalization
-     * and prices relation to minimize payload size.
+     * Returns checkout fields and configured price tiers (camelCase from Prisma).
      */
-    getByBarcodeFast: (b: string): Promise<{
-      id: string;
-      barcode: string;
-      name: string;
-      salePrice: number;
-      purchasePrice: number;
-      stockQty: number;
-      category: string;
-      location: string;
-      active: number;
-      company: { name: string } | null;
-    } | null> =>
+    getByBarcodeFast: (b: string): Promise<ProductBarcodeLookup | null> =>
       fetchJson(
         "GET",
-        `/api/products/barcode-fast/${encodeURIComponent(b)}`
+        `/api/products/barcode-fast/${encodeURIComponent(b)}`,
+        undefined,
+        true,
+        1500
       ),
 
     /**
      * Socket.io barcode scan — uses persistent WebSocket connection instead of HTTP.
      * Faster for high-frequency POS scans because it avoids HTTP handshake overhead.
      */
-    socketProductScan: (b: string) => {
-      const s = (window as unknown as { electronAPI?: { socket?: { scanBarcode: (b: string) => Promise<any> } } }).electronAPI?.socket;
+    socketProductScan: (b: string): Promise<ProductBarcodeLookup | null> => {
+      const s = (window as unknown as {
+        electronAPI?: { socket?: { scanBarcode: (b: string) => Promise<ProductBarcodeLookup | null> } };
+      }).electronAPI?.socket;
       if (!s) {
         throw new Error("Socket.io not available in this environment");
       }
@@ -487,6 +501,11 @@ const api = {
     },
     getById: (id: string): Promise<ReturnEntry> => fetchJson("GET", `/api/returns/${id}`),
     create: (r: ReturnInput): Promise<ReturnEntry> => fetchJson("POST", "/api/returns", r),
+    setDisposition: (
+      itemId: string,
+      action: "restock" | "dispose"
+    ): Promise<{ id: string; inventory_status: "restocked" | "disposed"; batch_id: string | null }> =>
+      fetchJson("POST", `/api/returns/items/${itemId}/disposition`, { action }),
   },
   expenses: {
     list: (opts: { dateFrom?: string; dateTo?: string } = {}): Promise<Expense[]> => {

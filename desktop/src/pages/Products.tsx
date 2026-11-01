@@ -235,6 +235,25 @@ export default function Products() {
     showArchived ? !p.active : !!p.active
   );
   const meta = paginatedData?.meta || { total: 0, page: 1, limit: 50, totalPages: 1 };
+  const invalidBaseSalePrice =
+    form.salePrice.trim() !== "" &&
+    Number(form.salePrice) !== 0 &&
+    Number.isFinite(Number(form.purchasePrice)) &&
+    Number.isFinite(Number(form.salePrice)) &&
+    Number(form.salePrice) <= Number(form.purchasePrice);
+  const invalidTierSalePrices = form.prices.map((tier) => {
+    const purchasePrice = Number(tier.purchasePrice);
+    const salePrice = Number(tier.salePrice);
+    return (
+      tier.purchasePrice.trim() !== "" &&
+      tier.salePrice.trim() !== "" &&
+      salePrice !== 0 &&
+      Number.isFinite(purchasePrice) &&
+      Number.isFinite(salePrice) &&
+      salePrice <= purchasePrice
+    );
+  });
+  const hasInvalidSalePrice = invalidBaseSalePrice || invalidTierSalePrices.some(Boolean);
 
   const { data: categories = [] } = useQuery({
     queryKey: ["categories"],
@@ -562,6 +581,15 @@ export default function Products() {
       if (!row.purchasePrice) rowErrors.push("Missing purchase price");
       else if (isNaN(Number(row.purchasePrice)) || Number(row.purchasePrice) < 0)
         rowErrors.push("Invalid purchase price");
+      if (row.salePrice && (isNaN(Number(row.salePrice)) || Number(row.salePrice) < 0)) {
+        rowErrors.push("Invalid sale price");
+      } else if (
+        row.salePrice &&
+        Number(row.salePrice) > 0 &&
+        Number(row.salePrice) <= Number(row.purchasePrice)
+      ) {
+        rowErrors.push("Sale price must be greater than purchase price");
+      }
       if (rowErrors.length > 0) row.error = rowErrors.join("; ");
       rows.push(row);
     }
@@ -1389,6 +1417,7 @@ export default function Products() {
                   <Label>Purchase Price</Label>
                   <Input
                     type="number"
+                    min="0"
                     value={form.purchasePrice}
                     onChange={(e) => setForm({ ...form, purchasePrice: e.target.value })}
                   />
@@ -1397,9 +1426,21 @@ export default function Products() {
                   <Label>Sale Price</Label>
                   <Input
                     type="number"
+                    min="0"
                     value={form.salePrice}
                     onChange={(e) => setForm({ ...form, salePrice: e.target.value })}
+                    aria-invalid={invalidBaseSalePrice}
                   />
+                  {invalidBaseSalePrice ? (
+                    <p className="text-[11px] text-danger" role="alert">
+                      Sale price must be greater than purchase price (
+                      {formatCurrency(Number(form.purchasePrice))}).
+                    </p>
+                  ) : (
+                    <p className="text-[11px] text-text-secondary">
+                      Leave blank or enter 0 to calculate automatically.
+                    </p>
+                  )}
                 </div>
               </div>
             </div>
@@ -1420,6 +1461,11 @@ export default function Products() {
               {form.prices.length === 0 && (
                 <p className="text-[11px] text-text-secondary">No additional prices.</p>
               )}
+              {form.prices.length > 0 && (
+                <p className="text-[11px] text-text-secondary">
+                  Leave a tier sale price blank or enter 0 to calculate it automatically.
+                </p>
+              )}
               {form.prices.map((pt, i) => (
                 <div key={i} className="flex items-start gap-2 p-2 rounded-lg bg-surface-2">
                   <div className="flex-1 grid grid-cols-2 gap-2">
@@ -1427,6 +1473,7 @@ export default function Products() {
                       <Label className="text-[10px] text-text-secondary">Purchase</Label>
                       <Input
                         type="number"
+                        min="0"
                         value={pt.purchasePrice}
                         onChange={(e) => updatePriceTier(i, "purchasePrice", e.target.value)}
                         className="h-7 text-[11px]"
@@ -1436,10 +1483,17 @@ export default function Products() {
                       <Label className="text-[10px] text-text-secondary">Sale</Label>
                       <Input
                         type="number"
+                        min="0"
                         value={pt.salePrice}
                         onChange={(e) => updatePriceTier(i, "salePrice", e.target.value)}
                         className="h-7 text-[11px]"
+                        aria-invalid={invalidTierSalePrices[i]}
                       />
+                      {invalidTierSalePrices[i] && (
+                        <p className="mt-1 text-[10px] text-danger" role="alert">
+                          Must exceed {formatCurrency(Number(pt.purchasePrice))}.
+                        </p>
+                      )}
                     </div>
                   </div>
                   <button
@@ -1458,6 +1512,7 @@ export default function Products() {
               disabled={
                 !form.name ||
                 !form.purchasePrice ||
+                hasInvalidSalePrice ||
                 createMutation.isPending ||
                 updateMutation.isPending
               }

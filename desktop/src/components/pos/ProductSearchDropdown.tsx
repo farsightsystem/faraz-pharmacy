@@ -157,7 +157,7 @@ export default function ProductSearchDropdown({
                   isSelected ? "text-white" : "text-brand"
                 )}
               >
-                {formatCurrency(product.sale_price)}
+                {product.prices?.length ? "Price options" : formatCurrency(product.sale_price)}
               </span>
             </button>
           );

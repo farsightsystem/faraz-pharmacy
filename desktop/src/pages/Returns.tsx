@@ -52,6 +52,21 @@ interface ReturnsProps {
   isStandaloneWindow?: boolean;
 }
 
+function groupSaleItems(items: SaleItem[] = []): SaleItem[] {
+  const grouped = new Map<string, SaleItem>();
+  for (const item of items) {
+    const existing = grouped.get(item.product_id);
+    if (existing) {
+      existing.quantity += item.quantity;
+      existing.subtotal += item.subtotal;
+      existing.unit_price = existing.subtotal / existing.quantity;
+    } else {
+      grouped.set(item.product_id, { ...item });
+    }
+  }
+  return [...grouped.values()];
+}
+
 export default function Returns({
   defaultMode = "history",
   isStandaloneWindow = false,
@@ -91,8 +106,6 @@ export default function Returns({
   const [reason, setReason] = useState("");
   const [returnQtys, setReturnQtys] = useState<Record<string, number>>({});
   const [error, setError] = useState("");
-  const [customRefundAmount, setCustomRefundAmount] = useState<string>("");
-  const [isEditingRefund, setIsEditingRefund] = useState(false);
 
   // Terminal invoice search state
   const [invoiceSearch, setInvoiceSearch] = useState("");
@@ -131,9 +144,10 @@ export default function Returns({
 
   // Calculate return status for selected sale
   const hasReturns = (selectedSale?.return_count ?? 0) > 0;
+  const groupedSaleItems = groupSaleItems(selectedSale?.items ?? []);
   const fullyReturned =
-    (selectedSale?.items?.length ?? 0) > 0 &&
-    (selectedSale?.items ?? []).every((i: SaleItem) => i.quantity - (i.returned_qty ?? 0) <= 0);
+    groupedSaleItems.length > 0 &&
+    groupedSaleItems.every((i) => i.quantity - (i.returned_qty ?? 0) <= 0);
 
   // Auto-focus search input when terminal view is active and no invoice is selected
   useEffect(() => {
@@ -155,8 +169,6 @@ export default function Returns({
           setSelectedSaleId("");
           setReturnQtys({});
           setError("");
-          setCustomRefundAmount("");
-          setIsEditingRefund(false);
           setTimeout(() => terminalSearchRef.current?.focus(), 60);
         } else if (mode === "terminal" && !isStandaloneWindow) {
           e.preventDefault();
@@ -238,8 +250,6 @@ export default function Returns({
     setSelectedSaleId(sale.id);
     setReturnQtys({});
     setError("");
-    setCustomRefundAmount("");
-    setIsEditingRefund(false);
   }
 
   // Barcode scanner handles Enter immediately
@@ -291,11 +301,13 @@ export default function Returns({
     if (!selectedSale?.items) return 0;
     const discountRatio =
       selectedSale.subtotal > 0 ? selectedSale.discount / selectedSale.subtotal : 0;
+    const taxRatio =
+      selectedSale.subtotal > 0 ? (selectedSale.tax ?? 0) / selectedSale.subtotal : 0;
     return Object.entries(returnQtys).reduce((sum, [id, qty]) => {
-      const item = selectedSale.items?.find((i: SaleItem) => i.product_id === id);
+      const item = groupedSaleItems.find((i) => i.product_id === id);
       if (!item) return sum;
       const rawAmount = item.unit_price * qty;
-      const discountedAmount = rawAmount * (1 - discountRatio);
+      const discountedAmount = rawAmount * (1 - discountRatio + taxRatio);
       return sum + Math.round(discountedAmount);
     }, 0);
   }
@@ -303,7 +315,7 @@ export default function Returns({
   function calcRawRefundAmount(): number {
     if (!selectedSale?.items) return 0;
     return Object.entries(returnQtys).reduce((sum, [id, qty]) => {
-      const item = selectedSale.items?.find((i: SaleItem) => i.product_id === id);
+      const item = groupedSaleItems.find((i) => i.product_id === id);
       return sum + (item?.unit_price || 0) * qty;
     }, 0);
   }
@@ -334,7 +346,7 @@ export default function Returns({
   function handleReturnAll() {
     if (!selectedSale?.items) return;
     const allQtys: Record<string, number> = {};
-    for (const item of selectedSale.items) {
+    for (const item of groupedSaleItems) {
       const remaining = Math.max(0, item.quantity - (item.returned_qty ?? 0));
       if (remaining > 0) {
         allQtys[item.product_id] = remaining;
@@ -348,8 +360,6 @@ export default function Returns({
     setSelectedSaleId("");
     setReturnQtys({});
     setError("");
-    setCustomRefundAmount("");
-    setIsEditingRefund(false);
     setTimeout(() => terminalSearchRef.current?.focus(), 60);
   }
 
@@ -372,36 +382,27 @@ export default function Returns({
   const createMutation = useMutation({
     mutationFn: async () => {
       if (!selectedSale?.items) throw new Error("Sale items not loaded");
-      const saleItems = selectedSale.items;
       const discountRatio =
         selectedSale.subtotal > 0 ? selectedSale.discount / selectedSale.subtotal : 0;
       const items = Object.entries(returnQtys)
         .filter(([_, qty]) => qty > 0)
-        .map(([productId, quantity]) => {
-          const item = saleItems.find((i: SaleItem) => i.product_id === productId);
-          const rawAmount = (item?.unit_price || 0) * quantity;
-          const discountedAmount = rawAmount * (1 - discountRatio);
-          return {
-            productId,
-            productName: item?.product_name || "",
-            quantity,
-            refundAmount: Math.round(discountedAmount),
-          };
-        });
-      const calculatedRefund = items.reduce((s, i) => s + i.refundAmount, 0);
-      const finalRefund = customRefundAmount !== "" ? Number(customRefundAmount) : calculatedRefund;
+        .map(([productId, quantity]) => ({ productId, quantity }));
       return api.returns.create({
         saleId: selectedSaleId,
-        refundAmount: finalRefund,
         reason,
         items,
       });
     },
     onSuccess: (returnData) => {
-      toast.success("Return processed successfully");
+      toast.success(
+        `Return recorded: ${formatCurrency(returnData.credit_applied)} applied to arrears, ${formatCurrency(returnData.cash_refunded)} refunded in cash. Items are quarantined for inspection.`
+      );
       queryClient.invalidateQueries({ queryKey: ["returns"] });
       queryClient.invalidateQueries({ queryKey: ["products"] });
       queryClient.invalidateQueries({ queryKey: ["sales"] });
+      queryClient.invalidateQueries({ queryKey: ["arrears"] });
+      queryClient.invalidateQueries({ queryKey: ["arrears-by-customer"] });
+      queryClient.invalidateQueries({ queryKey: ["batches"] });
 
       setPendingReturnData(returnData);
       if (selectedSale) setPendingSale(selectedSale);
@@ -412,13 +413,26 @@ export default function Returns({
       setReason("");
       setReturnQtys({});
       setError("");
-      setCustomRefundAmount("");
-      setIsEditingRefund(false);
     },
     onError: (err: Error) => {
       toast.error(err.message);
       setError(err instanceof Error ? err.message : "Failed to process return");
     },
+  });
+
+  const dispositionMutation = useMutation({
+    mutationFn: ({ itemId, action }: { itemId: string; action: "restock" | "dispose" }) =>
+      api.returns.setDisposition(itemId, action),
+    onSuccess: async () => {
+      queryClient.invalidateQueries({ queryKey: ["returns"] });
+      queryClient.invalidateQueries({ queryKey: ["products"] });
+      queryClient.invalidateQueries({ queryKey: ["batches"] });
+      if (selectedReturn) {
+        setSelectedReturn(await api.returns.getById(selectedReturn.id));
+      }
+      toast.success("Returned item inspection recorded");
+    },
+    onError: (err: Error) => toast.error(err.message),
   });
 
   const generateReturnHtml = useCallback(
@@ -555,8 +569,15 @@ export default function Returns({
 
   const rawRefundAmount = calcRawRefundAmount();
   const calculatedRefund = calcRefundAmount();
-  const discountDeducted = rawRefundAmount - calculatedRefund;
-  const finalRefund = customRefundAmount !== "" ? Number(customRefundAmount) : calculatedRefund;
+  const discountDeducted =
+    selectedSale?.subtotal && selectedSale.subtotal > 0
+      ? Math.round((rawRefundAmount * selectedSale.discount) / selectedSale.subtotal)
+      : 0;
+  const taxRefunded =
+    selectedSale?.subtotal && selectedSale.subtotal > 0
+      ? Math.round((rawRefundAmount * (selectedSale.tax ?? 0)) / selectedSale.subtotal)
+      : 0;
+  const finalRefund = calculatedRefund;
   const hasItemsToReturn = Object.values(returnQtys).some((q) => q > 0);
 
   // =========================================================================
@@ -1026,15 +1047,27 @@ export default function Returns({
                               </tr>
                             </thead>
                             <tbody className="divide-y divide-border/60 text-xs">
-                              {selectedSale.items?.map((item: SaleItem) => {
+                              {groupedSaleItems.map((item) => {
                                 const returnedQty = item.returned_qty ?? 0;
                                 const remaining = Math.max(0, item.quantity - returnedQty);
                                 const qty = returnQtys[item.product_id] || 0;
                                 const rawItemSubtotal = item.unit_price * qty;
                                 const discountedItemSubtotal = Math.round(
-                                  rawItemSubtotal * (1 - discountRatio)
+                                  rawItemSubtotal *
+                                    (1 -
+                                      discountRatio +
+                                      (selectedSale.subtotal > 0
+                                        ? (selectedSale.tax ?? 0) / selectedSale.subtotal
+                                        : 0))
                                 );
-                                const netUnitRate = Math.round(item.unit_price * (1 - discountRatio));
+                                const netUnitRate = Math.round(
+                                  item.unit_price *
+                                    (1 -
+                                      discountRatio +
+                                      (selectedSale.subtotal > 0
+                                        ? (selectedSale.tax ?? 0) / selectedSale.subtotal
+                                        : 0))
+                                );
 
                                 return (
                                   <tr
@@ -1205,61 +1238,29 @@ export default function Returns({
                               </span>
                             </div>
                           )}
+                          {taxRefunded > 0 && (
+                            <div className="flex items-center justify-between text-text-secondary">
+                              <span>Original sale tax returned</span>
+                              <span className="font-mono font-semibold">
+                                +{formatCurrency(taxRefunded)}
+                              </span>
+                            </div>
+                          )}
 
                           <div className="pt-3 border-t border-border flex items-baseline justify-between">
                             <div>
-                              <span className="font-bold text-sm text-text-primary block">
-                                Net Refund to Pay
-                              </span>
+                              <span className="font-bold text-sm text-text-primary block">Return Value</span>
                               <span className="text-[11px] text-text-secondary">
-                                Accurate discounted restitution
+                                Calculated from the original invoice, including its tax
                               </span>
                             </div>
                             <span className="font-mono text-2xl font-black text-danger">
                               {formatCurrency(finalRefund)}
                             </span>
                           </div>
-
-                          {/* Manual Override Option */}
-                          <div className="pt-1">
-                            {isEditingRefund ? (
-                              <div className="bg-surface-2 p-2.5 rounded-xl border border-border space-y-1.5">
-                                <Label className="text-[11px]">Manual Override Amount (PKR)</Label>
-                                <div className="flex items-center gap-2">
-                                  <Input
-                                    type="number"
-                                    value={customRefundAmount}
-                                    onChange={(e) => setCustomRefundAmount(e.target.value)}
-                                    className="h-8 font-mono font-bold text-danger text-sm"
-                                    autoFocus
-                                  />
-                                  <Button
-                                    type="button"
-                                    variant="ghost"
-                                    size="sm"
-                                    className="h-8 text-xs"
-                                    onClick={() => {
-                                      setIsEditingRefund(false);
-                                      setCustomRefundAmount("");
-                                    }}
-                                  >
-                                    Reset
-                                  </Button>
-                                </div>
-                              </div>
-                            ) : (
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setCustomRefundAmount(String(calculatedRefund));
-                                  setIsEditingRefund(true);
-                                }}
-                                className="text-[11px] text-text-secondary hover:text-brand underline cursor-pointer"
-                              >
-                                Need custom refund adjustment? Click here
-                              </button>
-                            )}
-                          </div>
+                          <p className="text-[11px] text-text-secondary">
+                            Any outstanding balance is reduced first. Returned medicine remains quarantined until inspected.
+                          </p>
                         </div>
 
                         {/* Reason Field */}
@@ -1312,7 +1313,7 @@ export default function Returns({
                             </span>
                           ) : (
                             <span>
-                              Confirm Return & Refund ({formatCurrency(finalRefund)})
+                              Confirm Return ({formatCurrency(finalRefund)})
                             </span>
                           )}
                         </Button>
@@ -1521,9 +1522,21 @@ export default function Returns({
                   <span>{formatDateTime(selectedReturn.created_at)}</span>
                 </div>
                 <div>
-                  <span className="text-text-secondary text-xs block">Total Refund Paid</span>
+                  <span className="text-text-secondary text-xs block">Return Value</span>
                   <span className="font-mono font-bold text-danger">
                     {formatCurrency(selectedReturn.refund_amount)}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-text-secondary text-xs block">Applied to Arrears</span>
+                  <span className="font-mono font-medium">
+                    {formatCurrency(selectedReturn.credit_applied)}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-text-secondary text-xs block">Cash Refunded</span>
+                  <span className="font-mono font-medium">
+                    {formatCurrency(selectedReturn.cash_refunded)}
                   </span>
                 </div>
                 <div className="col-span-2">
@@ -1537,13 +1550,58 @@ export default function Returns({
                   <Label className="text-xs font-bold">Items Returned</Label>
                   <div className="border border-border rounded-xl divide-y divide-border text-xs overflow-hidden">
                     {selectedReturn.items.map((item, i) => (
-                      <div key={i} className="flex items-center justify-between px-3 py-2 bg-surface">
-                        <span className="font-medium text-text-primary">
-                          {item.product_name} × {item.quantity}
-                        </span>
-                        <span className="font-mono font-bold text-danger">
-                          {formatCurrency(item.refund_amount)}
-                        </span>
+                      <div key={item.id ?? i} className="px-3 py-2 bg-surface space-y-2">
+                        <div className="flex items-center justify-between gap-3">
+                          <span className="font-medium text-text-primary">
+                            {item.product_name} × {item.quantity}
+                          </span>
+                          <span className="font-mono font-bold text-danger">
+                            {formatCurrency(item.refund_amount)}
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between gap-3">
+                          <span className="text-[11px] text-text-secondary">
+                            {item.inventory_status === "quarantined"
+                              ? "Quarantined — inspection required"
+                              : item.inventory_status === "restocked"
+                                ? "Inspected and restocked"
+                                : "Disposed"}
+                          </span>
+                          {item.inventory_status === "quarantined" && (
+                            <div className="flex gap-2">
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="outline"
+                                disabled={dispositionMutation.isPending}
+                                onClick={() =>
+                                  dispositionMutation.mutate({
+                                    itemId: item.id,
+                                    action: "restock",
+                                  })
+                                }
+                              >
+                                Inspect & restock
+                              </Button>
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="ghost"
+                                disabled={dispositionMutation.isPending}
+                                onClick={() => {
+                                  if (window.confirm("Mark this returned item as disposed?")) {
+                                    dispositionMutation.mutate({
+                                      itemId: item.id,
+                                      action: "dispose",
+                                    });
+                                  }
+                                }}
+                              >
+                                Dispose
+                              </Button>
+                            </div>
+                          )}
+                        </div>
                       </div>
                     ))}
                   </div>

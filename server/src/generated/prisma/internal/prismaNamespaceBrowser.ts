@@ -197,6 +197,7 @@ export type CustomerScalarFieldEnum = (typeof CustomerScalarFieldEnum)[keyof typ
 
 export const SaleScalarFieldEnum = {
   id: 'id',
+  kind: 'kind',
   customerId: 'customerId',
   subtotal: 'subtotal',
   discount: 'discount',
@@ -219,6 +220,7 @@ export const SaleItemScalarFieldEnum = {
   barcode: 'barcode',
   quantity: 'quantity',
   unitPrice: 'unitPrice',
+  purchasePrice: 'purchasePrice',
   subtotal: 'subtotal',
   batchId: 'batchId',
   batchNumber: 'batchNumber',
@@ -297,6 +299,8 @@ export const ReturnEntryScalarFieldEnum = {
   id: 'id',
   saleId: 'saleId',
   refundAmount: 'refundAmount',
+  creditApplied: 'creditApplied',
+  cashRefunded: 'cashRefunded',
   reason: 'reason',
   createdAt: 'createdAt'
 } as const
@@ -310,7 +314,10 @@ export const ReturnItemScalarFieldEnum = {
   productId: 'productId',
   productName: 'productName',
   quantity: 'quantity',
-  refundAmount: 'refundAmount'
+  refundAmount: 'refundAmount',
+  inventoryStatus: 'inventoryStatus',
+  batchId: 'batchId',
+  purchasePrice: 'purchasePrice'
 } as const
 
 export type ReturnItemScalarFieldEnum = (typeof ReturnItemScalarFieldEnum)[keyof typeof ReturnItemScalarFieldEnum]

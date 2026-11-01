@@ -43,7 +43,24 @@ import { formatCurrency } from "@/lib/utils";
 import { setLastReceipt } from "@/lib/receiptStore";
 import { getProductByBarcodeLocal } from "@/lib/sync";
 import { toast } from "sonner";
-import type { Product, PrinterConfig, ProductPrice, Customer } from "@/types";
+import type { Product, PrinterConfig, Customer } from "@/types";
+
+function sortProductResults(products: Product[], search: string): Product[] {
+  const query = search.trim().toLowerCase();
+  return [...products].sort((a, b) => {
+    const aName = (a.name || "").toLowerCase();
+    const bName = (b.name || "").toLowerCase();
+    const aBarcode = (a.barcode || "").toLowerCase();
+    const bBarcode = (b.barcode || "").toLowerCase();
+    const aExact = aName === query || aBarcode === query;
+    const bExact = bName === query || bBarcode === query;
+    if (aExact !== bExact) return aExact ? -1 : 1;
+    const aStarts = aName.startsWith(query) || aBarcode.startsWith(query);
+    const bStarts = bName.startsWith(query) || bBarcode.startsWith(query);
+    if (aStarts !== bStarts) return aStarts ? -1 : 1;
+    return aName.localeCompare(bName);
+  });
+}
 
 export default function POS() {
   const location = useLocation();
@@ -53,6 +70,7 @@ export default function POS() {
 
   // Search & Barcode scanning states
   const [search, setSearch] = useState("");
+  const [searchSession, setSearchSession] = useState(0);
   const [searchError, setSearchError] = useState("");
   const [highlightedIndex, setHighlightedIndex] = useState(0);
   const [dropdownOpen, setDropdownOpen] = useState(false);
@@ -69,9 +87,7 @@ export default function POS() {
 
   // Arrears confirmation modal
   const [arrearsConfirmOpen, setArrearsConfirmOpen] = useState(false);
-  const pendingPrices = pendingProduct
-    ? ((pendingProduct as any).prices as ProductPrice[] | undefined)
-    : undefined;
+  const pendingPrices = pendingProduct?.prices;
 
   // Print states
   const [showPrintDialog, setShowPrintDialog] = useState(false);
@@ -98,33 +114,10 @@ export default function POS() {
   }, [focusSearch]);
 
   /**
-   * Find product by barcode with offline-first fallback chain:
-   * 1. Local IndexedDB cache (~1ms) - instant, works offline
-   * 2. Socket.io WebSocket - fast, no HTTP overhead
-   * 3. REST /barcode-fast/ - HTTP fallback
+   * Resolve barcode against live stock first and use IndexedDB only if the server is unavailable.
    */
   const findProductByBarcode = useCallback(async (barcode: string): Promise<Product | null> => {
-    // Step 1: Local IndexedDB cache first
-    const local = await getProductByBarcodeLocal(barcode);
-    if (local) {
-      return {
-        id: local.id,
-        barcode: local.barcode,
-        name: local.name,
-        sale_price: local.sale_price,
-        purchase_price: local.purchase_price,
-        stock_qty: local.stock_qty,
-        category: local.category,
-        location: local.location,
-        active: local.active,
-        company: local.company || "",
-        prices: local.prices || [],
-        markup_percent: local.markup_percent,
-        created_at: local.created_at,
-      };
-    }
-
-    // Step 2: Socket.io WebSocket
+    // Prefer live stock from the server; IndexedDB is only an offline fallback.
     try {
       const socketResult = await api.products.socketProductScan(barcode);
       if (socketResult) {
@@ -139,16 +132,15 @@ export default function POS() {
           location: socketResult.location,
           active: socketResult.active,
           company: socketResult.company?.name || "",
-          prices: [],
+          prices: socketResult.prices || [],
           markup_percent: 20,
           created_at: new Date().toISOString(),
         };
       }
     } catch {
-      // Socket.io unavailable, fall through to REST
+      // Socket.io unavailable, fall through to REST.
     }
 
-    // Step 3: REST /barcode-fast/ fallback
     try {
       const restResult = await api.products.getByBarcodeFast(barcode);
       if (restResult) {
@@ -163,16 +155,33 @@ export default function POS() {
           location: restResult.location,
           active: restResult.active,
           company: restResult.company?.name || "",
-          prices: [],
+          prices: restResult.prices || [],
           markup_percent: 20,
           created_at: new Date().toISOString(),
         };
       }
+      return null;
     } catch {
-      // Not found
+      // The server is unavailable; use the last locally cached catalog entry.
     }
 
-    return null;
+    const local = await getProductByBarcodeLocal(barcode);
+    if (!local) return null;
+    return {
+      id: local.id,
+      barcode: local.barcode,
+      name: local.name,
+      sale_price: local.sale_price,
+      purchase_price: local.purchase_price,
+      stock_qty: local.stock_qty,
+      category: local.category,
+      location: local.location,
+      active: local.active,
+      company: local.company || "",
+      prices: local.prices || [],
+      markup_percent: local.markup_percent,
+      created_at: local.created_at,
+    };
   }, []);
 
   // Show inline error near search input
@@ -197,38 +206,38 @@ export default function POS() {
   const customerPreviousArrears = Number(selectedCustomer?.outstanding_arrear || 0);
 
   // Typed search query for products (starts on the very first character)
-  const { data: searchResults } = useQuery({
-    queryKey: ["products-search", debouncedSearch],
+  const {
+    data: searchResults,
+    isFetching: isSearchFetching,
+    isError: isSearchError,
+  } = useQuery({
+    queryKey: ["products-search", searchSession, debouncedSearch.trim()],
     queryFn: () => api.products.listPaginated({ search: debouncedSearch.trim(), limit: 12 }),
     enabled: debouncedSearch.trim().length >= 1,
     staleTime: 0,
+    refetchOnWindowFocus: true,
   });
 
+  const isSearchSettled =
+    search.trim().toLowerCase() === debouncedSearch.trim().toLowerCase();
   const matchingProducts = useMemo(() => {
     const query = debouncedSearch.trim().toLowerCase();
-    if (!query) return [];
-    const list = searchResults?.data ?? [];
+    if (!query || !isSearchSettled || isSearchFetching || isSearchError) return [];
+    return sortProductResults(searchResults?.data ?? [], query);
+  }, [debouncedSearch, isSearchError, isSearchFetching, isSearchSettled, searchResults?.data]);
 
-    // Case-insensitive sorting: exact matches or prefixes come first
-    return [...list].sort((a, b) => {
-      const aName = (a.name || "").toLowerCase();
-      const bName = (b.name || "").toLowerCase();
-      const aBarcode = (a.barcode || "").toLowerCase();
-      const bBarcode = (b.barcode || "").toLowerCase();
+  useEffect(() => {
+    if (isSearchError && isSearchSettled && debouncedSearch.trim()) {
+      showInlineError("Could not refresh product availability. Check the server and search again.");
+    }
+  }, [debouncedSearch, isSearchError, isSearchSettled, showInlineError]);
 
-      const aExact = aName === query || aBarcode === query;
-      const bExact = bName === query || bBarcode === query;
-      if (aExact && !bExact) return -1;
-      if (!aExact && bExact) return 1;
-
-      const aStarts = aName.startsWith(query) || aBarcode.startsWith(query);
-      const bStarts = bName.startsWith(query) || bBarcode.startsWith(query);
-      if (aStarts && !bStarts) return -1;
-      if (!aStarts && bStarts) return 1;
-
-      return aName.localeCompare(bName);
-    });
-  }, [debouncedSearch, searchResults?.data]);
+  const handleSearchChange = (value: string) => {
+    if (!search.trim() && value.trim()) {
+      setSearchSession((session) => session + 1);
+    }
+    setSearch(value);
+  };
 
   // Handle dropdown visibility based on query (appears automatically on the first letter)
   useEffect(() => {
@@ -296,7 +305,13 @@ export default function POS() {
 
   const promptPriceTier = useCallback(
     (product: Product) => {
-      const tiers = (product as any).prices as ProductPrice[] | undefined;
+      const existing = cart.items.find((item) => item.productId === product.id);
+      if (existing) {
+        addProductToCart(product, existing.unitPrice, existing.purchasePrice);
+        return;
+      }
+
+      const tiers = product.prices;
       if (tiers && tiers.length > 0) {
         setPendingProduct(product);
         setPricePickerOpen(true);
@@ -304,7 +319,7 @@ export default function POS() {
         addProductToCart(product, product.sale_price);
       }
     },
-    [addProductToCart]
+    [addProductToCart, cart.items]
   );
 
   const handleTierSelect = useCallback(
@@ -383,8 +398,23 @@ export default function POS() {
       }
 
       // 2. If dropdown is open and user navigates or selects
-      if (dropdownOpen && matchingProducts.length > 0) {
-        const selected = matchingProducts[highlightedIndex] || matchingProducts[0];
+      let products = matchingProducts;
+      if (!isSearchSettled || isSearchFetching) {
+        try {
+          const result = await queryClient.fetchQuery({
+            queryKey: ["products-search", searchSession, trimmed],
+            queryFn: () => api.products.listPaginated({ search: trimmed, limit: 12 }),
+            staleTime: 0,
+          });
+          products = sortProductResults(result.data, trimmed);
+        } catch {
+          showInlineError("Product search failed");
+          return;
+        }
+      }
+
+      if (dropdownOpen && products.length > 0) {
+        const selected = products[highlightedIndex] || products[0];
         if (selected) {
           if (selected.stock_qty <= 0) {
             showInlineError("Out of stock");
@@ -398,8 +428,8 @@ export default function POS() {
       }
 
       // 3. Exact single match or fallback
-      if (matchingProducts.length === 1) {
-        const single = matchingProducts[0];
+      if (products.length === 1) {
+        const single = products[0];
         if (single.stock_qty <= 0) {
           showInlineError("Out of stock");
         } else {
@@ -407,6 +437,12 @@ export default function POS() {
         }
         setSearch("");
         focusSearch();
+        return;
+      }
+
+      if (products.length > 1) {
+        setDropdownOpen(true);
+        setHighlightedIndex(0);
         return;
       }
 
@@ -442,6 +478,9 @@ export default function POS() {
 
       // Query cache invalidations
       queryClient.invalidateQueries({ queryKey: ["products"] });
+      queryClient.invalidateQueries({ queryKey: ["products-search"] });
+      queryClient.invalidateQueries({ queryKey: ["global-search-products"] });
+      queryClient.invalidateQueries({ queryKey: ["global-search-catalog-sample"] });
       queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] });
       queryClient.invalidateQueries({ queryKey: ["sales"] });
       queryClient.invalidateQueries({ queryKey: ["customers"] });
@@ -601,7 +640,7 @@ export default function POS() {
             ref={searchInputRef}
             tabIndex={1}
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => handleSearchChange(e.target.value)}
             onKeyDown={handleSearchKeyDown}
             placeholder="Scan barcode or search medicine name..."
             className="h-12 pl-12 pr-12 text-sm font-medium rounded-2xl border-2 border-border/80 focus-visible:border-accent bg-surface shadow-xs tracking-wide"
@@ -760,6 +799,8 @@ export default function POS() {
                       id="pos-discount"
                       tabIndex={4}
                       type="number"
+                      min="0"
+                      max={cart.discountType === "percent" ? 100 : cart.subtotal}
                       placeholder={`Discount (${cart.discountType === "pkr" ? "PKR" : "%"})`}
                       value={cart.discountValue || ""}
                       onChange={(e) => cart.setDiscountValue(Number(e.target.value) || 0)}
@@ -791,6 +832,7 @@ export default function POS() {
                       id="pos-tax"
                       tabIndex={5}
                       type="number"
+                      min="0"
                       placeholder={`Tax (${cart.taxType === "pkr" ? "PKR" : "%"})`}
                       value={cart.taxValue || ""}
                       onChange={(e) => cart.setTaxValue(Number(e.target.value) || 0)}
@@ -1091,7 +1133,7 @@ export default function POS() {
         </DialogContent>
       </Dialog>
 
-      {/* Price Tier Selection Dialog (Preserved existing feature) */}
+      {/* Sale price selection */}
       <AlertDialog
         open={pricePickerOpen}
         onOpenChange={(v) => {
@@ -1104,9 +1146,9 @@ export default function POS() {
       >
         <AlertDialogContent className="rounded-2xl max-w-sm">
           <AlertDialogHeader>
-            <AlertDialogTitle className="text-sm font-bold">Select Price Tier</AlertDialogTitle>
+            <AlertDialogTitle className="text-sm font-bold">Choose sale price</AlertDialogTitle>
             <AlertDialogDescription className="text-xs">
-              {pendingProduct?.name ?? "Product"} has multiple prices configured. Choose a tier:
+              Choose a price for {pendingProduct?.name ?? "this product"}. Only sale prices are shown.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <div className="space-y-2 py-2">
@@ -1120,7 +1162,7 @@ export default function POS() {
                 {formatCurrency(pendingProduct?.sale_price ?? 0)}
               </span>
             </button>
-            {pendingPrices?.map((tier) => (
+            {pendingPrices?.map((tier, index) => (
               <button
                 key={tier.id}
                 type="button"
@@ -1128,7 +1170,7 @@ export default function POS() {
                 className="w-full p-2.5 rounded-xl border border-border hover:border-brand bg-surface flex items-center justify-between text-left text-xs transition-colors cursor-pointer"
               >
                 <span className="font-semibold text-text-primary">
-                  {tier.label || "Custom Tier"}
+                  {tier.label && tier.label !== "Standard" ? tier.label : `Price ${index + 1}`}
                 </span>
                 <span className="font-mono font-bold text-brand">
                   {formatCurrency(tier.salePrice)}

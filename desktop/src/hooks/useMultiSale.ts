@@ -43,6 +43,17 @@ function createSaleState(seq: number): SaleState {
   };
 }
 
+function normalizeSaleState(sale: SaleState): SaleState {
+  const subtotal = sale.items.reduce((sum, item) => sum + item.subtotal, 0);
+  const maxDiscount = sale.discountType === "percent" ? 100 : subtotal;
+
+  return {
+    ...sale,
+    discountValue: Math.min(maxDiscount, Math.max(0, sale.discountValue)),
+    taxValue: Math.max(0, sale.taxValue),
+  };
+}
+
 export function useMultiSale() {
   const [sales, setSales] = useState<SaleState[]>(() => [createSaleState(1)]);
   const [activeId, setActiveId] = useState<string>(`SALE-TEMP-001`);
@@ -56,7 +67,9 @@ export function useMultiSale() {
     (patch: Partial<SaleState> | ((s: SaleState) => SaleState)) => {
       setSales((prev) =>
         prev.map((s) =>
-          s.id === activeId ? (typeof patch === "function" ? patch(s) : { ...s, ...patch }) : s
+          s.id === activeId
+            ? normalizeSaleState(typeof patch === "function" ? patch(s) : { ...s, ...patch })
+            : s
         )
       );
     },

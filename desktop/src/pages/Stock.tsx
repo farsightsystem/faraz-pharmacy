@@ -29,7 +29,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
+  SelectLabel,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
@@ -42,6 +44,8 @@ import ExportButton from "@/components/shared/ExportButton";
 import { ShortcutHint } from "@/components/shared/Kbd";
 import BatchTraceDialog from "@/components/stock/BatchTraceDialog";
 import type { StockPurchase, Product, Distributor } from "@/types";
+
+const PRODUCT_PRICE_OPTION = "product-default";
 
 export default function Stock() {
   const queryClient = useQueryClient();
@@ -225,7 +229,8 @@ export default function Stock() {
         quantity: Number(form.quantity),
         stax: form.stax ? Number(form.stax) : 0,
         expiry: form.expiry || undefined,
-        priceTierId: form.priceTierId || undefined,
+        priceTierId:
+          form.priceTierId === PRODUCT_PRICE_OPTION ? undefined : form.priceTierId || undefined,
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["stock"] });
@@ -331,7 +336,8 @@ export default function Stock() {
         quantity: Number(form.quantity),
         stax: form.stax ? Number(form.stax) : 0,
         expiry: form.expiry || undefined,
-        priceTierId: form.priceTierId || undefined,
+        priceTierId:
+          form.priceTierId === PRODUCT_PRICE_OPTION ? null : form.priceTierId || undefined,
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["stock"] });
@@ -383,13 +389,13 @@ export default function Stock() {
     const purchasesList: StockPurchase[] = recentPurchasesData?.data || stockEntries;
     const lastPurchase = purchasesList.find((s: StockPurchase) => s.product_id === productId);
 
-    // Determine default price tier: prefer last purchase's tier, else first available tier, else null
-    let defaultPriceTierId: string | null = null;
-    if (lastPurchase?.price_tier_id) {
-      defaultPriceTierId = lastPurchase.price_tier_id;
-    } else if (product?.prices && product.prices.length > 0) {
-      defaultPriceTierId = product.prices[0].id;
-    }
+    const previousTierExists = product?.prices?.some(
+      (price) => price.id === lastPurchase?.price_tier_id
+    );
+    const defaultPriceTierId =
+      previousTierExists && lastPurchase?.price_tier_id
+        ? lastPurchase.price_tier_id
+        : PRODUCT_PRICE_OPTION;
 
     setForm((prev) => {
       const updated = { ...prev, productId, priceTierId: defaultPriceTierId };
@@ -495,7 +501,7 @@ export default function Stock() {
       quantity: String(entry.quantity),
       stax: entry.stax !== undefined && entry.stax !== null ? String(entry.stax) : "",
       expiry: entry.expiry || "",
-      priceTierId: entry.price_tier_id ?? null,
+      priceTierId: entry.price_tier_id ?? PRODUCT_PRICE_OPTION,
     });
     setInvoiceMode(
       recentInvoices.some((i) => i.invoiceNumber.toLowerCase() === (entry.invoice_number || "").toLowerCase().trim())
@@ -1069,49 +1075,45 @@ export default function Stock() {
                 />
               </div>
 
-              {/* Price Tier Selection */}
               {form.productId && (
                 <div className="space-y-1">
-                  <Label className="text-xs">Price Tier</Label>
+                  <Label className="text-xs">Prices</Label>
                   <Select
-                    value={form.priceTierId || ""}
-                    onValueChange={(v) => setForm({ ...form, priceTierId: v || null })}
+                    value={form.priceTierId || PRODUCT_PRICE_OPTION}
+                    onValueChange={(value) => setForm({ ...form, priceTierId: value })}
                   >
                     <SelectTrigger className="h-9 text-xs rounded-xl">
-                      <SelectValue placeholder="Use default price" />
+                      <SelectValue placeholder="Select prices" />
                     </SelectTrigger>
                     <SelectContent>
                       {(() => {
                         const product = products.find((p: Product) => p.id === form.productId);
                         const tiers = product?.prices ?? [];
-                        if (tiers.length === 0) {
-                          return (
-                            <SelectItem disabled value="none">
-                              No price tiers configured for this product
+                        return (
+                          <SelectGroup>
+                            <SelectLabel className="grid grid-cols-2 gap-3 border-b border-border">
+                              <span>Purchase</span>
+                              <span>Sale</span>
+                            </SelectLabel>
+                            <SelectItem value={PRODUCT_PRICE_OPTION}>
+                              <div className="grid grid-cols-2 gap-3 w-full font-mono">
+                                <span>{formatCurrency(product?.purchase_price ?? 0)}</span>
+                                <span>{formatCurrency(product?.sale_price ?? 0)}</span>
+                              </div>
                             </SelectItem>
-                          );
-                        }
-                        return tiers.map((tier) => (
-                          <SelectItem key={tier.id} value={tier.id}>
-                            <div className="flex justify-between w-full text-xs">
-                              <span className="font-medium">{tier.label}</span>
-                              <span className="font-mono text-text-secondary">
-                                {formatCurrency(tier.purchasePrice)} / {formatCurrency(tier.salePrice)}
-                              </span>
-                            </div>
-                            <div className="text-[10px] text-text-secondary">
-                              Purchase: {formatCurrency(tier.purchasePrice)} &nbsp;•&nbsp; Sale: {formatCurrency(tier.salePrice)}
-                            </div>
-                          </SelectItem>
-                        ));
+                            {tiers.map((price) => (
+                              <SelectItem key={price.id} value={price.id}>
+                                <div className="grid grid-cols-2 gap-3 w-full font-mono">
+                                  <span>{formatCurrency(price.purchasePrice)}</span>
+                                  <span>{formatCurrency(price.salePrice)}</span>
+                                </div>
+                              </SelectItem>
+                            ))}
+                          </SelectGroup>
+                        );
                       })()}
                     </SelectContent>
                   </Select>
-                  {form.priceTierId && (
-                    <p className="text-[10px] text-text-secondary">
-                      Selected tier will be used for purchase &amp; sale prices on this stock entry.
-                    </p>
-                  )}
                 </div>
               )}
 

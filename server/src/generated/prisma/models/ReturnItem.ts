@@ -29,11 +29,13 @@ export type AggregateReturnItem = {
 export type ReturnItemAvgAggregateOutputType = {
   quantity: number | null
   refundAmount: number | null
+  purchasePrice: number | null
 }
 
 export type ReturnItemSumAggregateOutputType = {
   quantity: number | null
   refundAmount: number | null
+  purchasePrice: number | null
 }
 
 export type ReturnItemMinAggregateOutputType = {
@@ -43,6 +45,9 @@ export type ReturnItemMinAggregateOutputType = {
   productName: string | null
   quantity: number | null
   refundAmount: number | null
+  inventoryStatus: string | null
+  batchId: string | null
+  purchasePrice: number | null
 }
 
 export type ReturnItemMaxAggregateOutputType = {
@@ -52,6 +57,9 @@ export type ReturnItemMaxAggregateOutputType = {
   productName: string | null
   quantity: number | null
   refundAmount: number | null
+  inventoryStatus: string | null
+  batchId: string | null
+  purchasePrice: number | null
 }
 
 export type ReturnItemCountAggregateOutputType = {
@@ -61,6 +69,9 @@ export type ReturnItemCountAggregateOutputType = {
   productName: number
   quantity: number
   refundAmount: number
+  inventoryStatus: number
+  batchId: number
+  purchasePrice: number
   _all: number
 }
 
@@ -68,11 +79,13 @@ export type ReturnItemCountAggregateOutputType = {
 export type ReturnItemAvgAggregateInputType = {
   quantity?: true
   refundAmount?: true
+  purchasePrice?: true
 }
 
 export type ReturnItemSumAggregateInputType = {
   quantity?: true
   refundAmount?: true
+  purchasePrice?: true
 }
 
 export type ReturnItemMinAggregateInputType = {
@@ -82,6 +95,9 @@ export type ReturnItemMinAggregateInputType = {
   productName?: true
   quantity?: true
   refundAmount?: true
+  inventoryStatus?: true
+  batchId?: true
+  purchasePrice?: true
 }
 
 export type ReturnItemMaxAggregateInputType = {
@@ -91,6 +107,9 @@ export type ReturnItemMaxAggregateInputType = {
   productName?: true
   quantity?: true
   refundAmount?: true
+  inventoryStatus?: true
+  batchId?: true
+  purchasePrice?: true
 }
 
 export type ReturnItemCountAggregateInputType = {
@@ -100,6 +119,9 @@ export type ReturnItemCountAggregateInputType = {
   productName?: true
   quantity?: true
   refundAmount?: true
+  inventoryStatus?: true
+  batchId?: true
+  purchasePrice?: true
   _all?: true
 }
 
@@ -196,6 +218,9 @@ export type ReturnItemGroupByOutputType = {
   productName: string
   quantity: number
   refundAmount: number
+  inventoryStatus: string
+  batchId: string | null
+  purchasePrice: number
   _count: ReturnItemCountAggregateOutputType | null
   _avg: ReturnItemAvgAggregateOutputType | null
   _sum: ReturnItemSumAggregateOutputType | null
@@ -228,7 +253,11 @@ export type ReturnItemWhereInput = {
   productName?: Prisma.StringFilter<"ReturnItem"> | string
   quantity?: Prisma.IntFilter<"ReturnItem"> | number
   refundAmount?: Prisma.FloatFilter<"ReturnItem"> | number
+  inventoryStatus?: Prisma.StringFilter<"ReturnItem"> | string
+  batchId?: Prisma.StringNullableFilter<"ReturnItem"> | string | null
+  purchasePrice?: Prisma.FloatFilter<"ReturnItem"> | number
   product?: Prisma.XOR<Prisma.ProductScalarRelationFilter, Prisma.ProductWhereInput>
+  batch?: Prisma.XOR<Prisma.ProductBatchNullableScalarRelationFilter, Prisma.ProductBatchWhereInput> | null
   returnEntry?: Prisma.XOR<Prisma.ReturnEntryScalarRelationFilter, Prisma.ReturnEntryWhereInput>
 }
 
@@ -239,7 +268,11 @@ export type ReturnItemOrderByWithRelationInput = {
   productName?: Prisma.SortOrder
   quantity?: Prisma.SortOrder
   refundAmount?: Prisma.SortOrder
+  inventoryStatus?: Prisma.SortOrder
+  batchId?: Prisma.SortOrderInput | Prisma.SortOrder
+  purchasePrice?: Prisma.SortOrder
   product?: Prisma.ProductOrderByWithRelationInput
+  batch?: Prisma.ProductBatchOrderByWithRelationInput
   returnEntry?: Prisma.ReturnEntryOrderByWithRelationInput
 }
 
@@ -253,7 +286,11 @@ export type ReturnItemWhereUniqueInput = Prisma.AtLeast<{
   productName?: Prisma.StringFilter<"ReturnItem"> | string
   quantity?: Prisma.IntFilter<"ReturnItem"> | number
   refundAmount?: Prisma.FloatFilter<"ReturnItem"> | number
+  inventoryStatus?: Prisma.StringFilter<"ReturnItem"> | string
+  batchId?: Prisma.StringNullableFilter<"ReturnItem"> | string | null
+  purchasePrice?: Prisma.FloatFilter<"ReturnItem"> | number
   product?: Prisma.XOR<Prisma.ProductScalarRelationFilter, Prisma.ProductWhereInput>
+  batch?: Prisma.XOR<Prisma.ProductBatchNullableScalarRelationFilter, Prisma.ProductBatchWhereInput> | null
   returnEntry?: Prisma.XOR<Prisma.ReturnEntryScalarRelationFilter, Prisma.ReturnEntryWhereInput>
 }, "id">
 
@@ -264,6 +301,9 @@ export type ReturnItemOrderByWithAggregationInput = {
   productName?: Prisma.SortOrder
   quantity?: Prisma.SortOrder
   refundAmount?: Prisma.SortOrder
+  inventoryStatus?: Prisma.SortOrder
+  batchId?: Prisma.SortOrderInput | Prisma.SortOrder
+  purchasePrice?: Prisma.SortOrder
   _count?: Prisma.ReturnItemCountOrderByAggregateInput
   _avg?: Prisma.ReturnItemAvgOrderByAggregateInput
   _max?: Prisma.ReturnItemMaxOrderByAggregateInput
@@ -281,6 +321,9 @@ export type ReturnItemScalarWhereWithAggregatesInput = {
   productName?: Prisma.StringWithAggregatesFilter<"ReturnItem"> | string
   quantity?: Prisma.IntWithAggregatesFilter<"ReturnItem"> | number
   refundAmount?: Prisma.FloatWithAggregatesFilter<"ReturnItem"> | number
+  inventoryStatus?: Prisma.StringWithAggregatesFilter<"ReturnItem"> | string
+  batchId?: Prisma.StringNullableWithAggregatesFilter<"ReturnItem"> | string | null
+  purchasePrice?: Prisma.FloatWithAggregatesFilter<"ReturnItem"> | number
 }
 
 export type ReturnItemCreateInput = {
@@ -288,7 +331,10 @@ export type ReturnItemCreateInput = {
   productName: string
   quantity?: number
   refundAmount?: number
+  inventoryStatus?: string
+  purchasePrice?: number
   product: Prisma.ProductCreateNestedOneWithoutReturnItemsInput
+  batch?: Prisma.ProductBatchCreateNestedOneWithoutReturnItemsInput
   returnEntry: Prisma.ReturnEntryCreateNestedOneWithoutItemsInput
 }
 
@@ -299,6 +345,9 @@ export type ReturnItemUncheckedCreateInput = {
   productName: string
   quantity?: number
   refundAmount?: number
+  inventoryStatus?: string
+  batchId?: string | null
+  purchasePrice?: number
 }
 
 export type ReturnItemUpdateInput = {
@@ -306,7 +355,10 @@ export type ReturnItemUpdateInput = {
   productName?: Prisma.StringFieldUpdateOperationsInput | string
   quantity?: Prisma.IntFieldUpdateOperationsInput | number
   refundAmount?: Prisma.FloatFieldUpdateOperationsInput | number
+  inventoryStatus?: Prisma.StringFieldUpdateOperationsInput | string
+  purchasePrice?: Prisma.FloatFieldUpdateOperationsInput | number
   product?: Prisma.ProductUpdateOneRequiredWithoutReturnItemsNestedInput
+  batch?: Prisma.ProductBatchUpdateOneWithoutReturnItemsNestedInput
   returnEntry?: Prisma.ReturnEntryUpdateOneRequiredWithoutItemsNestedInput
 }
 
@@ -317,6 +369,9 @@ export type ReturnItemUncheckedUpdateInput = {
   productName?: Prisma.StringFieldUpdateOperationsInput | string
   quantity?: Prisma.IntFieldUpdateOperationsInput | number
   refundAmount?: Prisma.FloatFieldUpdateOperationsInput | number
+  inventoryStatus?: Prisma.StringFieldUpdateOperationsInput | string
+  batchId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  purchasePrice?: Prisma.FloatFieldUpdateOperationsInput | number
 }
 
 export type ReturnItemCreateManyInput = {
@@ -326,6 +381,9 @@ export type ReturnItemCreateManyInput = {
   productName: string
   quantity?: number
   refundAmount?: number
+  inventoryStatus?: string
+  batchId?: string | null
+  purchasePrice?: number
 }
 
 export type ReturnItemUpdateManyMutationInput = {
@@ -333,6 +391,8 @@ export type ReturnItemUpdateManyMutationInput = {
   productName?: Prisma.StringFieldUpdateOperationsInput | string
   quantity?: Prisma.IntFieldUpdateOperationsInput | number
   refundAmount?: Prisma.FloatFieldUpdateOperationsInput | number
+  inventoryStatus?: Prisma.StringFieldUpdateOperationsInput | string
+  purchasePrice?: Prisma.FloatFieldUpdateOperationsInput | number
 }
 
 export type ReturnItemUncheckedUpdateManyInput = {
@@ -342,6 +402,9 @@ export type ReturnItemUncheckedUpdateManyInput = {
   productName?: Prisma.StringFieldUpdateOperationsInput | string
   quantity?: Prisma.IntFieldUpdateOperationsInput | number
   refundAmount?: Prisma.FloatFieldUpdateOperationsInput | number
+  inventoryStatus?: Prisma.StringFieldUpdateOperationsInput | string
+  batchId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  purchasePrice?: Prisma.FloatFieldUpdateOperationsInput | number
 }
 
 export type ReturnItemListRelationFilter = {
@@ -361,11 +424,15 @@ export type ReturnItemCountOrderByAggregateInput = {
   productName?: Prisma.SortOrder
   quantity?: Prisma.SortOrder
   refundAmount?: Prisma.SortOrder
+  inventoryStatus?: Prisma.SortOrder
+  batchId?: Prisma.SortOrder
+  purchasePrice?: Prisma.SortOrder
 }
 
 export type ReturnItemAvgOrderByAggregateInput = {
   quantity?: Prisma.SortOrder
   refundAmount?: Prisma.SortOrder
+  purchasePrice?: Prisma.SortOrder
 }
 
 export type ReturnItemMaxOrderByAggregateInput = {
@@ -375,6 +442,9 @@ export type ReturnItemMaxOrderByAggregateInput = {
   productName?: Prisma.SortOrder
   quantity?: Prisma.SortOrder
   refundAmount?: Prisma.SortOrder
+  inventoryStatus?: Prisma.SortOrder
+  batchId?: Prisma.SortOrder
+  purchasePrice?: Prisma.SortOrder
 }
 
 export type ReturnItemMinOrderByAggregateInput = {
@@ -384,11 +454,15 @@ export type ReturnItemMinOrderByAggregateInput = {
   productName?: Prisma.SortOrder
   quantity?: Prisma.SortOrder
   refundAmount?: Prisma.SortOrder
+  inventoryStatus?: Prisma.SortOrder
+  batchId?: Prisma.SortOrder
+  purchasePrice?: Prisma.SortOrder
 }
 
 export type ReturnItemSumOrderByAggregateInput = {
   quantity?: Prisma.SortOrder
   refundAmount?: Prisma.SortOrder
+  purchasePrice?: Prisma.SortOrder
 }
 
 export type ReturnItemCreateNestedManyWithoutProductInput = {
@@ -430,6 +504,48 @@ export type ReturnItemUncheckedUpdateManyWithoutProductNestedInput = {
   connect?: Prisma.ReturnItemWhereUniqueInput | Prisma.ReturnItemWhereUniqueInput[]
   update?: Prisma.ReturnItemUpdateWithWhereUniqueWithoutProductInput | Prisma.ReturnItemUpdateWithWhereUniqueWithoutProductInput[]
   updateMany?: Prisma.ReturnItemUpdateManyWithWhereWithoutProductInput | Prisma.ReturnItemUpdateManyWithWhereWithoutProductInput[]
+  deleteMany?: Prisma.ReturnItemScalarWhereInput | Prisma.ReturnItemScalarWhereInput[]
+}
+
+export type ReturnItemCreateNestedManyWithoutBatchInput = {
+  create?: Prisma.XOR<Prisma.ReturnItemCreateWithoutBatchInput, Prisma.ReturnItemUncheckedCreateWithoutBatchInput> | Prisma.ReturnItemCreateWithoutBatchInput[] | Prisma.ReturnItemUncheckedCreateWithoutBatchInput[]
+  connectOrCreate?: Prisma.ReturnItemCreateOrConnectWithoutBatchInput | Prisma.ReturnItemCreateOrConnectWithoutBatchInput[]
+  createMany?: Prisma.ReturnItemCreateManyBatchInputEnvelope
+  connect?: Prisma.ReturnItemWhereUniqueInput | Prisma.ReturnItemWhereUniqueInput[]
+}
+
+export type ReturnItemUncheckedCreateNestedManyWithoutBatchInput = {
+  create?: Prisma.XOR<Prisma.ReturnItemCreateWithoutBatchInput, Prisma.ReturnItemUncheckedCreateWithoutBatchInput> | Prisma.ReturnItemCreateWithoutBatchInput[] | Prisma.ReturnItemUncheckedCreateWithoutBatchInput[]
+  connectOrCreate?: Prisma.ReturnItemCreateOrConnectWithoutBatchInput | Prisma.ReturnItemCreateOrConnectWithoutBatchInput[]
+  createMany?: Prisma.ReturnItemCreateManyBatchInputEnvelope
+  connect?: Prisma.ReturnItemWhereUniqueInput | Prisma.ReturnItemWhereUniqueInput[]
+}
+
+export type ReturnItemUpdateManyWithoutBatchNestedInput = {
+  create?: Prisma.XOR<Prisma.ReturnItemCreateWithoutBatchInput, Prisma.ReturnItemUncheckedCreateWithoutBatchInput> | Prisma.ReturnItemCreateWithoutBatchInput[] | Prisma.ReturnItemUncheckedCreateWithoutBatchInput[]
+  connectOrCreate?: Prisma.ReturnItemCreateOrConnectWithoutBatchInput | Prisma.ReturnItemCreateOrConnectWithoutBatchInput[]
+  upsert?: Prisma.ReturnItemUpsertWithWhereUniqueWithoutBatchInput | Prisma.ReturnItemUpsertWithWhereUniqueWithoutBatchInput[]
+  createMany?: Prisma.ReturnItemCreateManyBatchInputEnvelope
+  set?: Prisma.ReturnItemWhereUniqueInput | Prisma.ReturnItemWhereUniqueInput[]
+  disconnect?: Prisma.ReturnItemWhereUniqueInput | Prisma.ReturnItemWhereUniqueInput[]
+  delete?: Prisma.ReturnItemWhereUniqueInput | Prisma.ReturnItemWhereUniqueInput[]
+  connect?: Prisma.ReturnItemWhereUniqueInput | Prisma.ReturnItemWhereUniqueInput[]
+  update?: Prisma.ReturnItemUpdateWithWhereUniqueWithoutBatchInput | Prisma.ReturnItemUpdateWithWhereUniqueWithoutBatchInput[]
+  updateMany?: Prisma.ReturnItemUpdateManyWithWhereWithoutBatchInput | Prisma.ReturnItemUpdateManyWithWhereWithoutBatchInput[]
+  deleteMany?: Prisma.ReturnItemScalarWhereInput | Prisma.ReturnItemScalarWhereInput[]
+}
+
+export type ReturnItemUncheckedUpdateManyWithoutBatchNestedInput = {
+  create?: Prisma.XOR<Prisma.ReturnItemCreateWithoutBatchInput, Prisma.ReturnItemUncheckedCreateWithoutBatchInput> | Prisma.ReturnItemCreateWithoutBatchInput[] | Prisma.ReturnItemUncheckedCreateWithoutBatchInput[]
+  connectOrCreate?: Prisma.ReturnItemCreateOrConnectWithoutBatchInput | Prisma.ReturnItemCreateOrConnectWithoutBatchInput[]
+  upsert?: Prisma.ReturnItemUpsertWithWhereUniqueWithoutBatchInput | Prisma.ReturnItemUpsertWithWhereUniqueWithoutBatchInput[]
+  createMany?: Prisma.ReturnItemCreateManyBatchInputEnvelope
+  set?: Prisma.ReturnItemWhereUniqueInput | Prisma.ReturnItemWhereUniqueInput[]
+  disconnect?: Prisma.ReturnItemWhereUniqueInput | Prisma.ReturnItemWhereUniqueInput[]
+  delete?: Prisma.ReturnItemWhereUniqueInput | Prisma.ReturnItemWhereUniqueInput[]
+  connect?: Prisma.ReturnItemWhereUniqueInput | Prisma.ReturnItemWhereUniqueInput[]
+  update?: Prisma.ReturnItemUpdateWithWhereUniqueWithoutBatchInput | Prisma.ReturnItemUpdateWithWhereUniqueWithoutBatchInput[]
+  updateMany?: Prisma.ReturnItemUpdateManyWithWhereWithoutBatchInput | Prisma.ReturnItemUpdateManyWithWhereWithoutBatchInput[]
   deleteMany?: Prisma.ReturnItemScalarWhereInput | Prisma.ReturnItemScalarWhereInput[]
 }
 
@@ -480,6 +596,9 @@ export type ReturnItemCreateWithoutProductInput = {
   productName: string
   quantity?: number
   refundAmount?: number
+  inventoryStatus?: string
+  purchasePrice?: number
+  batch?: Prisma.ProductBatchCreateNestedOneWithoutReturnItemsInput
   returnEntry: Prisma.ReturnEntryCreateNestedOneWithoutItemsInput
 }
 
@@ -489,6 +608,9 @@ export type ReturnItemUncheckedCreateWithoutProductInput = {
   productName: string
   quantity?: number
   refundAmount?: number
+  inventoryStatus?: string
+  batchId?: string | null
+  purchasePrice?: number
 }
 
 export type ReturnItemCreateOrConnectWithoutProductInput = {
@@ -527,6 +649,57 @@ export type ReturnItemScalarWhereInput = {
   productName?: Prisma.StringFilter<"ReturnItem"> | string
   quantity?: Prisma.IntFilter<"ReturnItem"> | number
   refundAmount?: Prisma.FloatFilter<"ReturnItem"> | number
+  inventoryStatus?: Prisma.StringFilter<"ReturnItem"> | string
+  batchId?: Prisma.StringNullableFilter<"ReturnItem"> | string | null
+  purchasePrice?: Prisma.FloatFilter<"ReturnItem"> | number
+}
+
+export type ReturnItemCreateWithoutBatchInput = {
+  id?: string
+  productName: string
+  quantity?: number
+  refundAmount?: number
+  inventoryStatus?: string
+  purchasePrice?: number
+  product: Prisma.ProductCreateNestedOneWithoutReturnItemsInput
+  returnEntry: Prisma.ReturnEntryCreateNestedOneWithoutItemsInput
+}
+
+export type ReturnItemUncheckedCreateWithoutBatchInput = {
+  id?: string
+  returnId: string
+  productId: string
+  productName: string
+  quantity?: number
+  refundAmount?: number
+  inventoryStatus?: string
+  purchasePrice?: number
+}
+
+export type ReturnItemCreateOrConnectWithoutBatchInput = {
+  where: Prisma.ReturnItemWhereUniqueInput
+  create: Prisma.XOR<Prisma.ReturnItemCreateWithoutBatchInput, Prisma.ReturnItemUncheckedCreateWithoutBatchInput>
+}
+
+export type ReturnItemCreateManyBatchInputEnvelope = {
+  data: Prisma.ReturnItemCreateManyBatchInput | Prisma.ReturnItemCreateManyBatchInput[]
+  skipDuplicates?: boolean
+}
+
+export type ReturnItemUpsertWithWhereUniqueWithoutBatchInput = {
+  where: Prisma.ReturnItemWhereUniqueInput
+  update: Prisma.XOR<Prisma.ReturnItemUpdateWithoutBatchInput, Prisma.ReturnItemUncheckedUpdateWithoutBatchInput>
+  create: Prisma.XOR<Prisma.ReturnItemCreateWithoutBatchInput, Prisma.ReturnItemUncheckedCreateWithoutBatchInput>
+}
+
+export type ReturnItemUpdateWithWhereUniqueWithoutBatchInput = {
+  where: Prisma.ReturnItemWhereUniqueInput
+  data: Prisma.XOR<Prisma.ReturnItemUpdateWithoutBatchInput, Prisma.ReturnItemUncheckedUpdateWithoutBatchInput>
+}
+
+export type ReturnItemUpdateManyWithWhereWithoutBatchInput = {
+  where: Prisma.ReturnItemScalarWhereInput
+  data: Prisma.XOR<Prisma.ReturnItemUpdateManyMutationInput, Prisma.ReturnItemUncheckedUpdateManyWithoutBatchInput>
 }
 
 export type ReturnItemCreateWithoutReturnEntryInput = {
@@ -534,7 +707,10 @@ export type ReturnItemCreateWithoutReturnEntryInput = {
   productName: string
   quantity?: number
   refundAmount?: number
+  inventoryStatus?: string
+  purchasePrice?: number
   product: Prisma.ProductCreateNestedOneWithoutReturnItemsInput
+  batch?: Prisma.ProductBatchCreateNestedOneWithoutReturnItemsInput
 }
 
 export type ReturnItemUncheckedCreateWithoutReturnEntryInput = {
@@ -543,6 +719,9 @@ export type ReturnItemUncheckedCreateWithoutReturnEntryInput = {
   productName: string
   quantity?: number
   refundAmount?: number
+  inventoryStatus?: string
+  batchId?: string | null
+  purchasePrice?: number
 }
 
 export type ReturnItemCreateOrConnectWithoutReturnEntryInput = {
@@ -577,6 +756,9 @@ export type ReturnItemCreateManyProductInput = {
   productName: string
   quantity?: number
   refundAmount?: number
+  inventoryStatus?: string
+  batchId?: string | null
+  purchasePrice?: number
 }
 
 export type ReturnItemUpdateWithoutProductInput = {
@@ -584,6 +766,9 @@ export type ReturnItemUpdateWithoutProductInput = {
   productName?: Prisma.StringFieldUpdateOperationsInput | string
   quantity?: Prisma.IntFieldUpdateOperationsInput | number
   refundAmount?: Prisma.FloatFieldUpdateOperationsInput | number
+  inventoryStatus?: Prisma.StringFieldUpdateOperationsInput | string
+  purchasePrice?: Prisma.FloatFieldUpdateOperationsInput | number
+  batch?: Prisma.ProductBatchUpdateOneWithoutReturnItemsNestedInput
   returnEntry?: Prisma.ReturnEntryUpdateOneRequiredWithoutItemsNestedInput
 }
 
@@ -593,6 +778,9 @@ export type ReturnItemUncheckedUpdateWithoutProductInput = {
   productName?: Prisma.StringFieldUpdateOperationsInput | string
   quantity?: Prisma.IntFieldUpdateOperationsInput | number
   refundAmount?: Prisma.FloatFieldUpdateOperationsInput | number
+  inventoryStatus?: Prisma.StringFieldUpdateOperationsInput | string
+  batchId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  purchasePrice?: Prisma.FloatFieldUpdateOperationsInput | number
 }
 
 export type ReturnItemUncheckedUpdateManyWithoutProductInput = {
@@ -601,6 +789,53 @@ export type ReturnItemUncheckedUpdateManyWithoutProductInput = {
   productName?: Prisma.StringFieldUpdateOperationsInput | string
   quantity?: Prisma.IntFieldUpdateOperationsInput | number
   refundAmount?: Prisma.FloatFieldUpdateOperationsInput | number
+  inventoryStatus?: Prisma.StringFieldUpdateOperationsInput | string
+  batchId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  purchasePrice?: Prisma.FloatFieldUpdateOperationsInput | number
+}
+
+export type ReturnItemCreateManyBatchInput = {
+  id?: string
+  returnId: string
+  productId: string
+  productName: string
+  quantity?: number
+  refundAmount?: number
+  inventoryStatus?: string
+  purchasePrice?: number
+}
+
+export type ReturnItemUpdateWithoutBatchInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  productName?: Prisma.StringFieldUpdateOperationsInput | string
+  quantity?: Prisma.IntFieldUpdateOperationsInput | number
+  refundAmount?: Prisma.FloatFieldUpdateOperationsInput | number
+  inventoryStatus?: Prisma.StringFieldUpdateOperationsInput | string
+  purchasePrice?: Prisma.FloatFieldUpdateOperationsInput | number
+  product?: Prisma.ProductUpdateOneRequiredWithoutReturnItemsNestedInput
+  returnEntry?: Prisma.ReturnEntryUpdateOneRequiredWithoutItemsNestedInput
+}
+
+export type ReturnItemUncheckedUpdateWithoutBatchInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  returnId?: Prisma.StringFieldUpdateOperationsInput | string
+  productId?: Prisma.StringFieldUpdateOperationsInput | string
+  productName?: Prisma.StringFieldUpdateOperationsInput | string
+  quantity?: Prisma.IntFieldUpdateOperationsInput | number
+  refundAmount?: Prisma.FloatFieldUpdateOperationsInput | number
+  inventoryStatus?: Prisma.StringFieldUpdateOperationsInput | string
+  purchasePrice?: Prisma.FloatFieldUpdateOperationsInput | number
+}
+
+export type ReturnItemUncheckedUpdateManyWithoutBatchInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  returnId?: Prisma.StringFieldUpdateOperationsInput | string
+  productId?: Prisma.StringFieldUpdateOperationsInput | string
+  productName?: Prisma.StringFieldUpdateOperationsInput | string
+  quantity?: Prisma.IntFieldUpdateOperationsInput | number
+  refundAmount?: Prisma.FloatFieldUpdateOperationsInput | number
+  inventoryStatus?: Prisma.StringFieldUpdateOperationsInput | string
+  purchasePrice?: Prisma.FloatFieldUpdateOperationsInput | number
 }
 
 export type ReturnItemCreateManyReturnEntryInput = {
@@ -609,6 +844,9 @@ export type ReturnItemCreateManyReturnEntryInput = {
   productName: string
   quantity?: number
   refundAmount?: number
+  inventoryStatus?: string
+  batchId?: string | null
+  purchasePrice?: number
 }
 
 export type ReturnItemUpdateWithoutReturnEntryInput = {
@@ -616,7 +854,10 @@ export type ReturnItemUpdateWithoutReturnEntryInput = {
   productName?: Prisma.StringFieldUpdateOperationsInput | string
   quantity?: Prisma.IntFieldUpdateOperationsInput | number
   refundAmount?: Prisma.FloatFieldUpdateOperationsInput | number
+  inventoryStatus?: Prisma.StringFieldUpdateOperationsInput | string
+  purchasePrice?: Prisma.FloatFieldUpdateOperationsInput | number
   product?: Prisma.ProductUpdateOneRequiredWithoutReturnItemsNestedInput
+  batch?: Prisma.ProductBatchUpdateOneWithoutReturnItemsNestedInput
 }
 
 export type ReturnItemUncheckedUpdateWithoutReturnEntryInput = {
@@ -625,6 +866,9 @@ export type ReturnItemUncheckedUpdateWithoutReturnEntryInput = {
   productName?: Prisma.StringFieldUpdateOperationsInput | string
   quantity?: Prisma.IntFieldUpdateOperationsInput | number
   refundAmount?: Prisma.FloatFieldUpdateOperationsInput | number
+  inventoryStatus?: Prisma.StringFieldUpdateOperationsInput | string
+  batchId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  purchasePrice?: Prisma.FloatFieldUpdateOperationsInput | number
 }
 
 export type ReturnItemUncheckedUpdateManyWithoutReturnEntryInput = {
@@ -633,6 +877,9 @@ export type ReturnItemUncheckedUpdateManyWithoutReturnEntryInput = {
   productName?: Prisma.StringFieldUpdateOperationsInput | string
   quantity?: Prisma.IntFieldUpdateOperationsInput | number
   refundAmount?: Prisma.FloatFieldUpdateOperationsInput | number
+  inventoryStatus?: Prisma.StringFieldUpdateOperationsInput | string
+  batchId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  purchasePrice?: Prisma.FloatFieldUpdateOperationsInput | number
 }
 
 
@@ -644,7 +891,11 @@ export type ReturnItemSelect<ExtArgs extends runtime.Types.Extensions.InternalAr
   productName?: boolean
   quantity?: boolean
   refundAmount?: boolean
+  inventoryStatus?: boolean
+  batchId?: boolean
+  purchasePrice?: boolean
   product?: boolean | Prisma.ProductDefaultArgs<ExtArgs>
+  batch?: boolean | Prisma.ReturnItem$batchArgs<ExtArgs>
   returnEntry?: boolean | Prisma.ReturnEntryDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["returnItem"]>
 
@@ -655,7 +906,11 @@ export type ReturnItemSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Ex
   productName?: boolean
   quantity?: boolean
   refundAmount?: boolean
+  inventoryStatus?: boolean
+  batchId?: boolean
+  purchasePrice?: boolean
   product?: boolean | Prisma.ProductDefaultArgs<ExtArgs>
+  batch?: boolean | Prisma.ReturnItem$batchArgs<ExtArgs>
   returnEntry?: boolean | Prisma.ReturnEntryDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["returnItem"]>
 
@@ -666,7 +921,11 @@ export type ReturnItemSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Ex
   productName?: boolean
   quantity?: boolean
   refundAmount?: boolean
+  inventoryStatus?: boolean
+  batchId?: boolean
+  purchasePrice?: boolean
   product?: boolean | Prisma.ProductDefaultArgs<ExtArgs>
+  batch?: boolean | Prisma.ReturnItem$batchArgs<ExtArgs>
   returnEntry?: boolean | Prisma.ReturnEntryDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["returnItem"]>
 
@@ -677,19 +936,25 @@ export type ReturnItemSelectScalar = {
   productName?: boolean
   quantity?: boolean
   refundAmount?: boolean
+  inventoryStatus?: boolean
+  batchId?: boolean
+  purchasePrice?: boolean
 }
 
-export type ReturnItemOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "returnId" | "productId" | "productName" | "quantity" | "refundAmount", ExtArgs["result"]["returnItem"]>
+export type ReturnItemOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "returnId" | "productId" | "productName" | "quantity" | "refundAmount" | "inventoryStatus" | "batchId" | "purchasePrice", ExtArgs["result"]["returnItem"]>
 export type ReturnItemInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   product?: boolean | Prisma.ProductDefaultArgs<ExtArgs>
+  batch?: boolean | Prisma.ReturnItem$batchArgs<ExtArgs>
   returnEntry?: boolean | Prisma.ReturnEntryDefaultArgs<ExtArgs>
 }
 export type ReturnItemIncludeCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   product?: boolean | Prisma.ProductDefaultArgs<ExtArgs>
+  batch?: boolean | Prisma.ReturnItem$batchArgs<ExtArgs>
   returnEntry?: boolean | Prisma.ReturnEntryDefaultArgs<ExtArgs>
 }
 export type ReturnItemIncludeUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   product?: boolean | Prisma.ProductDefaultArgs<ExtArgs>
+  batch?: boolean | Prisma.ReturnItem$batchArgs<ExtArgs>
   returnEntry?: boolean | Prisma.ReturnEntryDefaultArgs<ExtArgs>
 }
 
@@ -697,6 +962,7 @@ export type $ReturnItemPayload<ExtArgs extends runtime.Types.Extensions.Internal
   name: "ReturnItem"
   objects: {
     product: Prisma.$ProductPayload<ExtArgs>
+    batch: Prisma.$ProductBatchPayload<ExtArgs> | null
     returnEntry: Prisma.$ReturnEntryPayload<ExtArgs>
   }
   scalars: runtime.Types.Extensions.GetPayloadResult<{
@@ -706,6 +972,9 @@ export type $ReturnItemPayload<ExtArgs extends runtime.Types.Extensions.Internal
     productName: string
     quantity: number
     refundAmount: number
+    inventoryStatus: string
+    batchId: string | null
+    purchasePrice: number
   }, ExtArgs["result"]["returnItem"]>
   composites: {}
 }
@@ -1101,6 +1370,7 @@ readonly fields: ReturnItemFieldRefs;
 export interface Prisma__ReturnItemClient<T, Null = never, ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
   readonly [Symbol.toStringTag]: "PrismaPromise"
   product<T extends Prisma.ProductDefaultArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.ProductDefaultArgs<ExtArgs>>): Prisma.Prisma__ProductClient<runtime.Types.Result.GetResult<Prisma.$ProductPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
+  batch<T extends Prisma.ReturnItem$batchArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.ReturnItem$batchArgs<ExtArgs>>): Prisma.Prisma__ProductBatchClient<runtime.Types.Result.GetResult<Prisma.$ProductBatchPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
   returnEntry<T extends Prisma.ReturnEntryDefaultArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.ReturnEntryDefaultArgs<ExtArgs>>): Prisma.Prisma__ReturnEntryClient<runtime.Types.Result.GetResult<Prisma.$ReturnEntryPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
   /**
    * Attaches callbacks for the resolution and/or rejection of the Promise.
@@ -1137,6 +1407,9 @@ export interface ReturnItemFieldRefs {
   readonly productName: Prisma.FieldRef<"ReturnItem", 'String'>
   readonly quantity: Prisma.FieldRef<"ReturnItem", 'Int'>
   readonly refundAmount: Prisma.FieldRef<"ReturnItem", 'Float'>
+  readonly inventoryStatus: Prisma.FieldRef<"ReturnItem", 'String'>
+  readonly batchId: Prisma.FieldRef<"ReturnItem", 'String'>
+  readonly purchasePrice: Prisma.FieldRef<"ReturnItem", 'Float'>
 }
     
 
@@ -1535,6 +1808,25 @@ export type ReturnItemDeleteManyArgs<ExtArgs extends runtime.Types.Extensions.In
    * Limit how many ReturnItems to delete.
    */
   limit?: number
+}
+
+/**
+ * ReturnItem.batch
+ */
+export type ReturnItem$batchArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the ProductBatch
+   */
+  select?: Prisma.ProductBatchSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the ProductBatch
+   */
+  omit?: Prisma.ProductBatchOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.ProductBatchInclude<ExtArgs> | null
+  where?: Prisma.ProductBatchWhereInput
 }
 
 /**

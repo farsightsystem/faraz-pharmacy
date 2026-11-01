@@ -8,14 +8,14 @@ export const createStockSchema = z.object({
   batchNumber: z.string().optional(),
   quantity: z.number().int().positive(),
   stax: z.number().min(0).optional().default(0),
-  expiry: z.string().optional(),
+  expiry: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
   priceTierId: z.string().optional(),
 });
 
 export const updateStockSchema = z.object({
   quantity: z.number().int().min(0),
   stax: z.number().min(0).optional(),
-  expiry: z.string().optional(),
+  expiry: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
   batchNumber: z.string().optional(),
   company: z.string().optional(),
   invoiceNumber: z.string().optional(),

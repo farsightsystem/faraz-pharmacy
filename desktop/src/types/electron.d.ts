@@ -1,4 +1,4 @@
-import type { PrinterConfig } from "./index";
+import type { PrinterConfig, ProductPrice } from "./index";
 
 export interface ElectronAPI {
   printers: {
@@ -32,6 +32,7 @@ export interface ElectronAPI {
       location: string;
       active: number;
       company: { name: string } | null;
+      prices: ProductPrice[];
     } | null>;
     disconnect(): void;
   };

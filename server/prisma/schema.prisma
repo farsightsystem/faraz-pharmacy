@@ -133,6 +133,7 @@ model Customer {
 
 model Sale {
   id         String        @id
+  kind       String        @default("sale")
   customerId String?       @map("customer_id")
   subtotal   Float         @default(0)
   discount   Float         @default(0)
@@ -153,20 +154,21 @@ model Sale {
 }
 
 model SaleItem {
-  id          String        @id @default(uuid())
-  saleId      String        @map("sale_id")
-  productId   String        @map("product_id")
-  productName String        @map("product_name")
-  barcode     String
-  quantity    Int           @default(1)
-  unitPrice   Float         @default(0) @map("unit_price")
-  subtotal    Float         @default(0)
-  batchId     String?       @map("batch_id")
-  batchNumber String?       @map("batch_number")
-  expiry      String?
-  product     Product       @relation(fields: [productId], references: [id])
-  sale        Sale          @relation(fields: [saleId], references: [id], onDelete: Cascade)
-  batch       ProductBatch? @relation(fields: [batchId], references: [id])
+  id            String        @id @default(uuid())
+  saleId        String        @map("sale_id")
+  productId     String        @map("product_id")
+  productName   String        @map("product_name")
+  barcode       String
+  quantity      Int           @default(1)
+  unitPrice     Float         @default(0) @map("unit_price")
+  purchasePrice Float         @default(0) @map("purchase_price")
+  subtotal      Float         @default(0)
+  batchId       String?       @map("batch_id")
+  batchNumber   String?       @map("batch_number")
+  expiry        String?
+  product       Product       @relation(fields: [productId], references: [id])
+  sale          Sale          @relation(fields: [saleId], references: [id], onDelete: Cascade)
+  batch         ProductBatch? @relation(fields: [batchId], references: [id])
 
   @@index([saleId])
   @@index([productId])
@@ -237,7 +239,7 @@ model ProductBatch {
   id             String          @id @default(uuid())
   productId      String          @map("product_id")
   batchNumber    String          @map("batch_number")
-  expiryDate     String          @map("expiry_date")
+  expiryDate     String?         @map("expiry_date")
   quantity       Int             @default(0)
   initialQty     Int             @default(0) @map("initial_qty")
   purchasePrice  Float           @default(0) @map("purchase_price")
@@ -250,6 +252,7 @@ model ProductBatch {
   distributor    Distributor?    @relation(fields: [distributorId], references: [id])
   product        Product         @relation(fields: [productId], references: [id], onDelete: Cascade)
   saleItems      SaleItem[]
+  returnItems    ReturnItem[]
   stockPurchases StockPurchase[]
 
   @@unique([productId, batchNumber])
@@ -259,27 +262,33 @@ model ProductBatch {
 }
 
 model ReturnEntry {
-  id           String       @id @default(uuid())
-  saleId       String       @map("sale_id")
-  refundAmount Float        @default(0) @map("refund_amount")
-  reason       String       @default("")
-  createdAt    DateTime     @default(now()) @map("created_at")
-  items        ReturnItem[]
-  sale         Sale         @relation(fields: [saleId], references: [id])
+  id            String       @id @default(uuid())
+  saleId        String       @map("sale_id")
+  refundAmount  Float        @default(0) @map("refund_amount")
+  creditApplied Float        @default(0) @map("credit_applied")
+  cashRefunded  Float        @default(0) @map("cash_refunded")
+  reason        String       @default("")
+  createdAt     DateTime     @default(now()) @map("created_at")
+  items         ReturnItem[]
+  sale          Sale         @relation(fields: [saleId], references: [id])
 
   @@index([saleId])
   @@map("returns")
 }
 
 model ReturnItem {
-  id           String      @id @default(uuid())
-  returnId     String      @map("return_id")
-  productId    String      @map("product_id")
-  productName  String      @map("product_name")
-  quantity     Int         @default(0)
-  refundAmount Float       @default(0) @map("refund_amount")
-  product      Product     @relation(fields: [productId], references: [id])
-  returnEntry  ReturnEntry @relation(fields: [returnId], references: [id], onDelete: Cascade)
+  id              String        @id @default(uuid())
+  returnId        String        @map("return_id")
+  productId       String        @map("product_id")
+  productName     String        @map("product_name")
+  quantity        Int           @default(0)
+  refundAmount    Float         @default(0) @map("refund_amount")
+  inventoryStatus String        @default("quarantined") @map("inventory_status")
+  batchId         String?       @map("batch_id")
+  purchasePrice   Float         @default(0) @map("purchase_price")
+  product         Product       @relation(fields: [productId], references: [id])
+  batch           ProductBatch? @relation(fields: [batchId], references: [id], onDelete: SetNull)
+  returnEntry     ReturnEntry   @relation(fields: [returnId], references: [id], onDelete: Cascade)
 
   @@index([returnId])
   @@index([productId])

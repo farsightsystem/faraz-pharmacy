@@ -48,7 +48,7 @@ export const reportsService = {
     ).toISOString().slice(0, 10);
 
     const [
-      todayRevenue,
+      todayRevenueRows,
       totalArrears,
       lowStockCount,
       expiringSoonCount,
@@ -59,10 +59,19 @@ export const reportsService = {
       topCustomers,
       pendingArrears,
     ] = await Promise.all([
-      prisma.sale.aggregate({
-        where: { createdAt: { gte: startOfDaysAgo(0), lt: tomorrow } },
-        _sum: { total: true },
-      }),
+      prisma.$queryRaw<{ revenue: number }[]>`
+        SELECT COALESCE(SUM(
+          s.total - COALESCE(
+            (SELECT SUM(r.refund_amount) FROM returns r WHERE r.sale_id = s.id),
+            0
+          )
+        ), 0)::float AS revenue
+        FROM sales s
+        WHERE s.kind = 'sale'
+          AND s.created_at >= ${startOfDaysAgo(0)}
+          AND s.created_at < ${tomorrow}
+          AND EXISTS (SELECT 1 FROM sale_items si WHERE si.sale_id = s.id)
+      `,
 
       prisma.arrear.aggregate({
         where: { status: "pending" },
@@ -81,21 +90,44 @@ export const reportsService = {
       }),
 
       prisma.$queryRaw<{ day: string; revenue: number }[]>`
-        SELECT TO_CHAR((created_at + (${tzOffsetMinutes} * INTERVAL '1 minute'))::date, 'YYYY-MM-DD') AS day,
-               COALESCE(SUM(total), 0)::float AS revenue
-        FROM sales
-        WHERE created_at >= ${thirtyDaysAgo}
-          AND created_at < ${tomorrow}
-        GROUP BY (created_at + (${tzOffsetMinutes} * INTERVAL '1 minute'))::date
-        ORDER BY (created_at + (${tzOffsetMinutes} * INTERVAL '1 minute'))::date
+        SELECT TO_CHAR((s.created_at + (${tzOffsetMinutes} * INTERVAL '1 minute'))::date, 'YYYY-MM-DD') AS day,
+               COALESCE(SUM(
+                 s.total - COALESCE(
+                   (SELECT SUM(r.refund_amount) FROM returns r WHERE r.sale_id = s.id),
+                   0
+                 )
+               ), 0)::float AS revenue
+        FROM sales s
+        WHERE s.kind = 'sale'
+          AND s.created_at >= ${thirtyDaysAgo}
+          AND s.created_at < ${tomorrow}
+          AND EXISTS (SELECT 1 FROM sale_items si WHERE si.sale_id = s.id)
+        GROUP BY (s.created_at + (${tzOffsetMinutes} * INTERVAL '1 minute'))::date
+        ORDER BY (s.created_at + (${tzOffsetMinutes} * INTERVAL '1 minute'))::date
       `,
 
-      prisma.saleItem.groupBy({
-        by: ["productName"],
-        _sum: { subtotal: true },
-        orderBy: { _sum: { subtotal: "desc" } },
-        take: 5,
-      }),
+      prisma.$queryRaw<{ name: string; value: number }[]>`
+        SELECT sold.product_name AS name,
+               GREATEST(sold.revenue - COALESCE(returned.refunds, 0), 0)::float AS value
+        FROM (
+          SELECT si.product_name,
+                 SUM(si.subtotal * (
+                   1 - CASE WHEN s.subtotal > 0 THEN s.discount / s.subtotal ELSE 0 END
+                     + CASE WHEN s.subtotal > 0 THEN s.tax / s.subtotal ELSE 0 END
+                 )) AS revenue
+          FROM sale_items si
+          JOIN sales s ON s.id = si.sale_id
+          WHERE s.kind = 'sale'
+          GROUP BY si.product_name
+        ) sold
+        LEFT JOIN (
+          SELECT ri.product_name, SUM(ri.refund_amount) AS refunds
+          FROM return_items ri
+          GROUP BY ri.product_name
+        ) returned ON returned.product_name = sold.product_name
+        ORDER BY value DESC
+        LIMIT 5
+      `,
 
       prisma.product.findMany({
         where: { active: 1, stockQty: { gt: 0, lte: 10 } },
@@ -112,12 +144,20 @@ export const reportsService = {
       }),
 
       prisma.$queryRaw<{ id: string; name: string; phone: string; total_spent: number }[]>`
-        SELECT c.id, c.name, c.phone, COALESCE(SUM(s.total), 0)::float AS total_spent
+        SELECT c.id, c.name, c.phone,
+               COALESCE(SUM(
+                 s.total - COALESCE(
+                   (SELECT SUM(r.refund_amount) FROM returns r WHERE r.sale_id = s.id),
+                   0
+                 )
+               ), 0)::float AS total_spent
         FROM customers c
         JOIN sales s ON s.customer_id = c.id
         WHERE c.active = 1
+          AND s.kind = 'sale'
+          AND EXISTS (SELECT 1 FROM sale_items si WHERE si.sale_id = s.id)
         GROUP BY c.id, c.name, c.phone
-        ORDER BY SUM(s.total) DESC
+        ORDER BY total_spent DESC
         LIMIT 5
       `,
 
@@ -145,15 +185,15 @@ export const reportsService = {
       });
 
     return {
-      todayRevenue: todayRevenue._sum.total ?? 0,
+      todayRevenue: Number(todayRevenueRows[0]?.revenue ?? 0),
       totalArrears: totalArrears._sum.balanceDue ?? 0,
       lowStockCount,
       expiringSoonCount,
       weekRevenue: makeRevenueSeries(7),
       monthRevenue: makeRevenueSeries(30),
-      topProducts: topProducts.map((p: Record<string, unknown>) => ({
-        name: p.productName as string,
-        value: Number((p._sum as Record<string, number>).subtotal ?? 0),
+      topProducts: topProducts.map((product) => ({
+        name: product.name,
+        value: Number(product.value),
       })),
       lowStockProducts: lowStockProducts.map((product) => ({
         id: product.id,
@@ -183,7 +223,15 @@ export const reportsService = {
     tzOffsetMinutes?: number;
   }) {
     const createdAt = getDateRange(opts.dateFrom, opts.dateTo, opts.tzOffsetMinutes);
-    const where: Prisma.SaleWhereInput = createdAt ? { createdAt } : {};
+    const where: Prisma.SaleWhereInput = {
+      kind: "sale",
+      items: { some: {} },
+      ...(createdAt ? { createdAt } : {}),
+    };
+    const returnWhere: Prisma.ReturnEntryWhereInput = {
+      sale: { is: { kind: "sale", ...(createdAt ? { createdAt } : {}) } },
+    };
+    const arrearWhere: Prisma.ArrearWhereInput = createdAt ? { createdAt } : {};
     const offsetMs = (opts.tzOffsetMinutes ?? 0) * 60_000;
     const shiftedNow = new Date(Date.now() + offsetMs);
     const chartCalendarDate = new Date(
@@ -196,7 +244,16 @@ export const reportsService = {
         chartCalendarDate.getUTCDate() - 29
       ) - offsetMs
     );
-    const [aggregate, profitRows, dailyRevenue] = await Promise.all([
+    const [
+      aggregate,
+      profitRows,
+      dailyRevenue,
+      returnTotals,
+      returnProfitRows,
+      laterPayments,
+      arrearAggregate,
+    ] =
+      await Promise.all([
       prisma.sale.aggregate({
         where,
         _count: { _all: true },
@@ -212,33 +269,96 @@ export const reportsService = {
                )), 0)::float AS profit
         FROM (
           SELECT s.id, s.subtotal, s.discount,
-                 SUM(p.purchase_price * si.quantity) AS cost_of_goods,
-                 SUM((si.unit_price - p.purchase_price) * si.quantity) AS gross_profit
+                 SUM(si.purchase_price * si.quantity) AS cost_of_goods,
+                 SUM((si.unit_price - si.purchase_price) * si.quantity) AS gross_profit
           FROM sales s
           JOIN sale_items si ON si.sale_id = s.id
-          JOIN products p ON p.id = si.product_id
-          WHERE (${createdAt?.gte ?? null}::timestamp IS NULL OR s.created_at >= ${createdAt?.gte ?? null})
+          WHERE s.kind = 'sale'
+            AND (${createdAt?.gte ?? null}::timestamp IS NULL OR s.created_at >= ${createdAt?.gte ?? null})
             AND (${createdAt?.lte ?? null}::timestamp IS NULL OR s.created_at <= ${createdAt?.lte ?? null})
           GROUP BY s.id, s.subtotal, s.discount
         ) sale_profit
       `,
       prisma.$queryRaw<{ day: string; revenue: number }[]>`
-        SELECT TO_CHAR((created_at + (${opts.tzOffsetMinutes ?? 0} * INTERVAL '1 minute'))::date, 'YYYY-MM-DD') AS day,
-               COALESCE(SUM(total), 0)::float AS revenue
-        FROM sales
-        WHERE created_at >= ${chartStart}
-        GROUP BY (created_at + (${opts.tzOffsetMinutes ?? 0} * INTERVAL '1 minute'))::date
-        ORDER BY (created_at + (${opts.tzOffsetMinutes ?? 0} * INTERVAL '1 minute'))::date
+        SELECT TO_CHAR((s.created_at + (${opts.tzOffsetMinutes ?? 0} * INTERVAL '1 minute'))::date, 'YYYY-MM-DD') AS day,
+               COALESCE(SUM(
+                 s.total - COALESCE(
+                   (SELECT SUM(r.refund_amount) FROM returns r WHERE r.sale_id = s.id),
+                   0
+                 )
+               ), 0)::float AS revenue
+        FROM sales s
+        WHERE s.kind = 'sale'
+          AND s.created_at >= ${chartStart}
+          AND EXISTS (SELECT 1 FROM sale_items si WHERE si.sale_id = s.id)
+        GROUP BY (s.created_at + (${opts.tzOffsetMinutes ?? 0} * INTERVAL '1 minute'))::date
+        ORDER BY (s.created_at + (${opts.tzOffsetMinutes ?? 0} * INTERVAL '1 minute'))::date
       `,
+      prisma.returnEntry.aggregate({
+        where: returnWhere,
+        _sum: { refundAmount: true },
+      }),
+      prisma.$queryRaw<{ profit_impact: number }[]>`
+        SELECT COALESCE(SUM(
+          ri.refund_amount * CASE
+            WHEN s.subtotal > 0
+              AND (1 - s.discount / s.subtotal + s.tax / s.subtotal) > 0
+            THEN (1 - s.discount / s.subtotal)
+              / (1 - s.discount / s.subtotal + s.tax / s.subtotal)
+            ELSE 1
+          END
+          - CASE
+            WHEN ri.inventory_status = 'restocked'
+            THEN ri.purchase_price * ri.quantity
+            ELSE 0
+          END
+        ), 0)::float AS profit_impact
+        FROM returns r
+        JOIN sales s ON s.id = r.sale_id
+        JOIN return_items ri ON ri.return_id = r.id
+        WHERE s.kind = 'sale'
+          AND (${createdAt?.gte ?? null}::timestamp IS NULL OR s.created_at >= ${createdAt?.gte ?? null})
+          AND (${createdAt?.lte ?? null}::timestamp IS NULL OR s.created_at <= ${createdAt?.lte ?? null})
+      `,
+      prisma.$queryRaw<{ amount: number }[]>`
+        SELECT COALESCE(SUM(ap.amount), 0)::float AS amount
+        FROM arrear_payments ap
+        JOIN sales payment ON payment.id = ap.payment_sale_id
+        WHERE payment.kind = 'arrear_payment'
+          AND (${createdAt?.gte ?? null}::timestamp IS NULL OR ap.created_at >= ${createdAt?.gte ?? null})
+          AND (${createdAt?.lte ?? null}::timestamp IS NULL OR ap.created_at <= ${createdAt?.lte ?? null})
+      `,
+      prisma.arrear.aggregate({
+        where: arrearWhere,
+        _sum: { balanceDue: true },
+      }),
     ]);
 
+    const cashRefunds = await prisma.returnEntry.aggregate({
+      where: opts.dateFrom || opts.dateTo
+        ? {
+            sale: { is: { kind: "sale" } },
+            ...(createdAt ? { createdAt } : {}),
+          }
+        : { sale: { is: { kind: "sale" } } },
+      _sum: { cashRefunded: true },
+    });
+
     return {
-      revenue: aggregate._sum.total ?? 0,
+      revenue: Math.max(
+        0,
+        (aggregate._sum.total ?? 0) - (returnTotals._sum.refundAmount ?? 0)
+      ),
       transactionCount: aggregate._count._all,
-      amountPaid: aggregate._sum.amountPaid ?? 0,
-      outstanding: (aggregate._sum.total ?? 0) - (aggregate._sum.amountPaid ?? 0),
+      amountPaid:
+        (aggregate._sum.amountPaid ?? 0) +
+        Number(laterPayments[0]?.amount ?? 0) -
+        (cashRefunds._sum.cashRefunded ?? 0),
+      outstanding: arrearAggregate._sum.balanceDue ?? 0,
       costOfGoods: Number(profitRows[0]?.cost_of_goods ?? 0),
-      profit: Number(profitRows[0]?.profit ?? 0),
+      profit:
+        Number(profitRows[0]?.profit ?? 0) -
+        Number(returnProfitRows[0]?.profit_impact ?? 0),
       dailyRevenue,
     };
   },
@@ -341,7 +461,7 @@ export const reportsService = {
         company: { select: { name: true } },
         batches: {
           include: { distributor: { select: { name: true } } },
-          orderBy: { expiryDate: "asc" },
+          orderBy: { expiryDate: { sort: "asc", nulls: "last" } },
         },
         stockPurchases: {
           include: { distributor: { select: { name: true } } },
@@ -380,6 +500,7 @@ export const reportsService = {
             createdAt: true,
             subtotal: true,
             discount: true,
+            tax: true,
             customer: { select: { name: true } },
           },
         },
@@ -393,13 +514,17 @@ export const reportsService = {
 
     const salesHistory = saleItems.map((item) => {
       totalUnitsSold += item.quantity;
-      totalRevenue += item.subtotal;
-
       const discountRatio =
         item.sale?.subtotal && item.sale.subtotal > 0
           ? item.sale.discount / item.sale.subtotal
           : 0;
-      const rawProfit = (item.unitPrice - product.purchasePrice) * item.quantity;
+      const taxRatio =
+        item.sale?.subtotal && item.sale.subtotal > 0
+          ? item.sale.tax / item.sale.subtotal
+          : 0;
+      totalRevenue += item.subtotal * (1 - discountRatio + taxRatio);
+
+      const rawProfit = (item.unitPrice - item.purchasePrice) * item.quantity;
       const adjustedProfit = Math.round(rawProfit * (1 - discountRatio));
       totalProfit += adjustedProfit;
 
@@ -441,6 +566,13 @@ export const reportsService = {
             createdAt: true,
             saleId: true,
             reason: true,
+            sale: {
+              select: {
+                subtotal: true,
+                discount: true,
+                tax: true,
+              },
+            },
           },
         },
       },
@@ -449,6 +581,18 @@ export const reportsService = {
 
     const totalUnitsReturned = returnItems.reduce((acc, r) => acc + r.quantity, 0);
     const totalRefundAmount = returnItems.reduce((acc, r) => acc + r.refundAmount, 0);
+    const returnProfitImpact = returnItems.reduce((impact, item) => {
+      const sale = item.returnEntry?.sale;
+      const discountRatio =
+        sale && sale.subtotal > 0 ? sale.discount / sale.subtotal : 0;
+      const taxRatio = sale && sale.subtotal > 0 ? sale.tax / sale.subtotal : 0;
+      const refundRatio = 1 - discountRatio + taxRatio;
+      const refundExcludingTax =
+        refundRatio > 0 ? item.refundAmount * ((1 - discountRatio) / refundRatio) : item.refundAmount;
+      const recoveredCost =
+        item.inventoryStatus === "restocked" ? item.purchasePrice * item.quantity : 0;
+      return impact + refundExcludingTax - recoveredCost;
+    }, 0);
 
     return {
       product: {
@@ -468,7 +612,7 @@ export const reportsService = {
       summary: {
         totalUnitsSold,
         totalRevenue,
-        totalProfit,
+        totalProfit: Math.round(totalProfit - returnProfitImpact),
         totalUnitsReturned,
         totalRefundAmount,
         netUnitsSold: Math.max(0, totalUnitsSold - totalUnitsReturned),

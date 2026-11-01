@@ -415,7 +415,7 @@ export default function Companies() {
                 createMutation.mutate();
               }
             }}
-            className="space-y-4 pt-2"
+            className="space-y-5 px-5 pb-5 pt-4"
           >
             <div className="space-y-1.5">
               <Label htmlFor="company-name" className="text-xs font-semibold">
@@ -430,7 +430,7 @@ export default function Companies() {
                 required
               />
             </div>
-            <div className="flex justify-end gap-2 pt-2">
+            <div className="flex justify-end gap-2 border-t border-border pt-4">
               <Button
                 type="button"
                 variant="outline"
