@@ -60,6 +60,10 @@ export default function ProductReport() {
   const { data: products = [], isLoading: loadingProducts } = useQuery<Product[]>({
     queryKey: ["products", "report-options"],
     queryFn: api.products.list,
+    staleTime: 0,
+    gcTime: 0,
+    refetchOnMount: "always",
+    refetchOnWindowFocus: true,
   });
 
   const productOptions = useMemo(() => {

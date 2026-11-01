@@ -16,7 +16,14 @@ export default function ZakatReport() {
   const [calculated, setCalculated] = useState(false);
   const [eligibleValue, setEligibleValue] = useState(0);
 
-  const { data: products = [] } = useQuery({ queryKey: ["products"], queryFn: api.products.list });
+  const { data: products = [] } = useQuery({
+    queryKey: ["products"],
+    queryFn: api.products.list,
+    staleTime: 0,
+    gcTime: 0,
+    refetchOnMount: "always",
+    refetchOnWindowFocus: true,
+  });
 
   function calculateZakat() {
     const total = products.reduce(

@@ -228,6 +228,10 @@ export default function Products() {
       sortBy,
       sortOrder,
     }),
+    staleTime: 0,
+    gcTime: 0,
+    refetchOnMount: "always",
+    refetchOnWindowFocus: true,
   });
 
   const rawProducts = paginatedData?.data || [];

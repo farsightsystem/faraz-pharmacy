@@ -9,7 +9,7 @@ Faraz Pharmacy is a desktop pharmacy POS with:
 - An Electron/React desktop application in `desktop/`.
 - An Express/TypeScript API using Prisma and PostgreSQL in `server/`.
 - LAN clients connecting to one machine that hosts the API/database.
-- An IndexedDB/Dexie product catalog cache for local product lookup.
+- Product and stock lookups are fetched from the API and are not persisted locally (updated in section 22).
 - A server-required checkout model. Offline catalog lookup is not a promise that sales can be completed without the server.
 
 The user described three terminals in the initial deployment assumptions. The current [performance.md](./performance.md) also contains an audit scope of five client PCs. Confirm the intended number of clients before treating either number as the definitive deployment target.
@@ -27,7 +27,7 @@ The diagnosis was schema/database drift: compare the Prisma model and migration 
 The performance discussion established these requirements and initial estimates:
 
 - One server machine and LAN-connected desktop clients; internet is not required for normal application operation.
-- The catalog can be read from its local cache when the server is unavailable; checkout remains server-dependent.
+- An offline catalog cache was initially considered, then removed in section 22; product and stock lookups require the API.
 - Initial workload assumptions: approximately 1,000 products, 1,000 customers, 300 sales/day with four lines each, one year of sales history, three terminals, a 16 GB server, and 8 GB client PCs.
 - Performance changes should be measured and preserve stock/checkout correctness. Production-like hardware testing was deferred until the user can test manually.
 - Infrastructure tuning and real-client validation are separate from routine code optimization; they may lead to targeted code changes only if measurements reveal a bottleneck.
@@ -81,7 +81,7 @@ Important deployment compatibility note: because older clients can call legacy l
 
 The user asked the assistant to continue to the next phase while they handled manual testing.
 
-The implementation in the current worktree includes:
+The implementation when Phase 3 was completed included:
 
 - Dashboard stats now return compact server-computed widgets rather than requiring complete product/customer/arrears lists in the renderer.
 - Added sales, purchase, expense, and income summary API routes and API client methods.
@@ -334,3 +334,18 @@ The user asked to address the product/stock review findings:
 - Product creation no longer accepts/manages initial inventory quantity; inventory must be recorded through Stock so product quantity, batches, and stock-purchase history remain consistent.
 
 No Prisma schema or migration change is required. Server TypeScript/build, desktop TypeScript/renderer build, Electron preload syntax, and `git diff --check` passed. Manual verification should exercise stock create/increase/decrease/archive/restore, tier edits for shared and unshared batches, batch-number edits with and without sales, clearing used tiers, and quantity refresh on a second connected terminal.
+
+## 22. Removing Persisted Product and Stock Caches
+
+The user asked to stop caching product and stock data because persisted quantities could appear inconsistent across terminals.
+
+Implemented:
+
+- Removed server-side product-cache reads and writes, the catalog-sync endpoint, and the `freshStock` parameter.
+- Product routes send `Cache-Control: no-store`; desktop API requests use Fetch's `cache: "no-store"`.
+- POS barcode lookup now requires a live Socket.IO or REST response; it no longer falls back to IndexedDB.
+- Product queries use zero freshness/garbage-collection windows and refetch on mount/focus; inventory events reset product queries in connected windows.
+- Desktop startup deletes the obsolete `PharmacyDB` database. Offline barcode/catalog lookup is no longer supported.
+- Removed the unused Dexie dependency and its local database/sync modules.
+
+Validation passed: server TypeScript check and production build, desktop TypeScript check and renderer build, and `git diff --check`. Live stock synchronization across terminals and deletion of the legacy database on the user's running installation still require manual verification; no database migrations were run.

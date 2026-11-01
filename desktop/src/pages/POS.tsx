@@ -41,7 +41,6 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { formatCurrency } from "@/lib/utils";
 import { setLastReceipt } from "@/lib/receiptStore";
-import { getProductByBarcodeLocal } from "@/lib/sync";
 import { toast } from "sonner";
 import type { Product, PrinterConfig, Customer } from "@/types";
 
@@ -114,10 +113,10 @@ export default function POS() {
   }, [focusSearch]);
 
   /**
-   * Resolve barcode against live stock first and use IndexedDB only if the server is unavailable.
+   * Resolve barcode against live server data.
    */
   const findProductByBarcode = useCallback(async (barcode: string): Promise<Product | null> => {
-    // Prefer live stock from the server; IndexedDB is only an offline fallback.
+    // Prefer the live socket lookup, then fall back to the server's REST endpoint.
     try {
       const socketResult = await api.products.socketProductScan(barcode);
       if (socketResult) {
@@ -141,47 +140,23 @@ export default function POS() {
       // Socket.io unavailable, fall through to REST.
     }
 
-    try {
-      const restResult = await api.products.getByBarcodeFast(barcode);
-      if (restResult) {
-        return {
-          id: restResult.id,
-          barcode: restResult.barcode,
-          name: restResult.name,
-          sale_price: restResult.salePrice,
-          purchase_price: restResult.purchasePrice,
-          stock_qty: restResult.stockQty,
-          category: restResult.category,
-          location: restResult.location,
-          active: restResult.active,
-          company: restResult.company?.name || "",
-          prices: restResult.prices || [],
-          markup_percent: 20,
-          created_at: new Date().toISOString(),
-        };
-      }
-      return null;
-    } catch {
-      // The server is unavailable; use the last locally cached catalog entry.
-    }
-
-    const local = await getProductByBarcodeLocal(barcode);
-    if (!local) return null;
+    const restResult = await api.products.getByBarcodeFast(barcode);
+    if (!restResult) return null;
     return {
-      id: local.id,
-      barcode: local.barcode,
-      name: local.name,
-      sale_price: local.sale_price,
-      purchase_price: local.purchase_price,
-      stock_qty: local.stock_qty,
-      category: local.category,
-      location: local.location,
-      active: local.active,
-      company: local.company || "",
-      prices: local.prices || [],
-      markup_percent: local.markup_percent,
-      created_at: local.created_at,
-    };
+      id: restResult.id,
+      barcode: restResult.barcode,
+      name: restResult.name,
+      sale_price: restResult.salePrice,
+      purchase_price: restResult.purchasePrice,
+      stock_qty: restResult.stockQty,
+      category: restResult.category,
+      location: restResult.location,
+      active: restResult.active,
+      company: restResult.company?.name || "",
+      prices: restResult.prices || [],
+      markup_percent: 20,
+      created_at: new Date().toISOString(),
+    }
   }, []);
 
   // Show inline error near search input
@@ -216,10 +191,11 @@ export default function POS() {
       api.products.listPaginated({
         search: debouncedSearch.trim(),
         limit: 12,
-        freshStock: true,
       }),
     enabled: debouncedSearch.trim().length >= 1,
     staleTime: 0,
+    gcTime: 0,
+    refetchOnMount: "always",
     refetchOnWindowFocus: true,
   });
 
@@ -425,9 +401,9 @@ export default function POS() {
               api.products.listPaginated({
                 search: trimmed,
                 limit: 12,
-                freshStock: true,
               }),
             staleTime: 0,
+            gcTime: 0,
           });
           products = sortProductResults(result.data, trimmed);
         } catch {

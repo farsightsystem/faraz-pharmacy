@@ -55,6 +55,10 @@ export default function StockReport() {
   const { data: products = [], isLoading } = useQuery({
     queryKey: ["products"],
     queryFn: api.products.list,
+    staleTime: 0,
+    gcTime: 0,
+    refetchOnMount: "always",
+    refetchOnWindowFocus: true,
   });
 
   const { data: categories = [] } = useQuery({

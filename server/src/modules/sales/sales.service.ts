@@ -5,7 +5,6 @@ import type { CreateSaleInput } from "./sales.schema";
 import { Prisma } from "../../generated/prisma/client";
 import { clampPageSize } from "../../utils/pagination";
 import { nextSaleId } from "./sales-id";
-import { cacheDelNamespace } from "../../utils/cache";
 
 function localDateKey(date: Date): string {
   const year = date.getFullYear();
@@ -216,7 +215,6 @@ export const salesService = {
 
       return saleWithCustomerBalance;
     });
-    cacheDelNamespace("products");
     emitEvent("sale:created", created);
     emitEvent("inventory:updated", null);
     return created;

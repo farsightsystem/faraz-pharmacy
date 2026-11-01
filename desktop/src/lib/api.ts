@@ -64,6 +64,7 @@ async function fetchJson<T>(
     headers,
     body: body ? JSON.stringify(body) : undefined,
     signal: timeoutMs ? AbortSignal.timeout(timeoutMs) : undefined,
+    cache: "no-store",
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({ error: `HTTP ${res.status}` }));
@@ -143,18 +144,17 @@ const api = {
   },
   products: {
     list: (): Promise<Product[]> => fetchAllPages("/api/products"),
-    syncCatalog: (opts: { updatedSince?: string } = {}): Promise<{
-      products: Product[];
-      syncedAt: string;
-    }> => {
-      const params = new URLSearchParams();
-      if (opts.updatedSince) params.set("updatedSince", opts.updatedSince);
-      const query = params.toString();
-      return fetchJson("GET", `/api/products/sync${query ? `?${query}` : ""}`);
-    },
     listAll: (): Promise<Product[]> =>
       fetchAllPages("/api/products", new URLSearchParams({ includeArchived: "true" })),
-    listPaginated: async (opts: { page?: number; limit?: number; search?: string; includeArchived?: boolean; archivedOnly?: boolean; sortBy?: string; sortOrder?: "asc" | "desc"; freshStock?: boolean }): Promise<PaginatedResponse<Product>> => {
+    listPaginated: async (opts: {
+      page?: number;
+      limit?: number;
+      search?: string;
+      includeArchived?: boolean;
+      archivedOnly?: boolean;
+      sortBy?: string;
+      sortOrder?: "asc" | "desc";
+    }): Promise<PaginatedResponse<Product>> => {
       const params = new URLSearchParams();
       params.set("paginated", "true");
       if (opts.page) params.set("page", String(opts.page));
@@ -162,7 +162,6 @@ const api = {
       if (opts.search) params.set("search", opts.search);
       if (opts.sortBy) params.set("sortBy", opts.sortBy);
       if (opts.sortOrder) params.set("sortOrder", opts.sortOrder);
-      if (opts.freshStock) params.set("freshStock", "true");
       if (opts.archivedOnly) {
         params.set("archivedOnly", "true");
       } else if (opts.includeArchived) {

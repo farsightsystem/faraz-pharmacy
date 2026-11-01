@@ -53,11 +53,14 @@ export default function GlobalSearch() {
   const {
     data: initialProductsData,
     isLoading: loadingInitial,
+    isError: initialProductsError,
     refetch: refreshInitialProducts,
   } = useQuery({
     queryKey: ["global-search-catalog-sample"],
-    queryFn: () => api.products.listPaginated({ page: 1, limit: 50, freshStock: true }),
+    queryFn: () => api.products.listPaginated({ page: 1, limit: 50 }),
     staleTime: 0,
+    gcTime: 0,
+    refetchOnMount: "always",
     refetchOnWindowFocus: true,
   });
 
@@ -75,6 +78,7 @@ export default function GlobalSearch() {
     data: searchResults = [],
     isLoading: loadingSearch,
     isFetching: fetchingSearch,
+    isError: searchError,
   } = useQuery({
     queryKey: ["global-search-products", debouncedQuery],
     queryFn: async () => {
@@ -83,12 +87,13 @@ export default function GlobalSearch() {
         page: 1,
         limit: 50,
         search: debouncedQuery,
-        freshStock: true,
       });
       return (res.data || []).map(normalizeProduct);
     },
     enabled: isSearching,
     staleTime: 0,
+    gcTime: 0,
+    refetchOnMount: "always",
     refetchOnWindowFocus: true,
   });
 
@@ -218,11 +223,35 @@ export default function GlobalSearch() {
 
             {!isLoading && isSearching && activeProducts.length === 0 && (
               <div className="py-9 text-center space-y-1">
+                {searchError ? (
+                  <>
+                    <p className="text-xs font-semibold text-text-primary">
+                      Could not search products
+                    </p>
+                    <p className="text-[11px] text-text-secondary">
+                      Check the server connection and try again.
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <p className="text-xs font-semibold text-text-primary">
+                      No medicine found for "{debouncedQuery}"
+                    </p>
+                    <p className="text-[11px] text-text-secondary">
+                      Check the spelling or try searching by barcode
+                    </p>
+                  </>
+                )}
+              </div>
+            )}
+
+            {!isLoading && !isSearching && initialProductsError && (
+              <div className="py-9 text-center space-y-1">
                 <p className="text-xs font-semibold text-text-primary">
-                  No medicine found for "{debouncedQuery}"
+                  Could not load products
                 </p>
                 <p className="text-[11px] text-text-secondary">
-                  Check the spelling or try searching by barcode
+                  Check the server connection and try again.
                 </p>
               </div>
             )}

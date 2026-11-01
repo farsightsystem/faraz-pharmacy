@@ -1,7 +1,6 @@
 import { prisma, Prisma } from "../../services/prisma";
 import { BadRequestError, NotFoundError } from "../../utils/errors";
 import { emitEvent } from "../../socket";
-import { cacheDelNamespace } from "../../utils/cache";
 import { clampPageSize } from "../../utils/pagination";
 import type { CreateStockInput } from "./purchases.schema";
 
@@ -208,7 +207,6 @@ export const purchasesService = {
 
       return stockPurchase;
     });
-    cacheDelNamespace("products"); // Invalidate only after committed stock is visible to readers.
     emitEvent("stock:updated", stockPurchase);
     emitEvent("inventory:updated", null);
     return stockPurchase;
@@ -405,7 +403,6 @@ export const purchasesService = {
         },
       });
     });
-    cacheDelNamespace("products"); // invalidate product cache on stock write
     emitEvent("inventory:updated", null);
     return result;
   },
@@ -462,7 +459,6 @@ export const purchasesService = {
 
       return { success: true };
     });
-    cacheDelNamespace("products"); // invalidate product cache on stock write
     emitEvent("inventory:updated", null);
     return result;
   },
@@ -511,7 +507,6 @@ export const purchasesService = {
 
       return { success: true };
     });
-    cacheDelNamespace("products"); // invalidate product cache on stock write
     emitEvent("inventory:updated", null);
     return result;
   },
@@ -558,7 +553,6 @@ export const purchasesService = {
       await tx.stockPurchase.delete({ where: { id } });
       return { success: true };
     });
-    cacheDelNamespace("products"); // invalidate product cache on stock write
     emitEvent("inventory:updated", null);
     return result;
   },

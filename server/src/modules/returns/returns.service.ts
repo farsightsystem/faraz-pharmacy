@@ -4,7 +4,6 @@ import { emitEvent } from "../../socket";
 import type { CreateReturnInput } from "./returns.schema";
 import { Prisma } from "../../generated/prisma/client";
 import { clampPageSize } from "../../utils/pagination";
-import { cacheDelNamespace } from "../../utils/cache";
 
 export const returnsService = {
   async list({
@@ -342,10 +341,7 @@ export const returnsService = {
         data: { inventoryStatus: "restocked", batchId },
       });
     });
-    if (action === "restock") {
-      cacheDelNamespace("products");
-      emitEvent("inventory:updated", null);
-    }
+    if (action === "restock") emitEvent("inventory:updated", null);
     return result;
   },
 };

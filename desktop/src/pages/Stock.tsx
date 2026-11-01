@@ -162,7 +162,14 @@ export default function Stock() {
   );
   const meta = paginatedData?.meta || { total: 0, page: 1, limit: 50, totalPages: 1 };
 
-  const { data: products = [] } = useQuery({ queryKey: ["products"], queryFn: api.products.list });
+  const { data: products = [] } = useQuery({
+    queryKey: ["products"],
+    queryFn: api.products.list,
+    staleTime: 0,
+    gcTime: 0,
+    refetchOnMount: "always",
+    refetchOnWindowFocus: true,
+  });
   const { data: distributors = [] } = useQuery({
     queryKey: ["distributors"],
     queryFn: api.distributors.list,

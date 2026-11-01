@@ -5,8 +5,11 @@ import { createProductSchema, updateProductSchema } from "./medicines.schema";
 
 const router = Router();
 
+router.use((_req, res, next) => {
+  res.setHeader("Cache-Control", "no-store");
+  next();
+});
 router.get("/", medicinesController.list);
-router.get("/sync", medicinesController.syncCatalog);
 router.get("/search", medicinesController.search);
 router.get("/barcode/:b", medicinesController.getByBarcode);
 router.get("/barcode-fast/:b", medicinesController.getByBarcodeFast);

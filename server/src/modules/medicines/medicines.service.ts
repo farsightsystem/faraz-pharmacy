@@ -1,6 +1,6 @@
 import { prisma } from "../../services/prisma";
 import { NotFoundError } from "../../utils/errors";
-import { cacheGet, cacheSet, cacheDelNamespace, makeKey } from "../../utils/cache";
+import { emitEvent } from "../../socket";
 import { clampPageSize } from "../../utils/pagination";
 import type { CreateProductInput } from "./medicines.schema";
 
@@ -40,65 +40,6 @@ async function resolveCompanyId(company?: string): Promise<string | null> {
 }
 
 export const medicinesService = {
-  async syncCatalog(updatedSince?: Date) {
-    const syncedAt = new Date();
-    const products = await prisma.product.findMany({
-      where: updatedSince
-        ? { updatedAt: { gte: updatedSince, lte: syncedAt } }
-        : { active: 1 },
-      select: {
-        id: true,
-        barcode: true,
-        name: true,
-        category: true,
-        location: true,
-        distributorId: true,
-        salePrice: true,
-        purchasePrice: true,
-        markupPercent: true,
-        stockQty: true,
-        expiry: true,
-        active: true,
-        createdAt: true,
-        updatedAt: true,
-        company: { select: { name: true } },
-        prices: {
-          orderBy: [{ createdAt: "asc" }, { id: "asc" }],
-          select: {
-            id: true,
-            productId: true,
-            label: true,
-            purchasePrice: true,
-            salePrice: true,
-          },
-        },
-      },
-      orderBy: { updatedAt: "asc" },
-    });
-
-    return {
-      products: products.map((product) => ({
-        id: product.id,
-        barcode: product.barcode,
-        name: product.name,
-        company: product.company?.name ?? "",
-        category: product.category,
-        location: product.location,
-        distributor_id: product.distributorId ?? undefined,
-        sale_price: product.salePrice,
-        purchase_price: product.purchasePrice,
-        markup_percent: product.markupPercent,
-        stock_qty: product.stockQty,
-        expiry: product.expiry ?? undefined,
-        active: product.active,
-        created_at: product.createdAt.toISOString(),
-        updated_at: product.updatedAt.toISOString(),
-        prices: product.prices,
-      })),
-      syncedAt: syncedAt.toISOString(),
-    };
-  },
-
   async list({
     page = 1,
     limit = 200,
@@ -107,7 +48,6 @@ export const medicinesService = {
     archivedOnly = false,
     sortBy,
     sortOrder,
-    freshStock = false,
   }: {
     page?: number;
     limit?: number;
@@ -116,14 +56,8 @@ export const medicinesService = {
     archivedOnly?: boolean;
     sortBy?: string;
     sortOrder?: "asc" | "desc";
-    freshStock?: boolean;
   }) {
     limit = clampPageSize(limit);
-    const cacheKey = makeKey("products:list", {
-      page, limit, search, includeArchived, archivedOnly, sortBy, sortOrder,
-    });
-    const cached = freshStock ? undefined : cacheGet<{ data: any[]; meta: any }>(cacheKey);
-    if (cached) return cached;
 
     const where: any = archivedOnly ? { active: 0 } : includeArchived ? {} : { active: 1 };
 
@@ -175,32 +109,19 @@ export const medicinesService = {
       },
     };
 
-    if (!freshStock) {
-      cacheSet(cacheKey, result, 60); // cache for 60 seconds
-    }
     return result;
   },
 
   async search(query: string) {
-    const cacheKey = makeKey("products:search", { q: query.trim() });
-    const cached = cacheGet<any[]>(cacheKey);
-    if (cached) return cached;
-
     const q = `%${query}%`;
-    const rows = await prisma.$queryRawUnsafe<Record<string, unknown>[]>(
+    return prisma.$queryRawUnsafe<Record<string, unknown>[]>(
       `SELECT products.*, companies.name as company FROM products LEFT JOIN companies ON products.company_id = companies.id WHERE products.active = 1 AND (products.barcode ILIKE $1 OR products.name ILIKE $1 OR companies.name ILIKE $1) ORDER BY products.name ASC LIMIT 50`,
       q
     );
-    cacheSet(cacheKey, rows, 30); // cache search results for 30 seconds
-    return rows;
   },
 
   async getByBarcode(barcode: string) {
     const trimmed = barcode.trim();
-    const cacheKey = makeKey("products:barcode", { barcode: trimmed.toLowerCase() });
-    const cached = cacheGet<any>(cacheKey);
-    if (cached) return cached;
-
     const product = await prisma.product.findFirst({
       where: {
         active: 1,
@@ -208,9 +129,7 @@ export const medicinesService = {
       },
       include: { prices: { orderBy: [{ createdAt: "asc" }, { id: "asc" }] } },
     });
-    const formatted = formatProduct(product);
-    cacheSet(cacheKey, formatted, 60); // cache barcode lookup for 60 seconds
-    return formatted;
+    return formatProduct(product);
   },
 
   /**
@@ -252,18 +171,12 @@ export const medicinesService = {
   },
 
   async getById(id: string) {
-    const cacheKey = makeKey("products:id", { id });
-    const cached = cacheGet<any>(cacheKey);
-    if (cached) return cached;
-
     const product = await prisma.product.findUnique({
       where: { id },
       include: { prices: { orderBy: [{ createdAt: "asc" }, { id: "asc" }] } },
     });
     if (!product) throw new NotFoundError("Product");
-    const formatted = formatProduct(product);
-    cacheSet(cacheKey, formatted, 60); // cache product lookup for 60 seconds
-    return formatted;
+    return formatProduct(product);
   },
 
   async create(data: CreateProductInput) {
@@ -306,7 +219,7 @@ export const medicinesService = {
         company: true,
       },
     });
-    cacheDelNamespace("products"); // invalidate product cache on write
+    emitEvent("inventory:updated", null);
     return formatProduct(product);
   },
 
@@ -373,7 +286,7 @@ export const medicinesService = {
         },
       });
     });
-    cacheDelNamespace("products"); // invalidate product cache on write
+    emitEvent("inventory:updated", null);
     return formatProduct(product);
   },
 
@@ -381,7 +294,7 @@ export const medicinesService = {
     const product = await prisma.product.findUnique({ where: { id } });
     if (!product) throw new NotFoundError("Product");
     const result = await prisma.product.update({ where: { id }, data: { active: 0 } });
-    cacheDelNamespace("products"); // invalidate product cache on write
+    emitEvent("inventory:updated", null);
     return result;
   },
 
@@ -389,7 +302,7 @@ export const medicinesService = {
     const product = await prisma.product.findUnique({ where: { id } });
     if (!product) throw new NotFoundError("Product");
     const result = await prisma.product.update({ where: { id }, data: { active: 1 } });
-    cacheDelNamespace("products"); // invalidate product cache on write
+    emitEvent("inventory:updated", null);
     return result;
   },
 
@@ -403,7 +316,7 @@ export const medicinesService = {
       await tx.product.delete({ where: { id } });
     });
 
-    cacheDelNamespace("products"); // invalidate product cache on write
+    emitEvent("inventory:updated", null);
     return { success: true };
   },
 };
