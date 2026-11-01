@@ -87,9 +87,21 @@ export default function Sidebar() {
   }, []);
 
   useEffect(() => {
-    fetchWindowCount();
-    const interval = setInterval(fetchWindowCount, 2500);
-    return () => clearInterval(interval);
+    let active = true;
+    let unsubscribe: (() => void) | undefined;
+    try {
+      unsubscribe = window.onPosWindowCountChange((count) => {
+        if (active) setPosWindowCount(count);
+      });
+    } catch {
+      unsubscribe = undefined;
+    }
+
+    void fetchWindowCount();
+    return () => {
+      active = false;
+      unsubscribe?.();
+    };
   }, [fetchWindowCount]);
 
   const handleNewSale = async () => {

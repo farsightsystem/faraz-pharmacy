@@ -5,55 +5,40 @@ import DateRangePicker, { type DateRange } from "@/components/reports/DateRangeP
 import KPICard from "@/components/reports/KPICard";
 import ExportButtons from "@/components/reports/ExportButtons";
 import DataTable from "@/components/shared/DataTable";
-import { formatCurrency, formatDate } from "@/lib/utils";
+import { formatCurrency, formatDate, formatLocalDateKey } from "@/lib/utils";
 import { api } from "@/lib/api";
 import { generatePDF } from "@/lib/pdfExport";
 import { downloadExcelFile } from "@/lib/excelExport";
-import type { Sale, Expense } from "@/types";
+import type { Expense } from "@/types";
 
 export default function IncomeReport() {
   const [dateRange, setDateRange] = useState<DateRange>({
-    from: new Date(Date.now() - 30 * 86400000).toISOString().split("T")[0],
-    to: new Date().toISOString().split("T")[0],
+    from: formatLocalDateKey(new Date(Date.now() - 30 * 86400000)),
+    to: formatLocalDateKey(new Date()),
   });
 
-  const { data: sales = [] } = useQuery({
-    queryKey: ["sales", "all", dateRange.from, dateRange.to],
-    queryFn: () => api.sales.listAll({ dateFrom: dateRange.from, dateTo: dateRange.to }),
+  const { data: summary } = useQuery({
+    queryKey: ["income-summary", dateRange.from, dateRange.to],
+    queryFn: () => api.reports.incomeSummary({ dateFrom: dateRange.from, dateTo: dateRange.to }),
   });
   const { data: expenses = [] } = useQuery({
     queryKey: ["expenses", dateRange.from, dateRange.to],
     queryFn: () => api.expenses.list({ dateFrom: dateRange.from, dateTo: dateRange.to }),
   });
 
-  const filteredSales = useMemo(
-    () =>
-      sales.filter(
-        (s: Sale) => s.created_at >= dateRange.from && s.created_at <= dateRange.to + "T23:59:59"
-      ),
-    [sales, dateRange]
-  );
   const filteredExpenses = useMemo(
     () => expenses.filter((e: Expense) => e.date >= dateRange.from && e.date <= dateRange.to),
     [expenses, dateRange]
   );
 
-  const totalRevenue = filteredSales.reduce((sum: number, s: Sale) => sum + s.total, 0);
-  const totalExpenses = filteredExpenses.reduce((sum: number, e: Expense) => sum + e.amount, 0);
+  const totalRevenue = summary?.revenue ?? 0;
+  const totalExpenses = summary?.expenses ?? 0;
   const netIncome = totalRevenue - totalExpenses;
-  const costOfGoods = filteredSales.reduce(
-    (sum: number, s: Sale) =>
-      sum +
-      (s.items?.reduce(
-        (isum: number, item: any) => isum + (item.purchase_price || 0) * item.quantity,
-        0
-      ) || 0),
-    0
-  );
+  const costOfGoods = summary?.costOfGoods ?? 0;
   const grossProfit = totalRevenue - costOfGoods;
 
   const incomeData = [
-    { label: `${filteredSales.length} sales transactions`, type: "income", amount: totalRevenue },
+    { label: `${summary?.transactionCount ?? 0} sales transactions`, type: "income", amount: totalRevenue },
     ...filteredExpenses.map((e: Expense) => ({
       label: e.title,
       type: "expense" as const,

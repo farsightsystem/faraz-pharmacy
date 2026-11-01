@@ -93,5 +93,10 @@ contextBridge.exposeInMainWorld("toggleFullscreen", () =>
 );
 contextBridge.exposeInMainWorld("openPosWindow", () => ipcRenderer.invoke("pos:open-window"));
 contextBridge.exposeInMainWorld("getPosWindowCount", () => ipcRenderer.invoke("pos:window-count"));
+contextBridge.exposeInMainWorld("onPosWindowCountChange", (callback) => {
+  const listener = (_event, count) => callback(count);
+  ipcRenderer.on("pos:window-count-changed", listener);
+  return () => ipcRenderer.removeListener("pos:window-count-changed", listener);
+});
 contextBridge.exposeInMainWorld("openReturnWindow", () => ipcRenderer.invoke("returns:open-window"));
 contextBridge.exposeInMainWorld("getReturnWindowCount", () => ipcRenderer.invoke("returns:window-count"));

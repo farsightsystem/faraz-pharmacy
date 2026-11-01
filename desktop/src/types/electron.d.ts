@@ -110,6 +110,7 @@ declare global {
     toggleFullscreen: () => Promise<{ success: boolean; fullscreen?: boolean }>;
     openPosWindow: () => Promise<{ success: boolean; windowId?: number; error?: string }>;
     getPosWindowCount: () => Promise<number>;
+    onPosWindowCountChange: (callback: (count: number) => void) => () => void;
     openReturnWindow: () => Promise<{ success: boolean; windowId?: number; error?: string }>;
     getReturnWindowCount: () => Promise<number>;
   }

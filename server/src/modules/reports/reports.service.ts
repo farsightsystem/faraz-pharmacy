@@ -2,16 +2,50 @@ import { prisma } from "../../services/prisma";
 import { NotFoundError } from "../../utils/errors";
 import type { Prisma } from "../../generated/prisma/client";
 
+type ReportDateRange = { gte?: Date; lte?: Date };
+
+function getDateRange(
+  dateFrom?: string,
+  dateTo?: string,
+  tzOffsetMinutes = 0
+): ReportDateRange | undefined {
+  const offsetMs = tzOffsetMinutes * 60_000;
+  const range: { gte?: Date; lte?: Date } = {};
+  if (dateFrom) {
+    range.gte = new Date(new Date(`${dateFrom}T00:00:00.000Z`).getTime() - offsetMs);
+  }
+  if (dateTo) {
+    range.lte = new Date(new Date(`${dateTo}T23:59:59.999Z`).getTime() - offsetMs);
+  }
+  return Object.keys(range).length ? range : undefined;
+}
+
 export const reportsService = {
-  async getStats() {
-    const now = new Date();
-    const today = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+  async getStats(tzOffsetMinutes = 0) {
+    const offsetMs = tzOffsetMinutes * 60_000;
+    const shiftedNow = new Date(Date.now() + offsetMs);
+    const todayCalendarDate = new Date(
+      Date.UTC(shiftedNow.getUTCFullYear(), shiftedNow.getUTCMonth(), shiftedNow.getUTCDate())
+    );
     const startOfDaysAgo = (daysAgo: number) =>
-      new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate() - daysAgo));
+      new Date(
+        Date.UTC(
+          todayCalendarDate.getUTCFullYear(),
+          todayCalendarDate.getUTCMonth(),
+          todayCalendarDate.getUTCDate() - daysAgo
+        ) - offsetMs
+      );
     const sevenDaysAgo = startOfDaysAgo(6);
     const thirtyDaysAgo = startOfDaysAgo(29);
-    const todayString = today.toISOString().slice(0, 10);
-    const expiryThrough = startOfDaysAgo(-30).toISOString().slice(0, 10);
+    const tomorrow = new Date(startOfDaysAgo(0).getTime() + 24 * 60 * 60 * 1000);
+    const todayString = todayCalendarDate.toISOString().slice(0, 10);
+    const expiryThrough = new Date(
+      Date.UTC(
+        todayCalendarDate.getUTCFullYear(),
+        todayCalendarDate.getUTCMonth(),
+        todayCalendarDate.getUTCDate() + 30
+      )
+    ).toISOString().slice(0, 10);
 
     const [
       todayRevenue,
@@ -26,7 +60,7 @@ export const reportsService = {
       pendingArrears,
     ] = await Promise.all([
       prisma.sale.aggregate({
-        where: { createdAt: { gte: today } },
+        where: { createdAt: { gte: startOfDaysAgo(0), lt: tomorrow } },
         _sum: { total: true },
       }),
 
@@ -47,12 +81,13 @@ export const reportsService = {
       }),
 
       prisma.$queryRaw<{ day: string; revenue: number }[]>`
-        SELECT TO_CHAR(created_at::date, 'YYYY-MM-DD') AS day,
+        SELECT TO_CHAR((created_at + (${tzOffsetMinutes} * INTERVAL '1 minute'))::date, 'YYYY-MM-DD') AS day,
                COALESCE(SUM(total), 0)::float AS revenue
         FROM sales
         WHERE created_at >= ${thirtyDaysAgo}
-        GROUP BY created_at::date
-        ORDER BY created_at::date
+          AND created_at < ${tomorrow}
+        GROUP BY (created_at + (${tzOffsetMinutes} * INTERVAL '1 minute'))::date
+        ORDER BY (created_at + (${tzOffsetMinutes} * INTERVAL '1 minute'))::date
       `,
 
       prisma.saleItem.groupBy({
@@ -97,7 +132,14 @@ export const reportsService = {
     const revenueByDay = new Map(dailyRevenue.map((row) => [row.day, Number(row.revenue)]));
     const makeRevenueSeries = (days: number) =>
       Array.from({ length: days }, (_, index) => {
-        const date = startOfDaysAgo(days - index - 1);
+        const daysAgo = days - index - 1;
+        const date = new Date(
+          Date.UTC(
+            todayCalendarDate.getUTCFullYear(),
+            todayCalendarDate.getUTCMonth(),
+            todayCalendarDate.getUTCDate() - daysAgo
+          )
+        );
         const day = date.toISOString().slice(0, 10);
         return { day, revenue: revenueByDay.get(day) ?? 0 };
       });
@@ -132,6 +174,156 @@ export const reportsService = {
         customer_name: arrear.customer.name,
         balance_due: arrear.balanceDue,
       })),
+    };
+  },
+
+  async getSalesSummary(opts: {
+    dateFrom?: string;
+    dateTo?: string;
+    tzOffsetMinutes?: number;
+  }) {
+    const createdAt = getDateRange(opts.dateFrom, opts.dateTo, opts.tzOffsetMinutes);
+    const where: Prisma.SaleWhereInput = createdAt ? { createdAt } : {};
+    const offsetMs = (opts.tzOffsetMinutes ?? 0) * 60_000;
+    const shiftedNow = new Date(Date.now() + offsetMs);
+    const chartCalendarDate = new Date(
+      Date.UTC(shiftedNow.getUTCFullYear(), shiftedNow.getUTCMonth(), shiftedNow.getUTCDate())
+    );
+    const chartStart = new Date(
+      Date.UTC(
+        chartCalendarDate.getUTCFullYear(),
+        chartCalendarDate.getUTCMonth(),
+        chartCalendarDate.getUTCDate() - 29
+      ) - offsetMs
+    );
+    const [aggregate, profitRows, dailyRevenue] = await Promise.all([
+      prisma.sale.aggregate({
+        where,
+        _count: { _all: true },
+        _sum: { total: true, amountPaid: true },
+      }),
+      prisma.$queryRaw<{ cost_of_goods: number; profit: number }[]>`
+        SELECT COALESCE(SUM(sale_profit.cost_of_goods), 0)::float AS cost_of_goods,
+               COALESCE(SUM(ROUND(
+                 sale_profit.gross_profit *
+                 (1 - CASE WHEN sale_profit.subtotal > 0
+                           THEN sale_profit.discount / sale_profit.subtotal
+                           ELSE 0 END)
+               )), 0)::float AS profit
+        FROM (
+          SELECT s.id, s.subtotal, s.discount,
+                 SUM(p.purchase_price * si.quantity) AS cost_of_goods,
+                 SUM((si.unit_price - p.purchase_price) * si.quantity) AS gross_profit
+          FROM sales s
+          JOIN sale_items si ON si.sale_id = s.id
+          JOIN products p ON p.id = si.product_id
+          WHERE (${createdAt?.gte ?? null}::timestamp IS NULL OR s.created_at >= ${createdAt?.gte ?? null})
+            AND (${createdAt?.lte ?? null}::timestamp IS NULL OR s.created_at <= ${createdAt?.lte ?? null})
+          GROUP BY s.id, s.subtotal, s.discount
+        ) sale_profit
+      `,
+      prisma.$queryRaw<{ day: string; revenue: number }[]>`
+        SELECT TO_CHAR((created_at + (${opts.tzOffsetMinutes ?? 0} * INTERVAL '1 minute'))::date, 'YYYY-MM-DD') AS day,
+               COALESCE(SUM(total), 0)::float AS revenue
+        FROM sales
+        WHERE created_at >= ${chartStart}
+        GROUP BY (created_at + (${opts.tzOffsetMinutes ?? 0} * INTERVAL '1 minute'))::date
+        ORDER BY (created_at + (${opts.tzOffsetMinutes ?? 0} * INTERVAL '1 minute'))::date
+      `,
+    ]);
+
+    return {
+      revenue: aggregate._sum.total ?? 0,
+      transactionCount: aggregate._count._all,
+      amountPaid: aggregate._sum.amountPaid ?? 0,
+      outstanding: (aggregate._sum.total ?? 0) - (aggregate._sum.amountPaid ?? 0),
+      costOfGoods: Number(profitRows[0]?.cost_of_goods ?? 0),
+      profit: Number(profitRows[0]?.profit ?? 0),
+      dailyRevenue,
+    };
+  },
+
+  async getPurchaseSummary(opts: { dateFrom?: string; dateTo?: string }) {
+    const createdAt = getDateRange(opts.dateFrom, opts.dateTo);
+    const where: Prisma.StockPurchaseWhereInput = {
+      active: 1,
+      ...(createdAt ? { createdAt } : {}),
+    };
+    const [aggregate, supplierRows] = await Promise.all([
+      prisma.stockPurchase.aggregate({
+        where,
+        _count: { _all: true },
+        _sum: { totalValue: true, quantity: true },
+      }),
+      prisma.$queryRaw<{ count: number }[]>`
+        SELECT COUNT(DISTINCT distributor_id)::int AS count
+        FROM stock_purchases
+        WHERE active = 1
+          AND (${createdAt?.gte ?? null}::timestamp IS NULL OR created_at >= ${createdAt?.gte ?? null})
+          AND (${createdAt?.lte ?? null}::timestamp IS NULL OR created_at <= ${createdAt?.lte ?? null})
+      `,
+    ]);
+    const total = aggregate._sum.totalValue ?? 0;
+    const entries = aggregate._count._all;
+    return {
+      total,
+      units: aggregate._sum.quantity ?? 0,
+      entries,
+      suppliers: supplierRows[0]?.count ?? 0,
+      averageEntryCost: entries > 0 ? total / entries : 0,
+    };
+  },
+
+  async getExpenseSummary(opts: {
+    dateFrom?: string;
+    dateTo?: string;
+    category?: string;
+  }) {
+    const where: Prisma.ExpenseWhereInput = {
+      active: 1,
+      ...(opts.dateFrom || opts.dateTo
+        ? {
+            date: {
+              ...(opts.dateFrom ? { gte: opts.dateFrom } : {}),
+              ...(opts.dateTo ? { lte: opts.dateTo } : {}),
+            },
+          }
+        : {}),
+      ...(opts.category
+        ? { category: { equals: opts.category, mode: "insensitive" } }
+        : {}),
+    };
+    const [aggregate, categories] = await Promise.all([
+      prisma.expense.aggregate({
+        where,
+        _count: { _all: true },
+        _sum: { amount: true },
+        _avg: { amount: true },
+        _max: { amount: true },
+      }),
+      prisma.expense.findMany({
+        where: {
+          active: 1,
+          ...(opts.dateFrom || opts.dateTo
+            ? {
+                date: {
+                  ...(opts.dateFrom ? { gte: opts.dateFrom } : {}),
+                  ...(opts.dateTo ? { lte: opts.dateTo } : {}),
+                },
+              }
+            : {}),
+        },
+        distinct: ["category"],
+        select: { category: true },
+        orderBy: { category: "asc" },
+      }),
+    ]);
+    return {
+      total: aggregate._sum.amount ?? 0,
+      entries: aggregate._count._all,
+      average: aggregate._avg.amount ?? 0,
+      maximum: aggregate._max.amount ?? 0,
+      categories: categories.map((expense) => expense.category).filter(Boolean),
     };
   },
 

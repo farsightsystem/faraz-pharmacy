@@ -436,3 +436,56 @@ These are local warm-cache SQL timings, not end-to-end LAN timings. The slower t
 ### Remaining Phase 1 follow-up
 
 Bounded pages limit each response but callers that explicitly need all rows still retrieve all pages. Dashboard full-list fetches, long-range report aggregation, the single large renderer bundle, and real three-terminal LAN behavior remain work for the next phase and deployment validation. Apply the migrations to each server database, then roll out the new server and desktop builds together: older desktop builds that still call legacy unpaginated endpoints will receive at most 200 rows and may show incomplete lists or reports.
+
+## 12. Phase 2: Dashboard and Report Aggregation (2026-11-02)
+
+### Changes made
+
+- Dashboard widgets now use compact server summaries instead of downloading complete product, customer, and arrears lists. Low-stock/expiry widgets, top customers, pending arrears, and revenue series are limited and computed at the API boundary.
+- Added aggregate endpoints for sales, purchases, expenses, and income reports. Report KPIs no longer require fetching every matching transaction; detailed rows are still paginated for the table and fetched across pages only when exporting.
+- Revenue charts are grouped by the client workstation's local calendar day. Dashboard and sales-summary requests send that workstation's timezone offset so day boundaries do not depend on the server computer's timezone.
+- Sales revenue ranking now uses transaction-line subtotals, matching the dashboard's “highest revenue” label.
+
+### Verification
+
+- Runtime-checked the report aggregate methods using isolated temporary future-dated rows; expected summaries matched and test rows were removed.
+- `cd server && npm run lint && npx prisma validate`: passed after the timezone-boundary adjustment.
+- `cd desktop && npm exec -- tsc --noEmit && npm run build:renderer`: passed. Renderer bundle: **1,700.70 kB raw / 459.28 kB gzip**, CSS **100.07 kB raw / 15.02 kB gzip**; the existing large-chunk warning remains.
+- `git diff --check`: passed after the timezone-boundary adjustment.
+- Runtime aggregate checks using temporary rows passed before the timezone-offset adjustment. A follow-up execution of the offset-aware queries could not connect to the local database (Prisma `P1001`), so those SQL changes still need runtime validation against a reachable development database.
+
+### Remaining work and limits
+
+- Dashboard's all-time top-product revenue ranking still aggregates sale-item history; the Phase 1 measurement showed this full-history aggregate did not benefit from ordinary indexes. Consider a defined reporting window or maintained summary only after product requirements confirm the intended ranking semantics.
+- Sales profit/cost summary uses each product's current `purchase_price`, consistent with the existing report logic but not historical cost at the time of sale.
+- Manual testing is still needed for dashboard figures, date filters, report tables, exports, checkout/arrears, and receipt printing. Do not treat local warm-cache SQL results as a three-terminal LAN benchmark.
+- Phase 1's deployment warning remains: deploy the updated API and desktop clients together so older clients are not silently limited to the first 200 rows.
+
+## 13. Phase 3: Startup, Catalog Sync, and Polling
+
+### Changes made
+
+- Route pages now load on demand. React/vendor and animation code are split into shared chunks, while dashboard charts stay in the lazy dashboard chunk.
+- Replaced full catalog downloads every time a stale cache is rebuilt with a compact sync endpoint. It fetches changed products since the last server timestamp, removes archived products, updates their price tiers, and performs a full refresh once per day. A one-time cache version forces existing clients to seed the new metadata with a full refresh. Web Locks serialize simultaneous syncs across renderer windows on the same computer.
+- Catalog sync runs at startup, when a window becomes active, and at its 30-minute freshness interval. The IndexedDB cache remains available if the server is unreachable; the failure is surfaced to the user.
+- Added `products.updated_at` and an index for delta lookups. Deploy the new migration before starting this server build.
+- Replaced the sidebar's 2.5-second POS-window count poll with Electron change notifications. The clock now updates once per minute; health checks run once per minute, pause while hidden, and run immediately on focus/network recovery.
+
+### Bundle comparison
+
+| Renderer payload | Before Phase 3 | After Phase 3 |
+|---|---:|---:|
+| Main JavaScript chunk | 1,700.70 kB raw / 459.28 kB gzip | 458.02 kB raw / 132.31 kB gzip |
+| Initial JS including shared React and motion chunks | Same as main chunk | **820.46 kB raw / 249.42 kB gzip** |
+| Lazy dashboard chunk (including chart library) | Included in main chunk | 420.85 kB raw / 113.69 kB gzip |
+
+The production build no longer reports a chunk above 500 kB. The initial renderer JavaScript is about 52% smaller raw and 46% smaller gzip; navigating to the dashboard loads its chart code separately.
+
+### Verification and remaining validation
+
+- `cd server && npm run lint && npx prisma validate`: passed.
+- `cd server && npm run build`: passed.
+- `cd desktop && npm exec -- tsc --noEmit && npm run build:renderer`: passed.
+- `node --check desktop/electron/main.js && node --check desktop/electron/preload.cjs` and `git diff --check`: passed.
+- The local database was unreachable during the attempted runtime check (Prisma `P1001`). Apply `20261102100000_add_product_updated_at` with `cd server && npx prisma migrate deploy`, then verify full sync, incremental price/stock updates, archiving, and cached operation while the API is disconnected. Hard-deleted products are reconciled by the daily full refresh.
+- Manually smoke-test POS/returns standalone windows, report navigation and exports, printing, and status updates across multiple terminals. LAN and real-hardware performance remain unmeasured.

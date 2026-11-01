@@ -32,6 +32,7 @@ export default function Topbar() {
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    let timer: ReturnType<typeof setTimeout>;
     const update = () => {
       setTime(
         new Date().toLocaleTimeString("en-US", {
@@ -40,10 +41,10 @@ export default function Topbar() {
           hour12: true,
         })
       );
+      timer = setTimeout(update, 60_000 - (Date.now() % 60_000));
     };
     update();
-    const interval = setInterval(update, 1000);
-    return () => clearInterval(interval);
+    return () => clearTimeout(timer);
   }, []);
 
   useEffect(() => {

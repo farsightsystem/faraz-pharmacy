@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { ShoppingCart, Truck, Boxes, DollarSign, Search, ChevronLeft, ChevronRight } from "lucide-react";
 import DateRangePicker, { type DateRange } from "@/components/reports/DateRangePicker";
@@ -7,7 +7,7 @@ import ExportButtons from "@/components/reports/ExportButtons";
 import DataTable from "@/components/shared/DataTable";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { formatCurrency, formatDate } from "@/lib/utils";
+import { formatCurrency, formatDate, formatLocalDateKey } from "@/lib/utils";
 import { api } from "@/lib/api";
 import { generatePDF } from "@/lib/pdfExport";
 import { downloadExcelFile } from "@/lib/excelExport";
@@ -16,8 +16,8 @@ import { useDebounce } from "@/hooks/useDebounce";
 
 export default function PurchaseReport() {
   const [dateRange, setDateRange] = useState<DateRange>({
-    from: new Date(Date.now() - 30 * 86400000).toISOString().split("T")[0],
-    to: new Date().toISOString().split("T")[0],
+    from: formatLocalDateKey(new Date(Date.now() - 30 * 86400000)),
+    to: formatLocalDateKey(new Date()),
   });
   const [page, setPage] = useState(1);
   const [limit] = useState(50);
@@ -41,32 +41,15 @@ export default function PurchaseReport() {
   const purchases = purchaseData?.data ?? [];
   const meta = purchaseData?.meta;
 
-  // Summary data for KPIs and exports
-  const { data: allPurchases = [] } = useQuery({
+  const { data: summary } = useQuery({
     queryKey: ["stock", "summary", dateRange.from, dateRange.to],
-    queryFn: () => api.stock.list({ dateFrom: dateRange.from, dateTo: dateRange.to }),
+    queryFn: () => api.reports.purchaseSummary({ dateFrom: dateRange.from, dateTo: dateRange.to }),
   });
 
-  const filteredPurchases = useMemo(() => {
-    return allPurchases.filter((p: StockPurchase) => {
-      const pDate = p.created_at ? p.created_at.slice(0, 10) : "";
-      const inDateRange = pDate >= dateRange.from && pDate <= dateRange.to;
-      return inDateRange;
-    });
-  }, [allPurchases, dateRange]);
-
-  const totalPurchases = filteredPurchases.reduce(
-    (sum: number, p: StockPurchase) => sum + (p.total_value ?? p.quantity * p.purchase_price),
-    0
-  );
-  const totalUnits = filteredPurchases.reduce(
-    (sum: number, p: StockPurchase) => sum + (p.quantity || 0),
-    0
-  );
-  const uniqueSuppliers = new Set(
-    filteredPurchases.map((p: StockPurchase) => p.distributor_name).filter(Boolean)
-  ).size;
-  const avgCostPerEntry = filteredPurchases.length > 0 ? totalPurchases / filteredPurchases.length : 0;
+  const totalPurchases = summary?.total ?? 0;
+  const totalUnits = summary?.units ?? 0;
+  const uniqueSuppliers = summary?.suppliers ?? 0;
+  const avgCostPerEntry = summary?.averageEntryCost ?? 0;
 
   // Reset page when filters change
   useEffect(() => {
@@ -75,21 +58,25 @@ export default function PurchaseReport() {
 
   function handleReset() {
     setDateRange({
-      from: new Date(Date.now() - 30 * 86400000).toISOString().split("T")[0],
-      to: new Date().toISOString().split("T")[0],
+      from: formatLocalDateKey(new Date(Date.now() - 30 * 86400000)),
+      to: formatLocalDateKey(new Date()),
     });
     setSearch("");
     setPage(1);
   }
 
-  function handlePDF() {
+  async function handlePDF() {
+    const filteredPurchases = await api.stock.list({
+      dateFrom: dateRange.from,
+      dateTo: dateRange.to,
+    });
     generatePDF({
       title: "Stock Purchase Report",
       dateRange,
       summary: [
         { label: "Total Purchases", value: formatCurrency(totalPurchases) },
         { label: "Total Inward Units", value: `${totalUnits} units` },
-        { label: "Entries", value: String(filteredPurchases.length) },
+        { label: "Entries", value: String(summary?.entries ?? 0) },
         { label: "Suppliers", value: String(uniqueSuppliers) },
       ],
       headers: [
@@ -118,7 +105,11 @@ export default function PurchaseReport() {
     });
   }
 
-  function handleExcel() {
+  async function handleExcel() {
+    const filteredPurchases = await api.stock.list({
+      dateFrom: dateRange.from,
+      dateTo: dateRange.to,
+    });
     downloadExcelFile(
       `purchase_report_${dateRange.from}_${dateRange.to}.xlsx`,
       [

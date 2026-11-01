@@ -1929,6 +1929,7 @@ export const ProductScalarFieldEnum = {
   expiry: 'expiry',
   active: 'active',
   createdAt: 'createdAt',
+  updatedAt: 'updatedAt',
   companyId: 'companyId'
 } as const
 

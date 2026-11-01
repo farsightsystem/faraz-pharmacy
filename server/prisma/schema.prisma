@@ -55,6 +55,7 @@ model Product {
   expiry         String?
   active         Int             @default(1)
   createdAt      DateTime        @default(now()) @map("created_at")
+  updatedAt      DateTime        @default(now()) @updatedAt @map("updated_at")
   companyId      String?         @map("company_id")
   company        Company?        @relation(fields: [companyId], references: [id])
   barcodeLink    Barcode?
@@ -68,6 +69,7 @@ model Product {
   @@index([name])
   @@index([location])
   @@index([createdAt])
+  @@index([updatedAt])
   @@index([companyId])
   @@map("products")
 }

@@ -1,61 +1,62 @@
 import { api } from "@/lib/api";
-import { db, setLastSync, getLastSync, isCacheStale } from "@/lib/localDb";
+import { db, isCacheStale } from "@/lib/localDb";
 import type { Product, ProductPrice } from "@/types";
 
-/**
- * Sync service for offline-first product cache.
- *
- * On app boot, fetches the active product catalog from the server and
- * writes it to IndexedDB. Subsequent barcode scans query IndexedDB first.
- *
- * Sync strategy:
- * - Full product list fetch on boot (or when cache is stale)
- * - Products stored with their price tiers
- * - last_sync timestamp tracked to detect staleness
- */
+const CATALOG_SYNC_VERSION = "2";
+const INCREMENTAL_SYNC_MINUTES = 30;
+const FULL_SYNC_MINUTES = 24 * 60;
+export const PRODUCT_CACHE_REFRESH_INTERVAL_MS = INCREMENTAL_SYNC_MINUTES * 60_000;
 
-/**
- * Sync active products from the server to IndexedDB.
- * Returns the number of products synced.
- */
-export async function syncProducts(): Promise<{
+interface SyncOptions {
+  full?: boolean;
+  updatedSince?: string | null;
+}
+
+async function syncProducts({ full = false, updatedSince }: SyncOptions = {}): Promise<{
   synced: number;
   error: string | null;
 }> {
   try {
-    // Fetch all active products (no pagination limit - get everything)
-    const productList: Product[] = await api.products.list();
-
-    // Clear existing products and write fresh
+    const result = await api.products.syncCatalog({
+      updatedSince: full ? undefined : updatedSince ?? undefined,
+    });
+    const changedProducts = result.products.filter((product) => product.active === 1);
+    const removedIds = result.products
+      .filter((product) => product.active !== 1)
+      .map((product) => product.id);
+    const changedIds = changedProducts.map((product) => product.id);
     await db.transaction("rw", db.products, db.priceTiers, async () => {
-      await db.products.clear();
-      await db.priceTiers.clear();
+      if (full) {
+        await db.products.clear();
+        await db.priceTiers.clear();
+      } else {
+        if (removedIds.length > 0) {
+          await db.products.bulkDelete(removedIds);
+          await db.priceTiers.where("productId").anyOf(removedIds).delete();
+        }
+        if (changedIds.length > 0) {
+          await db.priceTiers.where("productId").anyOf(changedIds).delete();
+        }
+      }
 
-      // Batch insert products
-      if (productList.length > 0) {
-        await db.products.bulkAdd(
-          productList.map((p) => ({
-            ...p,
-            updated_at: new Date().toISOString(),
-          }))
-        );
-
-        // Batch insert price tiers
-        const allTiers: ProductPrice[] = productList.flatMap((p) =>
-          (p.prices || []).map((tier) => ({
-            ...tier,
-            productId: p.id,
-          }))
+      if (changedProducts.length > 0) {
+        await db.products.bulkPut(changedProducts);
+        const allTiers: ProductPrice[] = changedProducts.flatMap((product) =>
+          (product.prices || []).map((tier) => ({ ...tier, productId: product.id }))
         );
         if (allTiers.length > 0) {
-          await db.priceTiers.bulkAdd(allTiers);
+          await db.priceTiers.bulkPut(allTiers);
         }
       }
     });
 
-    await setLastSync(new Date().toISOString());
+    await db.syncMeta.put({ key: "last_sync", value: result.syncedAt });
+    if (full) {
+      await db.syncMeta.put({ key: "last_full_sync", value: result.syncedAt });
+      await db.syncMeta.put({ key: "catalog_sync_version", value: CATALOG_SYNC_VERSION });
+    }
 
-    return { synced: productList.length, error: null };
+    return { synced: changedProducts.length, error: null };
   } catch (err) {
     return {
       synced: 0,
@@ -74,26 +75,42 @@ export async function ensureProductCache(): Promise<{
   count: number;
   error: string | null;
 }> {
-  const lastSync = await getLastSync();
-  const stale = isCacheStale(lastSync, 30);
+  const synchronizeIfStale = async () => {
+    const [lastSync, lastFullSync, version, count] = await Promise.all([
+      db.syncMeta.get("last_sync"),
+      db.syncMeta.get("last_full_sync"),
+      db.syncMeta.get("catalog_sync_version"),
+      db.products.count(),
+    ]);
+    const needsFullSync =
+      version?.value !== CATALOG_SYNC_VERSION ||
+      count === 0 ||
+      isCacheStale(lastFullSync?.value ?? null, FULL_SYNC_MINUTES);
+    const needsIncrementalSync =
+      !needsFullSync && isCacheStale(lastSync?.value ?? null, INCREMENTAL_SYNC_MINUTES);
 
-  if (!stale) {
-    const count = await db.products.count();
-    return { fromCache: true, count, error: null };
-  }
-
-  // Try to sync from server
-  const result = await syncProducts();
-  if (result.error) {
-    // Server unreachable - fall back to whatever is in IndexedDB
-    const count = await db.products.count();
-    if (count > 0) {
+    if (!needsFullSync && !needsIncrementalSync) {
       return { fromCache: true, count, error: null };
     }
-    return { fromCache: false, count: 0, error: result.error };
-  }
 
-  return { fromCache: false, count: result.synced, error: null };
+    const result = await syncProducts({
+      full: needsFullSync,
+      updatedSince: lastSync?.value,
+    });
+    if (result.error) {
+      return {
+        fromCache: count > 0,
+        count,
+        error: result.error,
+      };
+    }
+    return { fromCache: false, count: await db.products.count(), error: null };
+  };
+
+  if (typeof navigator !== "undefined" && navigator.locks) {
+    return navigator.locks.request("faraz-product-catalog-sync", synchronizeIfStale);
+  }
+  return synchronizeIfStale();
 }
 
 /**

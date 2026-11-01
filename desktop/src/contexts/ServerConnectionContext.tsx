@@ -30,7 +30,7 @@ function getApiUrl(): string {
   return import.meta.env.VITE_API_URL || "http://localhost:3001";
 }
 
-const POLL_INTERVAL = 30_000;
+const POLL_INTERVAL = 60_000;
 
 export function ServerConnectionProvider({ children }: { children: ReactNode }) {
   const [isOnline, setIsOnline] = useState(true);
@@ -82,9 +82,17 @@ export function ServerConnectionProvider({ children }: { children: ReactNode }) 
 
   useEffect(() => {
     check();
-    intervalRef.current = setInterval(check, POLL_INTERVAL);
+    const onFocus = () => void check();
+    const onOnline = () => void check();
+    window.addEventListener("focus", onFocus);
+    window.addEventListener("online", onOnline);
+    intervalRef.current = setInterval(() => {
+      if (document.visibilityState === "visible") void check();
+    }, POLL_INTERVAL);
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current);
+      window.removeEventListener("focus", onFocus);
+      window.removeEventListener("online", onOnline);
     };
   }, [check]);
 

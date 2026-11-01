@@ -28,6 +28,64 @@ async function resolveCompanyId(company?: string): Promise<string | null> {
 }
 
 export const medicinesService = {
+  async syncCatalog(updatedSince?: Date) {
+    const syncedAt = new Date();
+    const products = await prisma.product.findMany({
+      where: updatedSince
+        ? { updatedAt: { gte: updatedSince, lte: syncedAt } }
+        : { active: 1 },
+      select: {
+        id: true,
+        barcode: true,
+        name: true,
+        category: true,
+        location: true,
+        distributorId: true,
+        salePrice: true,
+        purchasePrice: true,
+        markupPercent: true,
+        stockQty: true,
+        expiry: true,
+        active: true,
+        createdAt: true,
+        updatedAt: true,
+        company: { select: { name: true } },
+        prices: {
+          select: {
+            id: true,
+            productId: true,
+            label: true,
+            purchasePrice: true,
+            salePrice: true,
+          },
+        },
+      },
+      orderBy: { updatedAt: "asc" },
+    });
+
+    return {
+      products: products.map((product) => ({
+        id: product.id,
+        barcode: product.barcode,
+        name: product.name,
+        company: product.company?.name ?? "",
+        category: product.category,
+        location: product.location,
+        distributor_id: product.distributorId ?? undefined,
+        sale_price: product.salePrice,
+        purchase_price: product.purchasePrice,
+        markup_percent: product.markupPercent,
+        stock_qty: product.stockQty,
+        expiry: product.expiry ?? undefined,
+        active: product.active,
+        created_at: product.createdAt.toISOString(),
+        updated_at: product.updatedAt.toISOString(),
+        prices: product.prices,
+      })),
+      syncedAt: syncedAt.toISOString(),
+    };
+  },
+
   async list({
     page = 1,
     limit = 200,

@@ -49,6 +49,7 @@ export interface Product {
   batch_no?: string;
   active: number;
   created_at: string;
+  updated_at?: string;
   prices?: ProductPrice[];
 }
 
@@ -478,6 +479,39 @@ export interface DashboardStats {
     customer_name: string;
     balance_due: number;
   }[];
+}
+
+export interface SalesReportSummary {
+  revenue: number;
+  transactionCount: number;
+  amountPaid: number;
+  outstanding: number;
+  costOfGoods: number;
+  profit: number;
+  dailyRevenue: { day: string; revenue: number }[];
+}
+
+export interface PurchaseReportSummary {
+  total: number;
+  units: number;
+  entries: number;
+  suppliers: number;
+  averageEntryCost: number;
+}
+
+export interface ExpenseReportSummary {
+  total: number;
+  entries: number;
+  average: number;
+  maximum: number;
+  categories: string[];
+}
+
+export interface IncomeReportSummary {
+  revenue: number;
+  costOfGoods: number;
+  expenses: number;
+  transactionCount: number;
 }
 
 export interface BarcodeEntry {

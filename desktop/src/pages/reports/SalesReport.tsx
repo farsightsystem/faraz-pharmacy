@@ -8,7 +8,7 @@ import DataTable from "@/components/shared/DataTable";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { formatCurrency, formatDate } from "@/lib/utils";
+import { formatCurrency, formatDate, formatLocalDateKey } from "@/lib/utils";
 import { api } from "@/lib/api";
 import { generatePDF } from "@/lib/pdfExport";
 import { downloadExcelFile } from "@/lib/excelExport";
@@ -17,8 +17,8 @@ import { useDebounce } from "@/hooks/useDebounce";
 
 export default function SalesReport() {
   const [dateRange, setDateRange] = useState<DateRange>({
-    from: new Date(Date.now() - 30 * 86400000).toISOString().split("T")[0],
-    to: new Date().toISOString().split("T")[0],
+    from: formatLocalDateKey(new Date(Date.now() - 30 * 86400000)),
+    to: formatLocalDateKey(new Date()),
   });
   const [chartPeriod, setChartPeriod] = useState<"week" | "month">("week");
   const [page, setPage] = useState(1);
@@ -42,41 +42,32 @@ export default function SalesReport() {
   const sales = salesData?.data ?? [];
   const meta = salesData?.meta;
 
-  // Summary data (load all for KPIs/charts - could be optimized with separate summary endpoint later)
-  const { data: allSales = [] } = useQuery({
+  const { data: summary } = useQuery({
     queryKey: ["sales", "summary", dateRange.from, dateRange.to],
-    queryFn: () => api.sales.listAll({ dateFrom: dateRange.from, dateTo: dateRange.to }),
+    queryFn: () => api.reports.salesSummary({ dateFrom: dateRange.from, dateTo: dateRange.to }),
   });
 
-  const filteredSales = useMemo(() => {
-    return allSales.filter((s: Sale) => {
-      const inDateRange =
-        s.created_at >= dateRange.from && s.created_at <= dateRange.to + "T23:59:59";
-      return inDateRange;
-    });
-  }, [allSales, dateRange]);
-
-  const totalRevenue = filteredSales.reduce((sum: number, s: Sale) => sum + s.total, 0);
-  const totalPaid = filteredSales.reduce((sum: number, s: Sale) => sum + s.amount_paid, 0);
-  const avgSale = filteredSales.length > 0 ? totalRevenue / filteredSales.length : 0;
-  const profit = filteredSales.reduce((sum: number, s: Sale) => sum + (s.profit || 0), 0);
-  const outstanding = totalRevenue - totalPaid;
+  const totalRevenue = summary?.revenue ?? 0;
+  const transactionCount = summary?.transactionCount ?? 0;
+  const avgSale = transactionCount > 0 ? totalRevenue / transactionCount : 0;
+  const profit = summary?.profit ?? 0;
+  const outstanding = summary?.outstanding ?? 0;
 
   const chartData = useMemo(() => {
     const days = chartPeriod === "week" ? 7 : 30;
-    const data = [];
+    const revenueByDay = new Map((summary?.dailyRevenue ?? []).map((row) => [row.day, row.revenue]));
+    const data: { day: string; date: string; revenue: number }[] = [];
     for (let i = days - 1; i >= 0; i--) {
       const date = new Date(Date.now() - i * 86400000);
-      const dateStr = date.toISOString().split("T")[0];
-      const daySales = allSales.filter((s: Sale) => s.created_at.startsWith(dateStr));
+      const dateStr = formatLocalDateKey(date);
       data.push({
         day: date.toLocaleDateString("en-US", { weekday: "short" }),
         date: date.toLocaleDateString("en-US", { month: "short", day: "numeric" }),
-        revenue: daySales.reduce((sum: number, s: Sale) => sum + s.total, 0),
+        revenue: revenueByDay.get(dateStr) ?? 0,
       });
     }
     return data;
-  }, [allSales, chartPeriod]);
+  }, [summary?.dailyRevenue, chartPeriod]);
 
   const maxRevenue = Math.max(...chartData.map((d) => d.revenue), 1);
 
@@ -87,20 +78,24 @@ export default function SalesReport() {
 
   function handleReset() {
     setDateRange({
-      from: new Date(Date.now() - 30 * 86400000).toISOString().split("T")[0],
-      to: new Date().toISOString().split("T")[0],
+      from: formatLocalDateKey(new Date(Date.now() - 30 * 86400000)),
+      to: formatLocalDateKey(new Date()),
     });
     setSearch("");
     setPage(1);
   }
 
-  function handlePDF() {
+  async function handlePDF() {
+    const filteredSales = await api.sales.listAll({
+      dateFrom: dateRange.from,
+      dateTo: dateRange.to,
+    });
     generatePDF({
       title: "Sales Report",
       dateRange,
       summary: [
         { label: "Revenue", value: formatCurrency(totalRevenue) },
-        { label: "Transactions", value: String(filteredSales.length) },
+        { label: "Transactions", value: String(transactionCount) },
         { label: "Average Sale", value: formatCurrency(avgSale) },
         { label: "Profit", value: formatCurrency(profit) },
       ],
@@ -130,7 +125,11 @@ export default function SalesReport() {
     });
   }
 
-  function handleExcel() {
+  async function handleExcel() {
+    const filteredSales = await api.sales.listAll({
+      dateFrom: dateRange.from,
+      dateTo: dateRange.to,
+    });
     downloadExcelFile(
       `sales_report_${dateRange.from}_${dateRange.to}.xlsx`,
       ["Invoice", "Date", "Customer", "Items", "Subtotal", "Discount", "Total", "Paid", "Status"],
@@ -246,7 +245,7 @@ export default function SalesReport() {
         />
         <KPICard
           title="Transactions"
-          value={filteredSales.length}
+          value={transactionCount}
           icon={<ShoppingCart className="h-4 w-4" />}
         />
         <KPICard

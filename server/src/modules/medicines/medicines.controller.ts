@@ -4,6 +4,22 @@ import { normalizeProduct, normalizeProductList } from "../../utils/normalize";
 import { getPaginationParams } from "../../utils/pagination";
 
 export const medicinesController = {
+  async syncCatalog(req: Request, res: Response, next: NextFunction) {
+    try {
+      const updatedSince =
+        typeof req.query.updatedSince === "string" ? new Date(req.query.updatedSince) : undefined;
+      if (updatedSince && Number.isNaN(updatedSince.getTime())) {
+        res.status(400).json({ error: "updatedSince must be a valid timestamp" });
+        return;
+      }
+
+      const result = await medicinesService.syncCatalog(updatedSince);
+      res.json(result);
+    } catch (err) {
+      next(err);
+    }
+  },
+
   async list(req: Request, res: Response, next: NextFunction) {
     try {
       const isPaginated = req.query.paginated === "true";

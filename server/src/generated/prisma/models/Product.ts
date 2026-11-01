@@ -56,6 +56,7 @@ export type ProductMinAggregateOutputType = {
   expiry: string | null
   active: number | null
   createdAt: Date | null
+  updatedAt: Date | null
   companyId: string | null
 }
 
@@ -73,6 +74,7 @@ export type ProductMaxAggregateOutputType = {
   expiry: string | null
   active: number | null
   createdAt: Date | null
+  updatedAt: Date | null
   companyId: string | null
 }
 
@@ -90,6 +92,7 @@ export type ProductCountAggregateOutputType = {
   expiry: number
   active: number
   createdAt: number
+  updatedAt: number
   companyId: number
   _all: number
 }
@@ -125,6 +128,7 @@ export type ProductMinAggregateInputType = {
   expiry?: true
   active?: true
   createdAt?: true
+  updatedAt?: true
   companyId?: true
 }
 
@@ -142,6 +146,7 @@ export type ProductMaxAggregateInputType = {
   expiry?: true
   active?: true
   createdAt?: true
+  updatedAt?: true
   companyId?: true
 }
 
@@ -159,6 +164,7 @@ export type ProductCountAggregateInputType = {
   expiry?: true
   active?: true
   createdAt?: true
+  updatedAt?: true
   companyId?: true
   _all?: true
 }
@@ -263,6 +269,7 @@ export type ProductGroupByOutputType = {
   expiry: string | null
   active: number
   createdAt: Date
+  updatedAt: Date
   companyId: string | null
   _count: ProductCountAggregateOutputType | null
   _avg: ProductAvgAggregateOutputType | null
@@ -303,6 +310,7 @@ export type ProductWhereInput = {
   expiry?: Prisma.StringNullableFilter<"Product"> | string | null
   active?: Prisma.IntFilter<"Product"> | number
   createdAt?: Prisma.DateTimeFilter<"Product"> | Date | string
+  updatedAt?: Prisma.DateTimeFilter<"Product"> | Date | string
   companyId?: Prisma.StringNullableFilter<"Product"> | string | null
   company?: Prisma.XOR<Prisma.CompanyNullableScalarRelationFilter, Prisma.CompanyWhereInput> | null
   barcodeLink?: Prisma.XOR<Prisma.BarcodeNullableScalarRelationFilter, Prisma.BarcodeWhereInput> | null
@@ -328,6 +336,7 @@ export type ProductOrderByWithRelationInput = {
   expiry?: Prisma.SortOrderInput | Prisma.SortOrder
   active?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
+  updatedAt?: Prisma.SortOrder
   companyId?: Prisma.SortOrderInput | Prisma.SortOrder
   company?: Prisma.CompanyOrderByWithRelationInput
   barcodeLink?: Prisma.BarcodeOrderByWithRelationInput
@@ -356,6 +365,7 @@ export type ProductWhereUniqueInput = Prisma.AtLeast<{
   expiry?: Prisma.StringNullableFilter<"Product"> | string | null
   active?: Prisma.IntFilter<"Product"> | number
   createdAt?: Prisma.DateTimeFilter<"Product"> | Date | string
+  updatedAt?: Prisma.DateTimeFilter<"Product"> | Date | string
   companyId?: Prisma.StringNullableFilter<"Product"> | string | null
   company?: Prisma.XOR<Prisma.CompanyNullableScalarRelationFilter, Prisma.CompanyWhereInput> | null
   barcodeLink?: Prisma.XOR<Prisma.BarcodeNullableScalarRelationFilter, Prisma.BarcodeWhereInput> | null
@@ -381,6 +391,7 @@ export type ProductOrderByWithAggregationInput = {
   expiry?: Prisma.SortOrderInput | Prisma.SortOrder
   active?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
+  updatedAt?: Prisma.SortOrder
   companyId?: Prisma.SortOrderInput | Prisma.SortOrder
   _count?: Prisma.ProductCountOrderByAggregateInput
   _avg?: Prisma.ProductAvgOrderByAggregateInput
@@ -406,6 +417,7 @@ export type ProductScalarWhereWithAggregatesInput = {
   expiry?: Prisma.StringNullableWithAggregatesFilter<"Product"> | string | null
   active?: Prisma.IntWithAggregatesFilter<"Product"> | number
   createdAt?: Prisma.DateTimeWithAggregatesFilter<"Product"> | Date | string
+  updatedAt?: Prisma.DateTimeWithAggregatesFilter<"Product"> | Date | string
   companyId?: Prisma.StringNullableWithAggregatesFilter<"Product"> | string | null
 }
 
@@ -422,6 +434,7 @@ export type ProductCreateInput = {
   expiry?: string | null
   active?: number
   createdAt?: Date | string
+  updatedAt?: Date | string
   company?: Prisma.CompanyCreateNestedOneWithoutProductsInput
   barcodeLink?: Prisma.BarcodeCreateNestedOneWithoutProductInput
   prices?: Prisma.ProductPriceCreateNestedManyWithoutProductInput
@@ -446,6 +459,7 @@ export type ProductUncheckedCreateInput = {
   expiry?: string | null
   active?: number
   createdAt?: Date | string
+  updatedAt?: Date | string
   companyId?: string | null
   barcodeLink?: Prisma.BarcodeUncheckedCreateNestedOneWithoutProductInput
   prices?: Prisma.ProductPriceUncheckedCreateNestedManyWithoutProductInput
@@ -468,6 +482,7 @@ export type ProductUpdateInput = {
   expiry?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   active?: Prisma.IntFieldUpdateOperationsInput | number
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   company?: Prisma.CompanyUpdateOneWithoutProductsNestedInput
   barcodeLink?: Prisma.BarcodeUpdateOneWithoutProductNestedInput
   prices?: Prisma.ProductPriceUpdateManyWithoutProductNestedInput
@@ -492,6 +507,7 @@ export type ProductUncheckedUpdateInput = {
   expiry?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   active?: Prisma.IntFieldUpdateOperationsInput | number
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   companyId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   barcodeLink?: Prisma.BarcodeUncheckedUpdateOneWithoutProductNestedInput
   prices?: Prisma.ProductPriceUncheckedUpdateManyWithoutProductNestedInput
@@ -515,6 +531,7 @@ export type ProductCreateManyInput = {
   expiry?: string | null
   active?: number
   createdAt?: Date | string
+  updatedAt?: Date | string
   companyId?: string | null
 }
 
@@ -531,6 +548,7 @@ export type ProductUpdateManyMutationInput = {
   expiry?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   active?: Prisma.IntFieldUpdateOperationsInput | number
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
 
 export type ProductUncheckedUpdateManyInput = {
@@ -547,6 +565,7 @@ export type ProductUncheckedUpdateManyInput = {
   expiry?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   active?: Prisma.IntFieldUpdateOperationsInput | number
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   companyId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
 }
 
@@ -564,6 +583,7 @@ export type ProductCountOrderByAggregateInput = {
   expiry?: Prisma.SortOrder
   active?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
+  updatedAt?: Prisma.SortOrder
   companyId?: Prisma.SortOrder
 }
 
@@ -589,6 +609,7 @@ export type ProductMaxOrderByAggregateInput = {
   expiry?: Prisma.SortOrder
   active?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
+  updatedAt?: Prisma.SortOrder
   companyId?: Prisma.SortOrder
 }
 
@@ -606,6 +627,7 @@ export type ProductMinOrderByAggregateInput = {
   expiry?: Prisma.SortOrder
   active?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
+  updatedAt?: Prisma.SortOrder
   companyId?: Prisma.SortOrder
 }
 
@@ -840,6 +862,7 @@ export type ProductCreateWithoutBarcodeLinkInput = {
   expiry?: string | null
   active?: number
   createdAt?: Date | string
+  updatedAt?: Date | string
   company?: Prisma.CompanyCreateNestedOneWithoutProductsInput
   prices?: Prisma.ProductPriceCreateNestedManyWithoutProductInput
   distributor?: Prisma.DistributorCreateNestedOneWithoutProductsInput
@@ -863,6 +886,7 @@ export type ProductUncheckedCreateWithoutBarcodeLinkInput = {
   expiry?: string | null
   active?: number
   createdAt?: Date | string
+  updatedAt?: Date | string
   companyId?: string | null
   prices?: Prisma.ProductPriceUncheckedCreateNestedManyWithoutProductInput
   returnItems?: Prisma.ReturnItemUncheckedCreateNestedManyWithoutProductInput
@@ -900,6 +924,7 @@ export type ProductUpdateWithoutBarcodeLinkInput = {
   expiry?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   active?: Prisma.IntFieldUpdateOperationsInput | number
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   company?: Prisma.CompanyUpdateOneWithoutProductsNestedInput
   prices?: Prisma.ProductPriceUpdateManyWithoutProductNestedInput
   distributor?: Prisma.DistributorUpdateOneWithoutProductsNestedInput
@@ -923,6 +948,7 @@ export type ProductUncheckedUpdateWithoutBarcodeLinkInput = {
   expiry?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   active?: Prisma.IntFieldUpdateOperationsInput | number
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   companyId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   prices?: Prisma.ProductPriceUncheckedUpdateManyWithoutProductNestedInput
   returnItems?: Prisma.ReturnItemUncheckedUpdateManyWithoutProductNestedInput
@@ -944,6 +970,7 @@ export type ProductCreateWithoutPricesInput = {
   expiry?: string | null
   active?: number
   createdAt?: Date | string
+  updatedAt?: Date | string
   company?: Prisma.CompanyCreateNestedOneWithoutProductsInput
   barcodeLink?: Prisma.BarcodeCreateNestedOneWithoutProductInput
   distributor?: Prisma.DistributorCreateNestedOneWithoutProductsInput
@@ -967,6 +994,7 @@ export type ProductUncheckedCreateWithoutPricesInput = {
   expiry?: string | null
   active?: number
   createdAt?: Date | string
+  updatedAt?: Date | string
   companyId?: string | null
   barcodeLink?: Prisma.BarcodeUncheckedCreateNestedOneWithoutProductInput
   returnItems?: Prisma.ReturnItemUncheckedCreateNestedManyWithoutProductInput
@@ -1004,6 +1032,7 @@ export type ProductUpdateWithoutPricesInput = {
   expiry?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   active?: Prisma.IntFieldUpdateOperationsInput | number
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   company?: Prisma.CompanyUpdateOneWithoutProductsNestedInput
   barcodeLink?: Prisma.BarcodeUpdateOneWithoutProductNestedInput
   distributor?: Prisma.DistributorUpdateOneWithoutProductsNestedInput
@@ -1027,6 +1056,7 @@ export type ProductUncheckedUpdateWithoutPricesInput = {
   expiry?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   active?: Prisma.IntFieldUpdateOperationsInput | number
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   companyId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   barcodeLink?: Prisma.BarcodeUncheckedUpdateOneWithoutProductNestedInput
   returnItems?: Prisma.ReturnItemUncheckedUpdateManyWithoutProductNestedInput
@@ -1048,6 +1078,7 @@ export type ProductCreateWithoutDistributorInput = {
   expiry?: string | null
   active?: number
   createdAt?: Date | string
+  updatedAt?: Date | string
   company?: Prisma.CompanyCreateNestedOneWithoutProductsInput
   barcodeLink?: Prisma.BarcodeCreateNestedOneWithoutProductInput
   prices?: Prisma.ProductPriceCreateNestedManyWithoutProductInput
@@ -1070,6 +1101,7 @@ export type ProductUncheckedCreateWithoutDistributorInput = {
   expiry?: string | null
   active?: number
   createdAt?: Date | string
+  updatedAt?: Date | string
   companyId?: string | null
   barcodeLink?: Prisma.BarcodeUncheckedCreateNestedOneWithoutProductInput
   prices?: Prisma.ProductPriceUncheckedCreateNestedManyWithoutProductInput
@@ -1122,6 +1154,7 @@ export type ProductScalarWhereInput = {
   expiry?: Prisma.StringNullableFilter<"Product"> | string | null
   active?: Prisma.IntFilter<"Product"> | number
   createdAt?: Prisma.DateTimeFilter<"Product"> | Date | string
+  updatedAt?: Prisma.DateTimeFilter<"Product"> | Date | string
   companyId?: Prisma.StringNullableFilter<"Product"> | string | null
 }
 
@@ -1138,6 +1171,7 @@ export type ProductCreateWithoutSaleItemsInput = {
   expiry?: string | null
   active?: number
   createdAt?: Date | string
+  updatedAt?: Date | string
   company?: Prisma.CompanyCreateNestedOneWithoutProductsInput
   barcodeLink?: Prisma.BarcodeCreateNestedOneWithoutProductInput
   prices?: Prisma.ProductPriceCreateNestedManyWithoutProductInput
@@ -1161,6 +1195,7 @@ export type ProductUncheckedCreateWithoutSaleItemsInput = {
   expiry?: string | null
   active?: number
   createdAt?: Date | string
+  updatedAt?: Date | string
   companyId?: string | null
   barcodeLink?: Prisma.BarcodeUncheckedCreateNestedOneWithoutProductInput
   prices?: Prisma.ProductPriceUncheckedCreateNestedManyWithoutProductInput
@@ -1198,6 +1233,7 @@ export type ProductUpdateWithoutSaleItemsInput = {
   expiry?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   active?: Prisma.IntFieldUpdateOperationsInput | number
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   company?: Prisma.CompanyUpdateOneWithoutProductsNestedInput
   barcodeLink?: Prisma.BarcodeUpdateOneWithoutProductNestedInput
   prices?: Prisma.ProductPriceUpdateManyWithoutProductNestedInput
@@ -1221,6 +1257,7 @@ export type ProductUncheckedUpdateWithoutSaleItemsInput = {
   expiry?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   active?: Prisma.IntFieldUpdateOperationsInput | number
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   companyId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   barcodeLink?: Prisma.BarcodeUncheckedUpdateOneWithoutProductNestedInput
   prices?: Prisma.ProductPriceUncheckedUpdateManyWithoutProductNestedInput
@@ -1242,6 +1279,7 @@ export type ProductCreateWithoutStockPurchasesInput = {
   expiry?: string | null
   active?: number
   createdAt?: Date | string
+  updatedAt?: Date | string
   company?: Prisma.CompanyCreateNestedOneWithoutProductsInput
   barcodeLink?: Prisma.BarcodeCreateNestedOneWithoutProductInput
   prices?: Prisma.ProductPriceCreateNestedManyWithoutProductInput
@@ -1265,6 +1303,7 @@ export type ProductUncheckedCreateWithoutStockPurchasesInput = {
   expiry?: string | null
   active?: number
   createdAt?: Date | string
+  updatedAt?: Date | string
   companyId?: string | null
   barcodeLink?: Prisma.BarcodeUncheckedCreateNestedOneWithoutProductInput
   prices?: Prisma.ProductPriceUncheckedCreateNestedManyWithoutProductInput
@@ -1302,6 +1341,7 @@ export type ProductUpdateWithoutStockPurchasesInput = {
   expiry?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   active?: Prisma.IntFieldUpdateOperationsInput | number
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   company?: Prisma.CompanyUpdateOneWithoutProductsNestedInput
   barcodeLink?: Prisma.BarcodeUpdateOneWithoutProductNestedInput
   prices?: Prisma.ProductPriceUpdateManyWithoutProductNestedInput
@@ -1325,6 +1365,7 @@ export type ProductUncheckedUpdateWithoutStockPurchasesInput = {
   expiry?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   active?: Prisma.IntFieldUpdateOperationsInput | number
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   companyId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   barcodeLink?: Prisma.BarcodeUncheckedUpdateOneWithoutProductNestedInput
   prices?: Prisma.ProductPriceUncheckedUpdateManyWithoutProductNestedInput
@@ -1346,6 +1387,7 @@ export type ProductCreateWithoutBatchesInput = {
   expiry?: string | null
   active?: number
   createdAt?: Date | string
+  updatedAt?: Date | string
   company?: Prisma.CompanyCreateNestedOneWithoutProductsInput
   barcodeLink?: Prisma.BarcodeCreateNestedOneWithoutProductInput
   prices?: Prisma.ProductPriceCreateNestedManyWithoutProductInput
@@ -1369,6 +1411,7 @@ export type ProductUncheckedCreateWithoutBatchesInput = {
   expiry?: string | null
   active?: number
   createdAt?: Date | string
+  updatedAt?: Date | string
   companyId?: string | null
   barcodeLink?: Prisma.BarcodeUncheckedCreateNestedOneWithoutProductInput
   prices?: Prisma.ProductPriceUncheckedCreateNestedManyWithoutProductInput
@@ -1406,6 +1449,7 @@ export type ProductUpdateWithoutBatchesInput = {
   expiry?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   active?: Prisma.IntFieldUpdateOperationsInput | number
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   company?: Prisma.CompanyUpdateOneWithoutProductsNestedInput
   barcodeLink?: Prisma.BarcodeUpdateOneWithoutProductNestedInput
   prices?: Prisma.ProductPriceUpdateManyWithoutProductNestedInput
@@ -1429,6 +1473,7 @@ export type ProductUncheckedUpdateWithoutBatchesInput = {
   expiry?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   active?: Prisma.IntFieldUpdateOperationsInput | number
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   companyId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   barcodeLink?: Prisma.BarcodeUncheckedUpdateOneWithoutProductNestedInput
   prices?: Prisma.ProductPriceUncheckedUpdateManyWithoutProductNestedInput
@@ -1450,6 +1495,7 @@ export type ProductCreateWithoutReturnItemsInput = {
   expiry?: string | null
   active?: number
   createdAt?: Date | string
+  updatedAt?: Date | string
   company?: Prisma.CompanyCreateNestedOneWithoutProductsInput
   barcodeLink?: Prisma.BarcodeCreateNestedOneWithoutProductInput
   prices?: Prisma.ProductPriceCreateNestedManyWithoutProductInput
@@ -1473,6 +1519,7 @@ export type ProductUncheckedCreateWithoutReturnItemsInput = {
   expiry?: string | null
   active?: number
   createdAt?: Date | string
+  updatedAt?: Date | string
   companyId?: string | null
   barcodeLink?: Prisma.BarcodeUncheckedCreateNestedOneWithoutProductInput
   prices?: Prisma.ProductPriceUncheckedCreateNestedManyWithoutProductInput
@@ -1510,6 +1557,7 @@ export type ProductUpdateWithoutReturnItemsInput = {
   expiry?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   active?: Prisma.IntFieldUpdateOperationsInput | number
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   company?: Prisma.CompanyUpdateOneWithoutProductsNestedInput
   barcodeLink?: Prisma.BarcodeUpdateOneWithoutProductNestedInput
   prices?: Prisma.ProductPriceUpdateManyWithoutProductNestedInput
@@ -1533,6 +1581,7 @@ export type ProductUncheckedUpdateWithoutReturnItemsInput = {
   expiry?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   active?: Prisma.IntFieldUpdateOperationsInput | number
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   companyId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   barcodeLink?: Prisma.BarcodeUncheckedUpdateOneWithoutProductNestedInput
   prices?: Prisma.ProductPriceUncheckedUpdateManyWithoutProductNestedInput
@@ -1554,6 +1603,7 @@ export type ProductCreateWithoutCompanyInput = {
   expiry?: string | null
   active?: number
   createdAt?: Date | string
+  updatedAt?: Date | string
   barcodeLink?: Prisma.BarcodeCreateNestedOneWithoutProductInput
   prices?: Prisma.ProductPriceCreateNestedManyWithoutProductInput
   distributor?: Prisma.DistributorCreateNestedOneWithoutProductsInput
@@ -1577,6 +1627,7 @@ export type ProductUncheckedCreateWithoutCompanyInput = {
   expiry?: string | null
   active?: number
   createdAt?: Date | string
+  updatedAt?: Date | string
   barcodeLink?: Prisma.BarcodeUncheckedCreateNestedOneWithoutProductInput
   prices?: Prisma.ProductPriceUncheckedCreateNestedManyWithoutProductInput
   returnItems?: Prisma.ReturnItemUncheckedCreateNestedManyWithoutProductInput
@@ -1624,6 +1675,7 @@ export type ProductCreateManyDistributorInput = {
   expiry?: string | null
   active?: number
   createdAt?: Date | string
+  updatedAt?: Date | string
   companyId?: string | null
 }
 
@@ -1640,6 +1692,7 @@ export type ProductUpdateWithoutDistributorInput = {
   expiry?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   active?: Prisma.IntFieldUpdateOperationsInput | number
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   company?: Prisma.CompanyUpdateOneWithoutProductsNestedInput
   barcodeLink?: Prisma.BarcodeUpdateOneWithoutProductNestedInput
   prices?: Prisma.ProductPriceUpdateManyWithoutProductNestedInput
@@ -1662,6 +1715,7 @@ export type ProductUncheckedUpdateWithoutDistributorInput = {
   expiry?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   active?: Prisma.IntFieldUpdateOperationsInput | number
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   companyId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   barcodeLink?: Prisma.BarcodeUncheckedUpdateOneWithoutProductNestedInput
   prices?: Prisma.ProductPriceUncheckedUpdateManyWithoutProductNestedInput
@@ -1684,6 +1738,7 @@ export type ProductUncheckedUpdateManyWithoutDistributorInput = {
   expiry?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   active?: Prisma.IntFieldUpdateOperationsInput | number
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   companyId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
 }
 
@@ -1701,6 +1756,7 @@ export type ProductCreateManyCompanyInput = {
   expiry?: string | null
   active?: number
   createdAt?: Date | string
+  updatedAt?: Date | string
 }
 
 export type ProductUpdateWithoutCompanyInput = {
@@ -1716,6 +1772,7 @@ export type ProductUpdateWithoutCompanyInput = {
   expiry?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   active?: Prisma.IntFieldUpdateOperationsInput | number
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   barcodeLink?: Prisma.BarcodeUpdateOneWithoutProductNestedInput
   prices?: Prisma.ProductPriceUpdateManyWithoutProductNestedInput
   distributor?: Prisma.DistributorUpdateOneWithoutProductsNestedInput
@@ -1739,6 +1796,7 @@ export type ProductUncheckedUpdateWithoutCompanyInput = {
   expiry?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   active?: Prisma.IntFieldUpdateOperationsInput | number
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   barcodeLink?: Prisma.BarcodeUncheckedUpdateOneWithoutProductNestedInput
   prices?: Prisma.ProductPriceUncheckedUpdateManyWithoutProductNestedInput
   returnItems?: Prisma.ReturnItemUncheckedUpdateManyWithoutProductNestedInput
@@ -1761,6 +1819,7 @@ export type ProductUncheckedUpdateManyWithoutCompanyInput = {
   expiry?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   active?: Prisma.IntFieldUpdateOperationsInput | number
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
 
 
@@ -1844,6 +1903,7 @@ export type ProductSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs 
   expiry?: boolean
   active?: boolean
   createdAt?: boolean
+  updatedAt?: boolean
   companyId?: boolean
   company?: boolean | Prisma.Product$companyArgs<ExtArgs>
   barcodeLink?: boolean | Prisma.Product$barcodeLinkArgs<ExtArgs>
@@ -1870,6 +1930,7 @@ export type ProductSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Exten
   expiry?: boolean
   active?: boolean
   createdAt?: boolean
+  updatedAt?: boolean
   companyId?: boolean
   company?: boolean | Prisma.Product$companyArgs<ExtArgs>
   distributor?: boolean | Prisma.Product$distributorArgs<ExtArgs>
@@ -1889,6 +1950,7 @@ export type ProductSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Exten
   expiry?: boolean
   active?: boolean
   createdAt?: boolean
+  updatedAt?: boolean
   companyId?: boolean
   company?: boolean | Prisma.Product$companyArgs<ExtArgs>
   distributor?: boolean | Prisma.Product$distributorArgs<ExtArgs>
@@ -1908,10 +1970,11 @@ export type ProductSelectScalar = {
   expiry?: boolean
   active?: boolean
   createdAt?: boolean
+  updatedAt?: boolean
   companyId?: boolean
 }
 
-export type ProductOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "barcode" | "name" | "category" | "location" | "distributorId" | "salePrice" | "purchasePrice" | "markupPercent" | "stockQty" | "expiry" | "active" | "createdAt" | "companyId", ExtArgs["result"]["product"]>
+export type ProductOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "barcode" | "name" | "category" | "location" | "distributorId" | "salePrice" | "purchasePrice" | "markupPercent" | "stockQty" | "expiry" | "active" | "createdAt" | "updatedAt" | "companyId", ExtArgs["result"]["product"]>
 export type ProductInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   company?: boolean | Prisma.Product$companyArgs<ExtArgs>
   barcodeLink?: boolean | Prisma.Product$barcodeLinkArgs<ExtArgs>
@@ -1958,6 +2021,7 @@ export type $ProductPayload<ExtArgs extends runtime.Types.Extensions.InternalArg
     expiry: string | null
     active: number
     createdAt: Date
+    updatedAt: Date
     companyId: string | null
   }, ExtArgs["result"]["product"]>
   composites: {}
@@ -2403,6 +2467,7 @@ export interface ProductFieldRefs {
   readonly expiry: Prisma.FieldRef<"Product", 'String'>
   readonly active: Prisma.FieldRef<"Product", 'Int'>
   readonly createdAt: Prisma.FieldRef<"Product", 'DateTime'>
+  readonly updatedAt: Prisma.FieldRef<"Product", 'DateTime'>
   readonly companyId: Prisma.FieldRef<"Product", 'String'>
 }
     

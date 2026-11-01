@@ -76,6 +76,14 @@ let posWindowCounter = 0;
 const returnWindows = new Map();
 let returnWindowCounter = 0;
 
+function notifyPosWindowCount() {
+  for (const window of BrowserWindow.getAllWindows()) {
+    if (!window.isDestroyed()) {
+      window.webContents.send("pos:window-count-changed", posWindows.size);
+    }
+  }
+}
+
 function createWindow({ posOnly = false, returnOnly = false } = {}) {
   windowSeq += 1;
   const isPrimary = windowSeq === 1;
@@ -141,9 +149,11 @@ function createWindow({ posOnly = false, returnOnly = false } = {}) {
   if (posOnly) {
     const winId = win.id;
     posWindows.set(winId, win);
+    notifyPosWindowCount();
     win.on("closed", () => {
       posWindows.delete(winId);
       if (posWindows.size === 0) posWindowCounter = 0;
+      notifyPosWindowCount();
     });
   } else if (returnOnly) {
     const winId = win.id;

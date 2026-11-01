@@ -6,6 +6,7 @@ import { createProductSchema } from "./medicines.schema";
 const router = Router();
 
 router.get("/", medicinesController.list);
+router.get("/sync", medicinesController.syncCatalog);
 router.get("/search", medicinesController.search);
 router.get("/barcode/:b", medicinesController.getByBarcode);
 router.get("/barcode-fast/:b", medicinesController.getByBarcodeFast);

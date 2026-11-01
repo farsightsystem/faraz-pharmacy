@@ -1,5 +1,5 @@
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, Cell } from "recharts";
-import { formatCurrency } from "@/lib/utils";
+import { formatCurrency, formatLocalDateKey } from "@/lib/utils";
 
 interface RevenueChartProps {
   data?: { day: string; revenue: number }[];
@@ -12,7 +12,7 @@ function fillDays(data: { day: string; revenue: number }[], period: "week" | "mo
   const map = new Map(data.map((d) => [d.day, d.revenue]));
   for (let i = days - 1; i >= 0; i--) {
     const date = new Date(Date.now() - i * 86400000);
-    const key = date.toISOString().split("T")[0];
+    const key = formatLocalDateKey(date);
     const label =
       period === "week"
         ? date.toLocaleDateString("en-US", { weekday: "short" })

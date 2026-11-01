@@ -23,6 +23,10 @@ import type {
   Category,
   CategoryInput,
   DashboardStats,
+  SalesReportSummary,
+  PurchaseReportSummary,
+  ExpenseReportSummary,
+  IncomeReportSummary,
   BarcodeEntry,
   CustomerArrearSummary,
   CustomerLedgerDetail,
@@ -117,6 +121,15 @@ const api = {
   },
   products: {
     list: (): Promise<Product[]> => fetchAllPages("/api/products"),
+    syncCatalog: (opts: { updatedSince?: string } = {}): Promise<{
+      products: Product[];
+      syncedAt: string;
+    }> => {
+      const params = new URLSearchParams();
+      if (opts.updatedSince) params.set("updatedSince", opts.updatedSince);
+      const query = params.toString();
+      return fetchJson("GET", `/api/products/sync${query ? `?${query}` : ""}`);
+    },
     listAll: (): Promise<Product[]> =>
       fetchAllPages("/api/products", new URLSearchParams({ includeArchived: "true" })),
     listPaginated: async (opts: { page?: number; limit?: number; search?: string; includeArchived?: boolean; archivedOnly?: boolean; sortBy?: string; sortOrder?: "asc" | "desc" }): Promise<PaginatedResponse<Product>> => {
@@ -548,10 +561,53 @@ const api = {
       fetchJson("DELETE", `/api/categories/${id}`),
   },
   dashboard: {
-    stats: (): Promise<DashboardStats> => fetchJson("GET", "/api/dashboard/stats"),
+    stats: (): Promise<DashboardStats> => {
+      const tzOffset = -new Date().getTimezoneOffset();
+      return fetchJson("GET", `/api/dashboard/stats?tzOffset=${tzOffset}`);
+    },
   },
   reports: {
     stats: (): Promise<DashboardStats> => fetchJson("GET", "/api/reports/stats"),
+    salesSummary: (opts: {
+      dateFrom?: string;
+      dateTo?: string;
+    }): Promise<SalesReportSummary> => {
+      const params = new URLSearchParams();
+      if (opts.dateFrom) params.set("dateFrom", opts.dateFrom);
+      if (opts.dateTo) params.set("dateTo", opts.dateTo);
+      params.set("tzOffset", String(-new Date().getTimezoneOffset()));
+      return fetchJson("GET", `/api/reports/sales-summary?${params.toString()}`);
+    },
+    purchaseSummary: (opts: {
+      dateFrom?: string;
+      dateTo?: string;
+    }): Promise<PurchaseReportSummary> => {
+      const params = new URLSearchParams();
+      if (opts.dateFrom) params.set("dateFrom", opts.dateFrom);
+      if (opts.dateTo) params.set("dateTo", opts.dateTo);
+      return fetchJson("GET", `/api/reports/purchase-summary?${params.toString()}`);
+    },
+    expenseSummary: (opts: {
+      dateFrom?: string;
+      dateTo?: string;
+      category?: string;
+    }): Promise<ExpenseReportSummary> => {
+      const params = new URLSearchParams();
+      if (opts.dateFrom) params.set("dateFrom", opts.dateFrom);
+      if (opts.dateTo) params.set("dateTo", opts.dateTo);
+      if (opts.category && opts.category !== "all") params.set("category", opts.category);
+      return fetchJson("GET", `/api/reports/expense-summary?${params.toString()}`);
+    },
+    incomeSummary: (opts: {
+      dateFrom?: string;
+      dateTo?: string;
+    }): Promise<IncomeReportSummary> => {
+      const params = new URLSearchParams();
+      if (opts.dateFrom) params.set("dateFrom", opts.dateFrom);
+      if (opts.dateTo) params.set("dateTo", opts.dateTo);
+      params.set("tzOffset", String(-new Date().getTimezoneOffset()));
+      return fetchJson("GET", `/api/reports/income-summary?${params.toString()}`);
+    },
     productReport: (opts: {
       productId: string;
       dateFrom?: string;

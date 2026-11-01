@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { Suspense, lazy, useEffect, useState, useCallback } from "react";
 import { Routes, Route, Navigate, useLocation, useNavigate } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import { Toaster, toast } from "sonner";
@@ -7,30 +7,30 @@ import { ServerConnectionProvider } from "@/contexts/ServerConnectionContext";
 import { SidebarProvider } from "@/contexts/SidebarContext";
 import PrintPreviewDialog from "@/components/shared/PrintPreviewDialog";
 import { getLastReceipt } from "@/lib/receiptStore";
-import { ensureProductCache } from "@/lib/sync";
+import { ensureProductCache, PRODUCT_CACHE_REFRESH_INTERVAL_MS } from "@/lib/sync";
 import type { PrinterConfig } from "@/types";
 import Sidebar from "@/components/layout/Sidebar";
 import Topbar from "@/components/layout/Topbar";
 import OfflineBanner from "@/components/shared/OfflineBanner";
-import Login from "@/pages/Login";
-import Dashboard from "@/pages/Dashboard";
-import POS from "@/pages/POS";
-import Products from "@/pages/Products";
-import Customers from "@/pages/Customers";
-import CustomerDetail from "@/pages/CustomerDetail";
-import Arrears from "@/pages/Arrears";
-import Stock from "@/pages/Stock";
-import Distributors from "@/pages/Distributors";
-import Returns from "@/pages/Returns";
-import Categories from "@/pages/Categories";
-import Barcodes from "@/pages/Barcodes";
-import Companies from "@/pages/Companies";
-import CompanyDetail from "@/pages/CompanyDetail";
-import Expenses from "@/pages/Expenses";
-import Reports from "@/pages/Reports";
-import Invoices from "@/pages/Invoices";
-import InvoiceDetail from "@/pages/InvoiceDetail";
-import Settings from "@/pages/Settings";
+const Login = lazy(() => import("@/pages/Login"));
+const Dashboard = lazy(() => import("@/pages/Dashboard"));
+const POS = lazy(() => import("@/pages/POS"));
+const Products = lazy(() => import("@/pages/Products"));
+const Customers = lazy(() => import("@/pages/Customers"));
+const CustomerDetail = lazy(() => import("@/pages/CustomerDetail"));
+const Arrears = lazy(() => import("@/pages/Arrears"));
+const Stock = lazy(() => import("@/pages/Stock"));
+const Distributors = lazy(() => import("@/pages/Distributors"));
+const Returns = lazy(() => import("@/pages/Returns"));
+const Categories = lazy(() => import("@/pages/Categories"));
+const Barcodes = lazy(() => import("@/pages/Barcodes"));
+const Companies = lazy(() => import("@/pages/Companies"));
+const CompanyDetail = lazy(() => import("@/pages/CompanyDetail"));
+const Expenses = lazy(() => import("@/pages/Expenses"));
+const Reports = lazy(() => import("@/pages/Reports"));
+const Invoices = lazy(() => import("@/pages/Invoices"));
+const InvoiceDetail = lazy(() => import("@/pages/InvoiceDetail"));
+const Settings = lazy(() => import("@/pages/Settings"));
 
 const pageVariants = {
   initial: { opacity: 0, y: 8 },
@@ -41,8 +41,16 @@ const pageVariants = {
 function AnimatedPage({ children }: { children: React.ReactNode }) {
   return (
     <motion.div variants={pageVariants} initial="initial" animate="animate" exit="exit">
-      {children}
+      <Suspense fallback={<PageLoading />}>{children}</Suspense>
     </motion.div>
+  );
+}
+
+function PageLoading() {
+  return (
+    <div className="flex min-h-[40vh] items-center justify-center text-sm text-text-secondary">
+      Loading page...
+    </div>
   );
 }
 
@@ -61,20 +69,40 @@ function AppShell() {
   const [reprintData, setReprintData] = useState<unknown>(null);
 
   useEffect(() => {
-    (async () => {
+    let active = true;
+    const refreshCache = async (initialLoad = false) => {
       try {
         const result = await ensureProductCache();
+        if (!active) return;
         if (result.error) {
           toast.warning(`Offline mode: ${result.error}. Using cached data.`);
         } else if (!result.fromCache) {
           toast.success(`Product cache loaded: ${result.count} products`);
         }
-      } catch {
-        // Silent - app still works, just no cache
+      } catch (error) {
+        if (active) {
+          const message = error instanceof Error ? error.message : "Unknown cache error";
+          toast.error(`Could not load product cache: ${message}`);
+        }
       } finally {
-        setReady(true);
+        if (active && initialLoad) setReady(true);
       }
-    })();
+    };
+    const onFocus = () => void refreshCache();
+    const onVisibilityChange = () => {
+      if (document.visibilityState === "visible") void refreshCache();
+    };
+
+    void refreshCache(true);
+    window.addEventListener("focus", onFocus);
+    document.addEventListener("visibilitychange", onVisibilityChange);
+    const interval = setInterval(onFocus, PRODUCT_CACHE_REFRESH_INTERVAL_MS);
+    return () => {
+      active = false;
+      clearInterval(interval);
+      window.removeEventListener("focus", onFocus);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+    };
   }, []);
 
   const generateReprintHtml = useCallback(
@@ -167,7 +195,11 @@ function AppShell() {
   if (!ready) return null;
 
   if (!isAuthenticated) {
-    return <Login />;
+    return (
+      <Suspense fallback={<PageLoading />}>
+        <Login />
+      </Suspense>
+    );
   }
 
   const routes = (

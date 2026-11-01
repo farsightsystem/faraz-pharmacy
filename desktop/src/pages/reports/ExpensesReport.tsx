@@ -15,7 +15,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { formatCurrency, formatDate } from "@/lib/utils";
+import { formatCurrency, formatDate, formatLocalDateKey } from "@/lib/utils";
 import { api } from "@/lib/api";
 import { generatePDF } from "@/lib/pdfExport";
 import { downloadExcelFile } from "@/lib/excelExport";
@@ -25,8 +25,8 @@ import { EXPENSE_CATEGORIES } from "@/pages/Expenses";
 
 export default function ExpensesReport() {
   const [dateRange, setDateRange] = useState<DateRange>({
-    from: new Date(Date.now() - 30 * 86400000).toISOString().split("T")[0],
-    to: new Date().toISOString().split("T")[0],
+    from: formatLocalDateKey(new Date(Date.now() - 30 * 86400000)),
+    to: formatLocalDateKey(new Date()),
   });
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [page, setPage] = useState(1);
@@ -54,35 +54,26 @@ export default function ExpensesReport() {
   });
   const meta = expensesData?.meta;
 
-  // Summary data for KPIs and exports
-  const { data: allExpenses = [] } = useQuery({
-    queryKey: ["expenses", "summary", dateRange.from, dateRange.to],
-    queryFn: () => api.expenses.list({ dateFrom: dateRange.from, dateTo: dateRange.to }),
+  const { data: summary } = useQuery({
+    queryKey: ["expenses", "summary", dateRange.from, dateRange.to, categoryFilter],
+    queryFn: () =>
+      api.reports.expenseSummary({
+        dateFrom: dateRange.from,
+        dateTo: dateRange.to,
+        category: categoryFilter,
+      }),
   });
 
-  const filteredExpenses = useMemo(() => {
-    return allExpenses.filter((e: Expense) => {
-      const inDateRange = e.date >= dateRange.from && e.date <= dateRange.to;
-      const matchesCategory =
-        categoryFilter === "all" ||
-        e.category?.toLowerCase() === categoryFilter.toLowerCase();
-      return inDateRange && matchesCategory;
-    });
-  }, [allExpenses, dateRange, categoryFilter]);
+  const totalExpenses = summary?.total ?? 0;
+  const totalEntries = summary?.entries ?? 0;
+  const avgExpense = summary?.average ?? 0;
+  const maxExpense = summary?.maximum ?? 0;
 
-  const totalExpenses = filteredExpenses.reduce((sum: number, e: Expense) => sum + e.amount, 0);
-  const totalEntries = filteredExpenses.length;
-  const avgExpense = totalEntries > 0 ? totalExpenses / totalEntries : 0;
-  const maxExpense = filteredExpenses.reduce((max: number, e: Expense) => Math.max(max, e.amount), 0);
-
-  // Dynamically extract categories from allExpenses
   const existingCategories = useMemo(() => {
     const set = new Set<string>();
-    allExpenses.forEach((e: Expense) => {
-      if (e.category) set.add(e.category);
-    });
+    (summary?.categories ?? []).forEach((category) => set.add(category));
     return Array.from(set);
-  }, [allExpenses]);
+  }, [summary?.categories]);
 
   // Reset page when filters change
   useEffect(() => {
@@ -91,15 +82,23 @@ export default function ExpensesReport() {
 
   function handleReset() {
     setDateRange({
-      from: new Date(Date.now() - 30 * 86400000).toISOString().split("T")[0],
-      to: new Date().toISOString().split("T")[0],
+      from: formatLocalDateKey(new Date(Date.now() - 30 * 86400000)),
+      to: formatLocalDateKey(new Date()),
     });
     setCategoryFilter("all");
     setSearch("");
     setPage(1);
   }
 
-  function handlePDF() {
+  async function handlePDF() {
+    const expenses = await api.expenses.list({
+      dateFrom: dateRange.from,
+      dateTo: dateRange.to,
+    });
+    const filteredExpenses = expenses.filter((expense) =>
+      categoryFilter === "all" ||
+      expense.category?.toLowerCase() === categoryFilter.toLowerCase()
+    );
     generatePDF({
       title: "Operating Expenses Report",
       dateRange,
@@ -121,7 +120,15 @@ export default function ExpensesReport() {
     });
   }
 
-  function handleExcel() {
+  async function handleExcel() {
+    const expenses = await api.expenses.list({
+      dateFrom: dateRange.from,
+      dateTo: dateRange.to,
+    });
+    const filteredExpenses = expenses.filter((expense) =>
+      categoryFilter === "all" ||
+      expense.category?.toLowerCase() === categoryFilter.toLowerCase()
+    );
     downloadExcelFile(
       `expenses_report_${dateRange.from}_${dateRange.to}.xlsx`,
       ["Date", "Expense Title", "Category", "Amount", "Notes"],

@@ -36,27 +36,13 @@ export class PharmacyDb extends Dexie {
 export const db = new PharmacyDb();
 
 /**
- * Get the last successful sync timestamp from IndexedDB.
- */
-export async function getLastSync(): Promise<string | null> {
-  const row = await db.syncMeta.get("last_sync");
-  return row ? row.value : null;
-}
-
-/**
- * Set the last successful sync timestamp.
- */
-export async function setLastSync(timestamp: string): Promise<void> {
-  await db.syncMeta.put({ key: "last_sync", value: timestamp });
-}
-
-/**
  * Check if the local cache is stale (older than maxAgeMinutes).
  * Returns true if no sync has ever happened or cache is too old.
  */
 export function isCacheStale(lastSync: string | null, maxAgeMinutes = 30): boolean {
   if (!lastSync) return true;
   const last = new Date(lastSync).getTime();
+  if (!Number.isFinite(last)) return true;
   const now = Date.now();
   const ageMinutes = (now - last) / (1000 * 60);
   return ageMinutes > maxAgeMinutes;
