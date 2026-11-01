@@ -25,27 +25,25 @@ export const salesService = {
         });
         if (!customer) throw new NotFoundError("Active customer");
       }
-      const products = new Map(
-        await Promise.all(
-          [...new Set(data.items.map((item) => item.productId))].map(async (productId) => {
-            const product = await tx.product.findUnique({
-              where: { id: productId },
-              select: {
-                id: true,
-                name: true,
-                barcode: true,
-                active: true,
-                purchasePrice: true,
-                stockQty: true,
-              },
-            });
-            if (!product || product.active !== 1) {
-              throw new NotFoundError("Active product");
-            }
-            return [productId, product] as const;
-          })
-        )
-      );
+      const productIds = [...new Set(data.items.map((item) => item.productId))];
+      const productRecords = await tx.product.findMany({
+        where: { id: { in: productIds } },
+        select: {
+          id: true,
+          name: true,
+          barcode: true,
+          active: true,
+          purchasePrice: true,
+          stockQty: true,
+        },
+      });
+      const products = new Map(productRecords.map((product) => [product.id, product]));
+      for (const productId of productIds) {
+        const product = products.get(productId);
+        if (!product || product.active !== 1) {
+          throw new NotFoundError("Active product");
+        }
+      }
       const calculatedSubtotal = data.items.reduce(
         (sum, item) => sum + item.unitPrice * item.quantity,
         0

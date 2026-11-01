@@ -317,3 +317,9 @@ The user reported that Global Search showed every product as out of stock even w
 Global Search used a separate `/api/products/search` endpoint with a 30-second server cache, so it did not use the fresh-stock list option used by POS. Its empty-query suggestions also came from a cached sample and were not explicitly refreshed when the input was focused.
 
 Updated Global Search to use the paginated products API with `freshStock: true` for both typed results and suggestions. Focusing the bar now refetches the suggestion sample. No migration is needed. Validate desktop type-check/renderer build and `git diff --check`; confirm live stock readings with the user's active API/database.
+
+## 20. PostgreSQL Concurrent Query Deprecation Warning
+
+The user reported pg's warning that `client.query()` was called while that client was already executing a query. Sale creation issued parallel product lookups through one Prisma interactive transaction (`Promise.all` with `tx.product.findUnique`), which uses one PostgreSQL connection. This can queue overlapping queries on the same `pg` client and trigger the deprecation warning.
+
+Replaced the per-product parallel lookups with one `tx.product.findMany` query for all unique sale product IDs, then retained the existing missing/inactive-product validation. This preserves transactional stock checks while avoiding concurrent queries on the transaction connection and reduces lookup round trips. No schema or migration change is needed. Validate server type-check/build and `git diff --check`; runtime verification needs checkout against the active PostgreSQL server and should confirm the warning no longer appears.
