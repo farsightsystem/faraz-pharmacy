@@ -129,7 +129,7 @@ export const purchasesService = {
         : `B-${Date.now().toString().slice(-6)}`);
     const expiry = data.expiry || null;
 
-    return prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+    const stockPurchase = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       let batch = await tx.productBatch.findUnique({
         where: {
           productId_batchNumber: {
@@ -206,10 +206,11 @@ export const purchasesService = {
         },
       });
 
-      cacheDelNamespace("products"); // invalidate product cache on stock write
-      emitEvent("stock:updated", stockPurchase);
       return stockPurchase;
     });
+    cacheDelNamespace("products"); // Invalidate only after committed stock is visible to readers.
+    emitEvent("stock:updated", stockPurchase);
+    return stockPurchase;
   },
 
   async update(id: string, data: Partial<CreateStockInput & { quantity: number }>) {

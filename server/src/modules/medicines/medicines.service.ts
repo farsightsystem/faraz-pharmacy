@@ -107,6 +107,7 @@ export const medicinesService = {
     archivedOnly = false,
     sortBy,
     sortOrder,
+    freshStock = false,
   }: {
     page?: number;
     limit?: number;
@@ -115,12 +116,13 @@ export const medicinesService = {
     archivedOnly?: boolean;
     sortBy?: string;
     sortOrder?: "asc" | "desc";
+    freshStock?: boolean;
   }) {
     limit = clampPageSize(limit);
     const cacheKey = makeKey("products:list", {
       page, limit, search, includeArchived, archivedOnly, sortBy, sortOrder,
     });
-    const cached = cacheGet<{ data: any[]; meta: any }>(cacheKey);
+    const cached = freshStock ? undefined : cacheGet<{ data: any[]; meta: any }>(cacheKey);
     if (cached) return cached;
 
     const where: any = archivedOnly ? { active: 0 } : includeArchived ? {} : { active: 1 };
@@ -173,7 +175,9 @@ export const medicinesService = {
       },
     };
 
-    cacheSet(cacheKey, result, 60); // cache for 60 seconds
+    if (!freshStock) {
+      cacheSet(cacheKey, result, 60); // cache for 60 seconds
+    }
     return result;
   },
 

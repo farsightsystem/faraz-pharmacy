@@ -154,7 +154,7 @@ const api = {
     },
     listAll: (): Promise<Product[]> =>
       fetchAllPages("/api/products", new URLSearchParams({ includeArchived: "true" })),
-    listPaginated: async (opts: { page?: number; limit?: number; search?: string; includeArchived?: boolean; archivedOnly?: boolean; sortBy?: string; sortOrder?: "asc" | "desc" }): Promise<PaginatedResponse<Product>> => {
+    listPaginated: async (opts: { page?: number; limit?: number; search?: string; includeArchived?: boolean; archivedOnly?: boolean; sortBy?: string; sortOrder?: "asc" | "desc"; freshStock?: boolean }): Promise<PaginatedResponse<Product>> => {
       const params = new URLSearchParams();
       params.set("paginated", "true");
       if (opts.page) params.set("page", String(opts.page));
@@ -162,6 +162,7 @@ const api = {
       if (opts.search) params.set("search", opts.search);
       if (opts.sortBy) params.set("sortBy", opts.sortBy);
       if (opts.sortOrder) params.set("sortOrder", opts.sortOrder);
+      if (opts.freshStock) params.set("freshStock", "true");
       if (opts.archivedOnly) {
         params.set("archivedOnly", "true");
       } else if (opts.includeArchived) {

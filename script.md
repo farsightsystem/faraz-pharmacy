@@ -291,3 +291,21 @@ The user reported spacing issues in the Add Company dialog.
 The dialog header uses the shared component's horizontal inset, but the form lacked horizontal and bottom padding. This misaligned the company field and action buttons against the title and left the footer crowded against the dialog edge.
 
 Updated the form to align with the header's horizontal padding, added balanced vertical spacing, and separated the action row with a subtle divider and consistent top padding. Desktop TypeScript check, renderer build, and `git diff --check` passed.
+
+## 17. PostgreSQL Grouping Error in Dashboard Stats
+
+The user reported Prisma `P2010` / PostgreSQL `42803` in `reportsService.getStats`: `s.created_at` was selected as a timezone-adjusted calendar day, but the query repeated the expression in `GROUP BY` and `ORDER BY`. Prisma binds each interpolated timezone offset as a separate SQL parameter; PostgreSQL therefore did not see the selected and grouped expressions as identical.
+
+Changed both the dashboard daily-revenue query and the sales-summary daily-revenue query to group and order by the selected first column (`GROUP BY 1 ORDER BY 1`). This preserves the computed local calendar-day grouping and ISO date ordering while avoiding parameter-expression mismatch. No migration or database modification is required. Validate with server TypeScript/build and `git diff --check`; runtime verification needs the local database/API available.
+
+## 18. POS Stock Availability Reads
+
+The user reported that POS search and repeated barcode scans could say “Out of stock” despite stock being available. The POS typed-search API reads the product list, whose server service caches full product records—including `stockQty`—for 60 seconds. Barcode fast lookup reads the database directly, but Enter handling could also treat an exact barcode in list results as authoritative.
+
+Implemented:
+
+- Added a `freshStock` option to the product-list request. POS search and Enter-key search set it, making the API bypass both reads and writes to the server's product-list cache for those requests. Other product list consumers retain existing caching.
+- Exact barcode matches from search results now get verified through the live barcode lookup rather than using cached quantity.
+- Stock receipt now invalidates the product cache after its database transaction commits (and emits its stock event only after commit), preventing a concurrent read from repopulating cache with pre-commit quantity.
+
+No schema or migration change is needed. Validate server/desktop type-check and builds plus `git diff --check`. Runtime verification requires the user's configured database and should cover adding stock, immediate typed search, immediate repeated barcode scans, and stock changes made on another terminal.

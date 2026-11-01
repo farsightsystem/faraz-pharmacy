@@ -212,7 +212,12 @@ export default function POS() {
     isError: isSearchError,
   } = useQuery({
     queryKey: ["products-search", searchSession, debouncedSearch.trim()],
-    queryFn: () => api.products.listPaginated({ search: debouncedSearch.trim(), limit: 12 }),
+    queryFn: () =>
+      api.products.listPaginated({
+        search: debouncedSearch.trim(),
+        limit: 12,
+        freshStock: true,
+      }),
     enabled: debouncedSearch.trim().length >= 1,
     staleTime: 0,
     refetchOnWindowFocus: true,
@@ -365,19 +370,32 @@ export default function POS() {
       e.preventDefault();
       if (!trimmed) return;
 
-      // 1. Check if exact barcode match (case-insensitive)
+      // 1. Verify exact barcode matches against live stock, not cached search results.
       const lower = trimmed.toLowerCase();
       const localBarcodeMatch = matchingProducts.find(
         (p) => (p.barcode || "").toLowerCase() === lower
       );
       if (localBarcodeMatch) {
-        if (localBarcodeMatch.stock_qty <= 0) {
+        let barcodeProduct: Product | null;
+        try {
+          barcodeProduct = await findProductByBarcode(trimmed);
+        } catch {
+          showInlineError("Could not verify barcode stock. Check the server and scan again.");
+          return;
+        }
+        if (!barcodeProduct) {
+          showInlineError("Product not found");
+          setSearch("");
+          focusSearch();
+          return;
+        }
+        if (barcodeProduct.stock_qty <= 0) {
           showInlineError("Out of stock");
           setSearch("");
           focusSearch();
           return;
         }
-        promptPriceTier(localBarcodeMatch);
+        promptPriceTier(barcodeProduct);
         return;
       }
 
@@ -403,7 +421,12 @@ export default function POS() {
         try {
           const result = await queryClient.fetchQuery({
             queryKey: ["products-search", searchSession, trimmed],
-            queryFn: () => api.products.listPaginated({ search: trimmed, limit: 12 }),
+            queryFn: () =>
+              api.products.listPaginated({
+                search: trimmed,
+                limit: 12,
+                freshStock: true,
+              }),
             staleTime: 0,
           });
           products = sortProductResults(result.data, trimmed);

@@ -102,8 +102,8 @@ export const reportsService = {
           AND s.created_at >= ${thirtyDaysAgo}
           AND s.created_at < ${tomorrow}
           AND EXISTS (SELECT 1 FROM sale_items si WHERE si.sale_id = s.id)
-        GROUP BY (s.created_at + (${tzOffsetMinutes} * INTERVAL '1 minute'))::date
-        ORDER BY (s.created_at + (${tzOffsetMinutes} * INTERVAL '1 minute'))::date
+        GROUP BY 1
+        ORDER BY 1
       `,
 
       prisma.$queryRaw<{ name: string; value: number }[]>`
@@ -291,8 +291,8 @@ export const reportsService = {
         WHERE s.kind = 'sale'
           AND s.created_at >= ${chartStart}
           AND EXISTS (SELECT 1 FROM sale_items si WHERE si.sale_id = s.id)
-        GROUP BY (s.created_at + (${opts.tzOffsetMinutes ?? 0} * INTERVAL '1 minute'))::date
-        ORDER BY (s.created_at + (${opts.tzOffsetMinutes ?? 0} * INTERVAL '1 minute'))::date
+        GROUP BY 1
+        ORDER BY 1
       `,
       prisma.returnEntry.aggregate({
         where: returnWhere,
