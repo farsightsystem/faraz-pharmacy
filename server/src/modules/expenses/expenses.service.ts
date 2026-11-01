@@ -63,7 +63,7 @@ export const expensesService = {
       orderBy = { createdAt: sortOrder || "desc" };
     }
 
-    const [total, data] = await prisma.$transaction([
+    const [total, data] = await Promise.all([
       prisma.expense.count({ where }),
       prisma.expense.findMany({
         where,

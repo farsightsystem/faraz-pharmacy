@@ -53,7 +53,7 @@ export const arrearsService = {
       orderBy = { createdAt: sortOrder || "desc" };
     }
 
-    const [total, data] = await prisma.$transaction([
+    const [total, data] = await Promise.all([
       prisma.arrear.count({ where }),
       prisma.arrear.findMany({
         where,

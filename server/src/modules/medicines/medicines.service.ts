@@ -76,7 +76,7 @@ export const medicinesService = {
       orderBy = { createdAt: sortOrder || "desc" };
     }
 
-    const [total, products] = await prisma.$transaction([
+    const [total, products] = await Promise.all([
       prisma.product.count({ where }),
       prisma.product.findMany({
         where,

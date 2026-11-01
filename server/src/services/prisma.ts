@@ -1,8 +1,24 @@
 import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient, Prisma } from "../generated/prisma/client";
+import { logger } from "../utils/logger";
 
 const connectionString = `${process.env.DATABASE_URL}`;
-const adapter = new PrismaPg({ connectionString });
+
+const poolMax = Number(process.env.PG_POOL_MAX || 20);
+
+const adapter = new PrismaPg(
+  {
+    connectionString,
+    max: poolMax,
+    idleTimeoutMillis: 30_000,
+    connectionTimeoutMillis: 10_000,
+    application_name: "faraz-pharmacy-server",
+  },
+  {
+    onPoolError: (err) => logger.error("PostgreSQL pool error:", err),
+    onConnectionError: (err) => logger.error("PostgreSQL connection error:", err),
+  }
+);
 
 const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined;

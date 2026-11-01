@@ -17,6 +17,19 @@ async function main() {
 
     startAutoBackupScheduler();
 
+    httpServer.on("error", (err: NodeJS.ErrnoException) => {
+      if (err.code === "EADDRINUSE") {
+        logger.error(
+          `Port ${config.port} is already in use. Stop the other server process (or set a different PORT) and retry.`
+        );
+      } else {
+        logger.error("HTTP server error:", err);
+      }
+      stopAutoBackupScheduler();
+      getIO()?.close();
+      process.exit(1);
+    });
+
     httpServer.listen(config.port, "0.0.0.0", () => {
       logger.info(`Faraz Pharmacy API server running on port ${config.port}`);
     });
