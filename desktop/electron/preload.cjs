@@ -72,6 +72,8 @@ contextBridge.exposeInMainWorld("electronAPI", {
       }
     },
   },
+  openWhatsAppChat: (phone, message) =>
+    ipcRenderer.invoke("whatsapp:open-chat", phone, message),
 });
 
 contextBridge.exposeInMainWorld("saveConfig", (cfg) => ipcRenderer.invoke("config:save", cfg));

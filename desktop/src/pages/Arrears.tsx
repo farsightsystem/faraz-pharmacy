@@ -15,6 +15,7 @@ import {
   Users,
   ChevronRight,
   ArrowUpDown,
+  MessageCircle,
 } from "lucide-react";
 import PageHeader from "@/components/shared/PageHeader";
 import ExportButton from "@/components/shared/ExportButton";
@@ -150,6 +151,56 @@ export default function Arrears() {
     c.status === "pending" ? "Pending Dues" : "Settled",
   ]);
 
+  function getWhatsAppNumber(phone: string | null | undefined): string | null {
+    if (!phone?.trim()) return null;
+
+    const trimmed = phone.trim();
+    let digits = trimmed.replace(/\D/g, "");
+    if (trimmed.startsWith("+") || digits.startsWith("00")) {
+      if (digits.startsWith("00")) digits = digits.slice(2);
+    } else if (digits.startsWith("0")) {
+      digits = `92${digits.slice(1)}`;
+    } else if (!digits.startsWith("92")) {
+      digits = `92${digits}`;
+    }
+
+    if (digits.startsWith("920") && digits.length === 13) {
+      digits = `92${digits.slice(3)}`;
+    }
+
+    return /^\d{8,15}$/.test(digits) ? digits : null;
+  }
+
+  async function handleWhatsAppReminder(row: CustomerArrearSummary) {
+    const phone = getWhatsAppNumber(row.phone);
+    if (!phone) {
+      toast.error("This customer does not have a valid WhatsApp phone number");
+      return;
+    }
+
+    const balance = formatCurrency(row.balance_due);
+    const message = [
+      `Assalamu Alaikum ${row.customer_name},`,
+      `Our records show an outstanding balance of ${balance} at Faraz Pharmacy across ${row.pending_invoices} invoice(s). Please clear it at your convenience. If you have already paid, please disregard this message and share the payment details.`,
+      "",
+      `السلام علیکم ${row.customer_name}،`,
+      `فاراز فارمیسی کے ریکارڈ کے مطابق آپ کے ذمے ${balance} کے ${row.pending_invoices} بلوں کی رقم بقایا ہے۔ براہِ کرم اپنی سہولت کے مطابق ادائیگی کر دیں۔ اگر آپ ادائیگی کر چکے ہیں تو اس پیغام کو نظر انداز کریں اور ادائیگی کی تفصیل بھیج دیں۔`,
+    ].join("\n");
+
+    try {
+      if (window.electronAPI?.openWhatsAppChat) {
+        await window.electronAPI.openWhatsAppChat(phone, message);
+      } else {
+        const url = `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
+        if (!window.open(url, "_blank", "noopener,noreferrer")) {
+          throw new Error("Could not open WhatsApp. Allow pop-ups and try again.");
+        }
+      }
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not open WhatsApp");
+    }
+  }
+
   function handleExportPDF() {
     downloadPDF("arrears_customers.pdf", "Customer Arrears Ledger Report", exportHeaders, exportRows);
   }
@@ -262,15 +313,32 @@ export default function Arrears() {
             <span>Ledger</span>
           </Button>
           {row.balance_due > 0 && (
-            <Button
-              size="sm"
-              variant="brand"
-              className="h-8 rounded-xl text-xs gap-1 cursor-pointer font-semibold shadow-xs"
-              onClick={() => setSelectedCustomerId(row.customer_id)}
-            >
-              <CreditCard className="h-3.5 w-3.5" />
-              <span>Pay</span>
-            </Button>
+            <>
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-8 rounded-xl text-xs gap-1 cursor-pointer font-semibold shadow-2xs text-emerald-700 hover:text-emerald-800 dark:text-emerald-400"
+                disabled={!getWhatsAppNumber(row.phone)}
+                title={
+                  getWhatsAppNumber(row.phone)
+                    ? "Open a prefilled WhatsApp arrears reminder"
+                    : "A valid phone number is required"
+                }
+                onClick={() => void handleWhatsAppReminder(row)}
+              >
+                <MessageCircle className="h-3.5 w-3.5" />
+                <span>WhatsApp</span>
+              </Button>
+              <Button
+                size="sm"
+                variant="brand"
+                className="h-8 rounded-xl text-xs gap-1 cursor-pointer font-semibold shadow-xs"
+                onClick={() => setSelectedCustomerId(row.customer_id)}
+              >
+                <CreditCard className="h-3.5 w-3.5" />
+                <span>Pay</span>
+              </Button>
+            </>
           )}
         </div>
       ),

@@ -38,6 +38,10 @@ export interface ElectronAPI {
     onReturnCreated(callback: () => void): () => void;
     disconnect(): void;
   };
+  openWhatsAppChat(
+    phone: string,
+    message: string
+  ): Promise<{ success: boolean; error?: string }>;
 }
 
 export interface AppConfig {

@@ -1,4 +1,4 @@
-import { ipcMain, dialog, BrowserWindow } from "electron";
+import { ipcMain, dialog, BrowserWindow, shell } from "electron";
 import fs from "fs";
 import path from "path";
 import os from "os";
@@ -58,6 +58,19 @@ function registerHandlers() {
   });
 
   ipcMain.handle("server:ip", () => getLocalIp());
+
+  ipcMain.handle("whatsapp:open-chat", async (_, phone, message) => {
+    if (typeof phone !== "string" || !/^\d{8,15}$/.test(phone)) {
+      throw new Error("A valid international phone number is required");
+    }
+    if (typeof message !== "string" || message.length === 0 || message.length > 2000) {
+      throw new Error("A valid WhatsApp message is required");
+    }
+    await shell.openExternal(
+      `https://wa.me/${phone}?text=${encodeURIComponent(message)}`
+    );
+    return { success: true };
+  });
 
   ipcMain.handle("window:toggle-fullscreen", () => {
     const win = BrowserWindow.getAllWindows()[0];
