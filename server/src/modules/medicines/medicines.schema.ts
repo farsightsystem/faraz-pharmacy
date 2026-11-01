@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 export const priceTierSchema = z.object({
+  id: z.string().optional(),
   label: z.string().optional().default("Standard"),
   purchasePrice: z.number().nonnegative(),
   salePrice: z.number().nonnegative().optional(),

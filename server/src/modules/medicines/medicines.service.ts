@@ -1,5 +1,5 @@
 import { prisma } from "../../services/prisma";
-import { NotFoundError } from "../../utils/errors";
+import { BadRequestError, NotFoundError } from "../../utils/errors";
 import { emitEvent } from "../../socket";
 import { clampPageSize } from "../../utils/pagination";
 import type { CreateProductInput } from "./medicines.schema";
@@ -93,7 +93,10 @@ export const medicinesService = {
         take: limit,
         orderBy,
         include: {
-          prices: { orderBy: [{ createdAt: "asc" }, { id: "asc" }] },
+          prices: {
+            where: { active: true },
+            orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+          },
           company: true,
         },
       }),
@@ -127,7 +130,12 @@ export const medicinesService = {
         active: 1,
         barcode: { equals: trimmed, mode: "insensitive" },
       },
-      include: { prices: { orderBy: [{ createdAt: "asc" }, { id: "asc" }] } },
+      include: {
+        prices: {
+          where: { active: true },
+          orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+        },
+      },
     });
     return formatProduct(product);
   },
@@ -157,6 +165,7 @@ export const medicinesService = {
           select: { name: true },
         },
         prices: {
+          where: { active: true },
           orderBy: [{ createdAt: "asc" }, { id: "asc" }],
           select: {
             id: true,
@@ -173,7 +182,12 @@ export const medicinesService = {
   async getById(id: string) {
     const product = await prisma.product.findUnique({
       where: { id },
-      include: { prices: { orderBy: [{ createdAt: "asc" }, { id: "asc" }] } },
+      include: {
+        prices: {
+          where: { active: true },
+          orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+        },
+      },
     });
     if (!product) throw new NotFoundError("Product");
     return formatProduct(product);
@@ -215,7 +229,10 @@ export const medicinesService = {
         },
       },
       include: {
-        prices: { orderBy: [{ createdAt: "asc" }, { id: "asc" }] },
+        prices: {
+          where: { active: true },
+          orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+        },
         company: true,
       },
     });
@@ -252,36 +269,149 @@ export const medicinesService = {
     };
 
     const product = await prisma.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT id FROM products WHERE id = ${id} FOR UPDATE`;
+      const existingPrices = await tx.productPrice.findMany({
+        where: { productId: id, active: true },
+        select: { id: true, purchasePrice: true, salePrice: true },
+      });
+
+      for (const price of existingPrices) {
+        const matchingTiers = existingPrices.filter(
+          (candidate) =>
+            candidate.purchasePrice === price.purchasePrice &&
+            candidate.salePrice === price.salePrice
+        );
+        if (
+          matchingTiers.length === 1 &&
+          (price.purchasePrice !== old.purchasePrice || price.salePrice !== old.salePrice)
+        ) {
+          await tx.$executeRaw`
+            UPDATE stock_purchases
+            SET price_tier_id = ${price.id}
+            WHERE product_id = ${id}
+              AND price_tier_id IS NULL
+              AND purchase_price = ${price.purchasePrice}
+              AND sale_price = ${price.salePrice}
+          `;
+        }
+      }
+
+      const existingPriceIds = new Set(existingPrices.map((price) => price.id));
+      const correctedPrices = new Map<string, { purchasePrice: number; salePrice: number }>();
+      const standardPrice = { purchasePrice: data.purchasePrice, salePrice };
+      correctedPrices.set("", standardPrice);
+
+      await tx.$executeRaw`
+        UPDATE stock_purchases
+        SET purchase_price = ${standardPrice.purchasePrice},
+            sale_price = ${standardPrice.salePrice},
+            total_value = quantity * ${standardPrice.purchasePrice}
+        WHERE product_id = ${id}
+          AND price_tier_id IS NULL
+          AND purchase_price = ${old.purchasePrice}
+          AND sale_price = ${old.salePrice}
+          AND NOT EXISTS (
+            SELECT 1
+            FROM product_prices pp
+            WHERE pp.product_id = stock_purchases.product_id
+              AND pp.active = true
+              AND pp.purchase_price = stock_purchases.purchase_price
+              AND pp.sale_price = stock_purchases.sale_price
+          )
+      `;
+
       if (data.prices !== undefined) {
-        const existingPrices = await tx.productPrice.findMany({
-          where: { productId: id },
-          select: { id: true },
+        const incomingIds = data.prices.flatMap((price) => (price.id ? [price.id] : []));
+        if (new Set(incomingIds).size !== incomingIds.length) {
+          throw new BadRequestError("A price tier cannot be included more than once");
+        }
+        if (incomingIds.some((priceId) => !existingPriceIds.has(priceId))) {
+          throw new BadRequestError("The selected price tier does not belong to this product");
+        }
+
+        for (const price of data.prices) {
+          const nextPrice = {
+            purchasePrice: price.purchasePrice,
+            salePrice: resolveSalePrice(price.purchasePrice, price.salePrice, markupPercent),
+          };
+          if (price.id) {
+            await tx.productPrice.update({
+              where: { id: price.id },
+              data: {
+                label: price.label ?? "Standard",
+                ...nextPrice,
+              },
+            });
+            correctedPrices.set(price.id, nextPrice);
+            await tx.$executeRaw`
+              UPDATE stock_purchases
+              SET purchase_price = ${nextPrice.purchasePrice},
+                  sale_price = ${nextPrice.salePrice},
+                  total_value = quantity * ${nextPrice.purchasePrice}
+              WHERE product_id = ${id}
+                AND price_tier_id = ${price.id}
+            `;
+          } else {
+            await tx.productPrice.create({
+              data: {
+                productId: id,
+                label: price.label ?? "Standard",
+                ...nextPrice,
+              },
+            });
+          }
+        }
+
+        const removedPriceIds = [...existingPriceIds].filter(
+          (priceId) => !incomingIds.includes(priceId)
+        );
+        if (removedPriceIds.length > 0) {
+          await tx.productPrice.updateMany({
+            where: { id: { in: removedPriceIds }, productId: id },
+            data: { active: false },
+          });
+        }
+      }
+
+      const batchPriceSources = await tx.stockPurchase.groupBy({
+        by: ["batchId", "priceTierId"],
+        where: { productId: id, active: 1, batchId: { not: null } },
+      });
+      const sourcesByBatch = new Map<string, Set<string>>();
+      for (const source of batchPriceSources) {
+        if (!source.batchId) continue;
+        const sources = sourcesByBatch.get(source.batchId) ?? new Set<string>();
+        sources.add(source.priceTierId ?? "");
+        sourcesByBatch.set(source.batchId, sources);
+      }
+
+      const batchesBySource = new Map<string, string[]>();
+      for (const [batchId, sources] of sourcesByBatch) {
+        if (sources.size !== 1) continue;
+        const [sourceId] = sources;
+        if (sourceId === undefined || !correctedPrices.has(sourceId)) continue;
+        const batchIds = batchesBySource.get(sourceId) ?? [];
+        batchIds.push(batchId);
+        batchesBySource.set(sourceId, batchIds);
+      }
+
+      for (const [sourceId, batchIds] of batchesBySource) {
+        const correctedPrice = correctedPrices.get(sourceId);
+        if (!correctedPrice) continue;
+        await tx.productBatch.updateMany({
+          where: { id: { in: batchIds } },
+          data: correctedPrice,
         });
-        const existingPriceIds = existingPrices.map((price) => price.id);
-        if (existingPriceIds.length > 0) {
-          await tx.stockPurchase.updateMany({
-            where: { priceTierId: { in: existingPriceIds } },
-            data: { priceTierId: null },
-          });
-        }
-        await tx.productPrice.deleteMany({ where: { productId: id } });
-        if (data.prices.length > 0) {
-          await tx.productPrice.createMany({
-            data: data.prices.map((price) => ({
-              productId: id,
-              label: price.label ?? "Standard",
-              purchasePrice: price.purchasePrice,
-              salePrice: resolveSalePrice(price.purchasePrice, price.salePrice, markupPercent),
-            })),
-          });
-        }
       }
 
       return tx.product.update({
         where: { id },
         data: updateData as any,
         include: {
-          prices: { orderBy: [{ createdAt: "asc" }, { id: "asc" }] },
+          prices: {
+            where: { active: true },
+            orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+          },
           company: true,
         },
       });

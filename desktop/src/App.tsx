@@ -85,6 +85,8 @@ function AppShell() {
       void queryClient.resetQueries({ queryKey: ["products-search"] });
       void queryClient.resetQueries({ queryKey: ["global-search-products"] });
       void queryClient.resetQueries({ queryKey: ["global-search-catalog-sample"] });
+      void queryClient.resetQueries({ queryKey: ["stock"] });
+      void queryClient.resetQueries({ queryKey: ["recent-stock-purchases"] });
     });
   }, [isAuthenticated, queryClient]);
 

@@ -131,6 +131,7 @@ const HEADER_LOOKUP: Record<string, string> = {
 };
 
 interface PriceTierForm {
+  id?: string;
   purchasePrice: string;
   salePrice: string;
 }
@@ -334,6 +335,7 @@ export default function Products() {
   function buildPricesPayload(): ProductPriceInput[] {
     const validPrices = form.prices.filter((p) => p.purchasePrice);
     return validPrices.map((p) => ({
+      ...(p.id ? { id: p.id } : {}),
       purchasePrice: Number(p.purchasePrice),
       salePrice: Number(p.salePrice) || 0,
     }));
@@ -381,6 +383,8 @@ export default function Products() {
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["products"] });
+      queryClient.invalidateQueries({ queryKey: ["stock"] });
+      queryClient.invalidateQueries({ queryKey: ["recent-stock-purchases"] });
       setOpen(false);
       setEditingId(null);
       toast.success("Product updated");
@@ -474,7 +478,7 @@ export default function Products() {
 
   function openEdit(product: Product) {
     setEditingId(product.id);
-    const p = (product as any).prices as { purchasePrice: number; salePrice: number }[] | undefined;
+    const p = product.prices;
     setForm({
       barcode: product.barcode,
       name: product.name,
@@ -485,8 +489,9 @@ export default function Products() {
       salePrice: String(product.sale_price),
       prices: p
         ? p.map((pt) => ({
-            purchasePrice: String(pt.purchasePrice),
-            salePrice: String(pt.salePrice),
+          id: pt.id,
+          purchasePrice: String(pt.purchasePrice),
+          salePrice: String(pt.salePrice),
           }))
         : [],
     });

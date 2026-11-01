@@ -28,6 +28,7 @@ export interface ProductPrice {
 }
 
 export interface ProductPriceInput {
+  id?: string;
   label?: string;
   purchasePrice: number;
   salePrice?: number;

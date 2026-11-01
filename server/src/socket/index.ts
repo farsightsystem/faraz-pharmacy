@@ -66,6 +66,7 @@ export function initializeSocket(httpServer: HttpServer) {
                 select: { name: true },
               },
               prices: {
+                where: { active: true },
                 orderBy: [{ createdAt: "asc" }, { id: "asc" }],
                 select: {
                   id: true,

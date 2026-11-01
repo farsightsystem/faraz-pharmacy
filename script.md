@@ -329,7 +329,7 @@ Replaced the per-product parallel lookups with one `tx.product.findMany` query f
 The user asked to address the product/stock review findings:
 
 - Product quantity changes are now broadcast as `inventory:updated` after committed stock receipts, stock edits/removal/restoration/deletion, sales, and returned-item restocking. Electron windows invalidate product/search queries and incrementally refresh their IndexedDB catalog so other terminals can display the committed quantity.
-- Stock-entry edits now update the linked batch's price snapshot when changing tiers for an unshared batch. Tier changes in a batch shared by multiple purchase rows are rejected because a single batch price cannot safely represent different receipt costs. Batch-number edits update both purchase and batch only when the batch has not been shared or referenced by sales/returns; duplicate numbers are rejected.
+- Stock-entry edits now update the linked batch's price snapshot when changing tiers for an unshared batch. Tier changes in a batch shared by multiple purchase rows are rejected because a single batch price cannot safely represent different receipt costs. Batch-number corrections rename the linked batch, all its stock purchase entries, and historical sale-item batch labels together; duplicate numbers are rejected.
 - Removing all product price tiers now sends an explicit empty array. Tier replacement/removal and clearing historical `priceTierId` references happen in one transaction so failure cannot leave the product without tiers or break stock history.
 - Product creation no longer accepts/manages initial inventory quantity; inventory must be recorded through Stock so product quantity, batches, and stock-purchase history remain consistent.
 
@@ -349,3 +349,17 @@ Implemented:
 - Removed the unused Dexie dependency and its local database/sync modules.
 
 Validation passed: server TypeScript check and production build, desktop TypeScript check and renderer build, and `git diff --check`. Live stock synchronization across terminals and deletion of the legacy database on the user's running installation still require manual verification; no database migrations were run.
+
+## 23. Propagating Corrected Product Prices to Stock
+
+The user clarified that product price edits may correct a mistakenly entered price, so stock receipts selected from that standard/tier price must receive the corrected prices.
+
+Implemented:
+
+- Product price-tier IDs are retained through the edit form and API, so receipts stay linked to the tier when its price is corrected.
+- Correcting the standard price or a retained tier updates matching stock receipt purchase/sale prices and recalculates each receipt's total value. Completed sale and return cost snapshots are not changed.
+- A batch's price snapshot is updated only when all active receipts in that batch refer to the same corrected price source. Mixed-source batches keep their batch snapshot because one price cannot accurately represent the mixture.
+- Removed price tiers are deactivated rather than deleted, preserving historical stock receipt links. Added the `active` field migration `server/prisma/migrations/20261101170000_add_active_to_product_prices`.
+- Stock lists refresh in the current window and connected windows after the product edit.
+
+Prisma client generation, server type-check/build/schema validation, desktop type-check/renderer build, and `git diff --check` passed. The migration has not been applied. Historical tier receipt links already nulled by earlier edits can only be reattached when their saved price pair uniquely matches a current tier; ambiguous or outdated unlinked receipts are intentionally not guessed. Manual verification should cover base-price edits, tier-price edits, tier removal, mixed-source batches, and unchanged completed-sale profit.

@@ -42,6 +42,7 @@ export type ProductPriceMinAggregateOutputType = {
   label: string | null
   purchasePrice: number | null
   salePrice: number | null
+  active: boolean | null
   createdAt: Date | null
   updatedAt: Date | null
 }
@@ -52,6 +53,7 @@ export type ProductPriceMaxAggregateOutputType = {
   label: string | null
   purchasePrice: number | null
   salePrice: number | null
+  active: boolean | null
   createdAt: Date | null
   updatedAt: Date | null
 }
@@ -62,6 +64,7 @@ export type ProductPriceCountAggregateOutputType = {
   label: number
   purchasePrice: number
   salePrice: number
+  active: number
   createdAt: number
   updatedAt: number
   _all: number
@@ -84,6 +87,7 @@ export type ProductPriceMinAggregateInputType = {
   label?: true
   purchasePrice?: true
   salePrice?: true
+  active?: true
   createdAt?: true
   updatedAt?: true
 }
@@ -94,6 +98,7 @@ export type ProductPriceMaxAggregateInputType = {
   label?: true
   purchasePrice?: true
   salePrice?: true
+  active?: true
   createdAt?: true
   updatedAt?: true
 }
@@ -104,6 +109,7 @@ export type ProductPriceCountAggregateInputType = {
   label?: true
   purchasePrice?: true
   salePrice?: true
+  active?: true
   createdAt?: true
   updatedAt?: true
   _all?: true
@@ -201,6 +207,7 @@ export type ProductPriceGroupByOutputType = {
   label: string
   purchasePrice: number
   salePrice: number
+  active: boolean
   createdAt: Date
   updatedAt: Date
   _count: ProductPriceCountAggregateOutputType | null
@@ -234,6 +241,7 @@ export type ProductPriceWhereInput = {
   label?: Prisma.StringFilter<"ProductPrice"> | string
   purchasePrice?: Prisma.FloatFilter<"ProductPrice"> | number
   salePrice?: Prisma.FloatFilter<"ProductPrice"> | number
+  active?: Prisma.BoolFilter<"ProductPrice"> | boolean
   createdAt?: Prisma.DateTimeFilter<"ProductPrice"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"ProductPrice"> | Date | string
   product?: Prisma.XOR<Prisma.ProductScalarRelationFilter, Prisma.ProductWhereInput>
@@ -246,6 +254,7 @@ export type ProductPriceOrderByWithRelationInput = {
   label?: Prisma.SortOrder
   purchasePrice?: Prisma.SortOrder
   salePrice?: Prisma.SortOrder
+  active?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
   product?: Prisma.ProductOrderByWithRelationInput
@@ -261,6 +270,7 @@ export type ProductPriceWhereUniqueInput = Prisma.AtLeast<{
   label?: Prisma.StringFilter<"ProductPrice"> | string
   purchasePrice?: Prisma.FloatFilter<"ProductPrice"> | number
   salePrice?: Prisma.FloatFilter<"ProductPrice"> | number
+  active?: Prisma.BoolFilter<"ProductPrice"> | boolean
   createdAt?: Prisma.DateTimeFilter<"ProductPrice"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"ProductPrice"> | Date | string
   product?: Prisma.XOR<Prisma.ProductScalarRelationFilter, Prisma.ProductWhereInput>
@@ -273,6 +283,7 @@ export type ProductPriceOrderByWithAggregationInput = {
   label?: Prisma.SortOrder
   purchasePrice?: Prisma.SortOrder
   salePrice?: Prisma.SortOrder
+  active?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
   _count?: Prisma.ProductPriceCountOrderByAggregateInput
@@ -291,6 +302,7 @@ export type ProductPriceScalarWhereWithAggregatesInput = {
   label?: Prisma.StringWithAggregatesFilter<"ProductPrice"> | string
   purchasePrice?: Prisma.FloatWithAggregatesFilter<"ProductPrice"> | number
   salePrice?: Prisma.FloatWithAggregatesFilter<"ProductPrice"> | number
+  active?: Prisma.BoolWithAggregatesFilter<"ProductPrice"> | boolean
   createdAt?: Prisma.DateTimeWithAggregatesFilter<"ProductPrice"> | Date | string
   updatedAt?: Prisma.DateTimeWithAggregatesFilter<"ProductPrice"> | Date | string
 }
@@ -300,6 +312,7 @@ export type ProductPriceCreateInput = {
   label?: string
   purchasePrice?: number
   salePrice?: number
+  active?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
   product: Prisma.ProductCreateNestedOneWithoutPricesInput
@@ -312,6 +325,7 @@ export type ProductPriceUncheckedCreateInput = {
   label?: string
   purchasePrice?: number
   salePrice?: number
+  active?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
   stockPurchases?: Prisma.StockPurchaseUncheckedCreateNestedManyWithoutPriceTierInput
@@ -322,6 +336,7 @@ export type ProductPriceUpdateInput = {
   label?: Prisma.StringFieldUpdateOperationsInput | string
   purchasePrice?: Prisma.FloatFieldUpdateOperationsInput | number
   salePrice?: Prisma.FloatFieldUpdateOperationsInput | number
+  active?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   product?: Prisma.ProductUpdateOneRequiredWithoutPricesNestedInput
@@ -334,6 +349,7 @@ export type ProductPriceUncheckedUpdateInput = {
   label?: Prisma.StringFieldUpdateOperationsInput | string
   purchasePrice?: Prisma.FloatFieldUpdateOperationsInput | number
   salePrice?: Prisma.FloatFieldUpdateOperationsInput | number
+  active?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   stockPurchases?: Prisma.StockPurchaseUncheckedUpdateManyWithoutPriceTierNestedInput
@@ -345,6 +361,7 @@ export type ProductPriceCreateManyInput = {
   label?: string
   purchasePrice?: number
   salePrice?: number
+  active?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
 }
@@ -354,6 +371,7 @@ export type ProductPriceUpdateManyMutationInput = {
   label?: Prisma.StringFieldUpdateOperationsInput | string
   purchasePrice?: Prisma.FloatFieldUpdateOperationsInput | number
   salePrice?: Prisma.FloatFieldUpdateOperationsInput | number
+  active?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -364,6 +382,7 @@ export type ProductPriceUncheckedUpdateManyInput = {
   label?: Prisma.StringFieldUpdateOperationsInput | string
   purchasePrice?: Prisma.FloatFieldUpdateOperationsInput | number
   salePrice?: Prisma.FloatFieldUpdateOperationsInput | number
+  active?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -384,6 +403,7 @@ export type ProductPriceCountOrderByAggregateInput = {
   label?: Prisma.SortOrder
   purchasePrice?: Prisma.SortOrder
   salePrice?: Prisma.SortOrder
+  active?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
 }
@@ -399,6 +419,7 @@ export type ProductPriceMaxOrderByAggregateInput = {
   label?: Prisma.SortOrder
   purchasePrice?: Prisma.SortOrder
   salePrice?: Prisma.SortOrder
+  active?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
 }
@@ -409,6 +430,7 @@ export type ProductPriceMinOrderByAggregateInput = {
   label?: Prisma.SortOrder
   purchasePrice?: Prisma.SortOrder
   salePrice?: Prisma.SortOrder
+  active?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
 }
@@ -465,6 +487,10 @@ export type ProductPriceUncheckedUpdateManyWithoutProductNestedInput = {
   deleteMany?: Prisma.ProductPriceScalarWhereInput | Prisma.ProductPriceScalarWhereInput[]
 }
 
+export type BoolFieldUpdateOperationsInput = {
+  set?: boolean
+}
+
 export type ProductPriceCreateNestedOneWithoutStockPurchasesInput = {
   create?: Prisma.XOR<Prisma.ProductPriceCreateWithoutStockPurchasesInput, Prisma.ProductPriceUncheckedCreateWithoutStockPurchasesInput>
   connectOrCreate?: Prisma.ProductPriceCreateOrConnectWithoutStockPurchasesInput
@@ -486,6 +512,7 @@ export type ProductPriceCreateWithoutProductInput = {
   label?: string
   purchasePrice?: number
   salePrice?: number
+  active?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
   stockPurchases?: Prisma.StockPurchaseCreateNestedManyWithoutPriceTierInput
@@ -496,6 +523,7 @@ export type ProductPriceUncheckedCreateWithoutProductInput = {
   label?: string
   purchasePrice?: number
   salePrice?: number
+  active?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
   stockPurchases?: Prisma.StockPurchaseUncheckedCreateNestedManyWithoutPriceTierInput
@@ -536,6 +564,7 @@ export type ProductPriceScalarWhereInput = {
   label?: Prisma.StringFilter<"ProductPrice"> | string
   purchasePrice?: Prisma.FloatFilter<"ProductPrice"> | number
   salePrice?: Prisma.FloatFilter<"ProductPrice"> | number
+  active?: Prisma.BoolFilter<"ProductPrice"> | boolean
   createdAt?: Prisma.DateTimeFilter<"ProductPrice"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"ProductPrice"> | Date | string
 }
@@ -545,6 +574,7 @@ export type ProductPriceCreateWithoutStockPurchasesInput = {
   label?: string
   purchasePrice?: number
   salePrice?: number
+  active?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
   product: Prisma.ProductCreateNestedOneWithoutPricesInput
@@ -556,6 +586,7 @@ export type ProductPriceUncheckedCreateWithoutStockPurchasesInput = {
   label?: string
   purchasePrice?: number
   salePrice?: number
+  active?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
 }
@@ -581,6 +612,7 @@ export type ProductPriceUpdateWithoutStockPurchasesInput = {
   label?: Prisma.StringFieldUpdateOperationsInput | string
   purchasePrice?: Prisma.FloatFieldUpdateOperationsInput | number
   salePrice?: Prisma.FloatFieldUpdateOperationsInput | number
+  active?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   product?: Prisma.ProductUpdateOneRequiredWithoutPricesNestedInput
@@ -592,6 +624,7 @@ export type ProductPriceUncheckedUpdateWithoutStockPurchasesInput = {
   label?: Prisma.StringFieldUpdateOperationsInput | string
   purchasePrice?: Prisma.FloatFieldUpdateOperationsInput | number
   salePrice?: Prisma.FloatFieldUpdateOperationsInput | number
+  active?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -601,6 +634,7 @@ export type ProductPriceCreateManyProductInput = {
   label?: string
   purchasePrice?: number
   salePrice?: number
+  active?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
 }
@@ -610,6 +644,7 @@ export type ProductPriceUpdateWithoutProductInput = {
   label?: Prisma.StringFieldUpdateOperationsInput | string
   purchasePrice?: Prisma.FloatFieldUpdateOperationsInput | number
   salePrice?: Prisma.FloatFieldUpdateOperationsInput | number
+  active?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   stockPurchases?: Prisma.StockPurchaseUpdateManyWithoutPriceTierNestedInput
@@ -620,6 +655,7 @@ export type ProductPriceUncheckedUpdateWithoutProductInput = {
   label?: Prisma.StringFieldUpdateOperationsInput | string
   purchasePrice?: Prisma.FloatFieldUpdateOperationsInput | number
   salePrice?: Prisma.FloatFieldUpdateOperationsInput | number
+  active?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   stockPurchases?: Prisma.StockPurchaseUncheckedUpdateManyWithoutPriceTierNestedInput
@@ -630,6 +666,7 @@ export type ProductPriceUncheckedUpdateManyWithoutProductInput = {
   label?: Prisma.StringFieldUpdateOperationsInput | string
   purchasePrice?: Prisma.FloatFieldUpdateOperationsInput | number
   salePrice?: Prisma.FloatFieldUpdateOperationsInput | number
+  active?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -671,6 +708,7 @@ export type ProductPriceSelect<ExtArgs extends runtime.Types.Extensions.Internal
   label?: boolean
   purchasePrice?: boolean
   salePrice?: boolean
+  active?: boolean
   createdAt?: boolean
   updatedAt?: boolean
   product?: boolean | Prisma.ProductDefaultArgs<ExtArgs>
@@ -684,6 +722,7 @@ export type ProductPriceSelectCreateManyAndReturn<ExtArgs extends runtime.Types.
   label?: boolean
   purchasePrice?: boolean
   salePrice?: boolean
+  active?: boolean
   createdAt?: boolean
   updatedAt?: boolean
   product?: boolean | Prisma.ProductDefaultArgs<ExtArgs>
@@ -695,6 +734,7 @@ export type ProductPriceSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.
   label?: boolean
   purchasePrice?: boolean
   salePrice?: boolean
+  active?: boolean
   createdAt?: boolean
   updatedAt?: boolean
   product?: boolean | Prisma.ProductDefaultArgs<ExtArgs>
@@ -706,11 +746,12 @@ export type ProductPriceSelectScalar = {
   label?: boolean
   purchasePrice?: boolean
   salePrice?: boolean
+  active?: boolean
   createdAt?: boolean
   updatedAt?: boolean
 }
 
-export type ProductPriceOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "productId" | "label" | "purchasePrice" | "salePrice" | "createdAt" | "updatedAt", ExtArgs["result"]["productPrice"]>
+export type ProductPriceOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "productId" | "label" | "purchasePrice" | "salePrice" | "active" | "createdAt" | "updatedAt", ExtArgs["result"]["productPrice"]>
 export type ProductPriceInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   product?: boolean | Prisma.ProductDefaultArgs<ExtArgs>
   stockPurchases?: boolean | Prisma.ProductPrice$stockPurchasesArgs<ExtArgs>
@@ -735,6 +776,7 @@ export type $ProductPricePayload<ExtArgs extends runtime.Types.Extensions.Intern
     label: string
     purchasePrice: number
     salePrice: number
+    active: boolean
     createdAt: Date
     updatedAt: Date
   }, ExtArgs["result"]["productPrice"]>
@@ -1167,6 +1209,7 @@ export interface ProductPriceFieldRefs {
   readonly label: Prisma.FieldRef<"ProductPrice", 'String'>
   readonly purchasePrice: Prisma.FieldRef<"ProductPrice", 'Float'>
   readonly salePrice: Prisma.FieldRef<"ProductPrice", 'Float'>
+  readonly active: Prisma.FieldRef<"ProductPrice", 'Boolean'>
   readonly createdAt: Prisma.FieldRef<"ProductPrice", 'DateTime'>
   readonly updatedAt: Prisma.FieldRef<"ProductPrice", 'DateTime'>
 }

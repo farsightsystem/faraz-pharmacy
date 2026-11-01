@@ -96,7 +96,7 @@ export const purchasesService = {
 
     if (data.priceTierId) {
       const priceTier = await prisma.productPrice.findFirst({
-        where: { id: data.priceTierId, productId: data.productId },
+        where: { id: data.priceTierId, productId: data.productId, active: true },
         select: { purchasePrice: true, salePrice: true },
       });
       if (!priceTier) {
@@ -235,7 +235,7 @@ export const purchasesService = {
         salePrice = product.salePrice;
       } else {
         const priceTier = await prisma.productPrice.findFirst({
-          where: { id: data.priceTierId, productId: old.productId },
+          where: { id: data.priceTierId, productId: old.productId, active: true },
           select: { purchasePrice: true, salePrice: true },
         });
         if (!priceTier) {
@@ -275,9 +275,9 @@ export const purchasesService = {
       }
 
       if (old.batchId) {
+        await tx.$queryRaw`SELECT id FROM product_batches WHERE id = ${old.batchId} FOR UPDATE`;
         const batch = await tx.productBatch.findUnique({
           where: { id: old.batchId },
-          include: { _count: { select: { stockPurchases: true, saleItems: true, returnItems: true } } },
         });
         if (!batch) throw new NotFoundError("Stock batch");
 
@@ -285,15 +285,6 @@ export const purchasesService = {
           where: { batchId: old.batchId, active: 1 },
         });
         const batchNumberChanged = nextBatchNumber !== old.batchNumber;
-        if (batchNumberChanged && (
-          batch._count.stockPurchases > 1 ||
-          batch._count.saleItems > 0 ||
-          batch._count.returnItems > 0
-        )) {
-          throw new BadRequestError(
-            "Cannot change the batch number after this batch has been shared or used in sales/returns"
-          );
-        }
         if (priceTierChanged && activePurchaseCount > 1) {
           throw new BadRequestError(
             "Cannot change the price tier for a shared batch; split the stock into separate batches first"
@@ -369,6 +360,17 @@ export const purchasesService = {
           }
         } else {
           await tx.productBatch.update({ where: { id: old.batchId }, data: batchData });
+        }
+
+        if (nextBatchNumber !== old.batchNumber) {
+          await tx.stockPurchase.updateMany({
+            where: { batchId: old.batchId },
+            data: { batchNumber: nextBatchNumber },
+          });
+          await tx.saleItem.updateMany({
+            where: { batchId: old.batchId },
+            data: { batchNumber: nextBatchNumber },
+          });
         }
       }
 
