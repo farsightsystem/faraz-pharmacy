@@ -50,9 +50,13 @@ export default function GlobalSearch() {
   const isSearchSettled = query.trim().toLowerCase() === debouncedQuery.toLowerCase();
 
   // Fetch initial pool of products for random suggestions
-  const { data: initialProductsData, isLoading: loadingInitial } = useQuery({
+  const {
+    data: initialProductsData,
+    isLoading: loadingInitial,
+    refetch: refreshInitialProducts,
+  } = useQuery({
     queryKey: ["global-search-catalog-sample"],
-    queryFn: () => api.products.listPaginated({ page: 1, limit: 50 }),
+    queryFn: () => api.products.listPaginated({ page: 1, limit: 50, freshStock: true }),
     staleTime: 0,
     refetchOnWindowFocus: true,
   });
@@ -75,8 +79,13 @@ export default function GlobalSearch() {
     queryKey: ["global-search-products", debouncedQuery],
     queryFn: async () => {
       if (!isSearching) return [];
-      const res = await api.products.search(debouncedQuery);
-      return (res || []).map(normalizeProduct);
+      const res = await api.products.listPaginated({
+        page: 1,
+        limit: 50,
+        search: debouncedQuery,
+        freshStock: true,
+      });
+      return (res.data || []).map(normalizeProduct);
     },
     enabled: isSearching,
     staleTime: 0,
@@ -171,7 +180,10 @@ export default function GlobalSearch() {
               setQuery(e.target.value);
               setIsOpen(true);
             }}
-            onFocus={() => setIsOpen(true)}
+            onFocus={() => {
+              setIsOpen(true);
+              if (!isSearching) void refreshInitialProducts();
+            }}
             onKeyDown={handleKeyDown}
             placeholder="Search medicine by name or barcode... (⌘K)"
             className="h-10 w-80 sm:w-96 pl-10 pr-14 rounded-full border border-border bg-surface text-xs text-text-primary placeholder:text-text-secondary/60 focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand shadow-xs transition-all"

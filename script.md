@@ -309,3 +309,11 @@ Implemented:
 - Stock receipt now invalidates the product cache after its database transaction commits (and emits its stock event only after commit), preventing a concurrent read from repopulating cache with pre-commit quantity.
 
 No schema or migration change is needed. Validate server/desktop type-check and builds plus `git diff --check`. Runtime verification requires the user's configured database and should cover adding stock, immediate typed search, immediate repeated barcode scans, and stock changes made on another terminal.
+
+## 19. Global Search Stock Availability
+
+The user reported that Global Search showed every product as out of stock even when inventory existed.
+
+Global Search used a separate `/api/products/search` endpoint with a 30-second server cache, so it did not use the fresh-stock list option used by POS. Its empty-query suggestions also came from a cached sample and were not explicitly refreshed when the input was focused.
+
+Updated Global Search to use the paginated products API with `freshStock: true` for both typed results and suggestions. Focusing the bar now refetches the suggestion sample. No migration is needed. Validate desktop type-check/renderer build and `git diff --check`; confirm live stock readings with the user's active API/database.
