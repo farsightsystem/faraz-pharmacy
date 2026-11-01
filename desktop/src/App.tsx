@@ -2,12 +2,17 @@ import { Suspense, lazy, useEffect, useState, useCallback } from "react";
 import { Routes, Route, Navigate, useLocation, useNavigate } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import { Toaster, toast } from "sonner";
+import { useQueryClient } from "@tanstack/react-query";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { ServerConnectionProvider } from "@/contexts/ServerConnectionContext";
 import { SidebarProvider } from "@/contexts/SidebarContext";
 import PrintPreviewDialog from "@/components/shared/PrintPreviewDialog";
 import { getLastReceipt } from "@/lib/receiptStore";
-import { ensureProductCache, PRODUCT_CACHE_REFRESH_INTERVAL_MS } from "@/lib/sync";
+import {
+  ensureProductCache,
+  PRODUCT_CACHE_REFRESH_INTERVAL_MS,
+  refreshProductCache,
+} from "@/lib/sync";
 import type { PrinterConfig } from "@/types";
 import Sidebar from "@/components/layout/Sidebar";
 import Topbar from "@/components/layout/Topbar";
@@ -56,6 +61,7 @@ function PageLoading() {
 
 function AppShell() {
   const { isAuthenticated, logout } = useAuth();
+  const queryClient = useQueryClient();
   const [ready, setReady] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
@@ -104,6 +110,23 @@ function AppShell() {
       document.removeEventListener("visibilitychange", onVisibilityChange);
     };
   }, []);
+
+  useEffect(() => {
+    if (!isAuthenticated || !window.electronAPI?.socket) return;
+    return window.electronAPI.socket.onInventoryUpdated(() => {
+      void queryClient.invalidateQueries({ queryKey: ["products"] });
+      void queryClient.invalidateQueries({ queryKey: ["products-search"] });
+      void queryClient.invalidateQueries({ queryKey: ["global-search-products"] });
+      void queryClient.invalidateQueries({ queryKey: ["global-search-catalog-sample"] });
+      void refreshProductCache()
+        .then(({ error }) => {
+          if (error) console.error("Could not refresh the local product cache:", error);
+        })
+        .catch((error: unknown) => {
+          console.error("Could not refresh the local product cache:", error);
+        });
+    });
+  }, [isAuthenticated, queryClient]);
 
   const generateReprintHtml = useCallback(
     async (paperSize: string): Promise<string> => {

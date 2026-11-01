@@ -327,9 +327,8 @@ export default function Products() {
 
   // Frontend filtering replaced by backend search
 
-  function buildPricesPayload(): ProductPriceInput[] | undefined {
+  function buildPricesPayload(): ProductPriceInput[] {
     const validPrices = form.prices.filter((p) => p.purchasePrice);
-    if (validPrices.length === 0) return undefined;
     return validPrices.map((p) => ({
       purchasePrice: Number(p.purchasePrice),
       salePrice: Number(p.salePrice) || 0,

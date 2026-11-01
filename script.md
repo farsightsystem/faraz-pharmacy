@@ -323,3 +323,14 @@ Updated Global Search to use the paginated products API with `freshStock: true` 
 The user reported pg's warning that `client.query()` was called while that client was already executing a query. Sale creation issued parallel product lookups through one Prisma interactive transaction (`Promise.all` with `tx.product.findUnique`), which uses one PostgreSQL connection. This can queue overlapping queries on the same `pg` client and trigger the deprecation warning.
 
 Replaced the per-product parallel lookups with one `tx.product.findMany` query for all unique sale product IDs, then retained the existing missing/inactive-product validation. This preserves transactional stock checks while avoiding concurrent queries on the transaction connection and reduces lookup round trips. No schema or migration change is needed. Validate server type-check/build and `git diff --check`; runtime verification needs checkout against the active PostgreSQL server and should confirm the warning no longer appears.
+
+## 21. Product and Stock Business-Logic Corrections
+
+The user asked to address the product/stock review findings:
+
+- Product quantity changes are now broadcast as `inventory:updated` after committed stock receipts, stock edits/removal/restoration/deletion, sales, and returned-item restocking. Electron windows invalidate product/search queries and incrementally refresh their IndexedDB catalog so other terminals can display the committed quantity.
+- Stock-entry edits now update the linked batch's price snapshot when changing tiers for an unshared batch. Tier changes in a batch shared by multiple purchase rows are rejected because a single batch price cannot safely represent different receipt costs. Batch-number edits update both purchase and batch only when the batch has not been shared or referenced by sales/returns; duplicate numbers are rejected.
+- Removing all product price tiers now sends an explicit empty array. Tier replacement/removal and clearing historical `priceTierId` references happen in one transaction so failure cannot leave the product without tiers or break stock history.
+- Product creation no longer accepts/manages initial inventory quantity; inventory must be recorded through Stock so product quantity, batches, and stock-purchase history remain consistent.
+
+No Prisma schema or migration change is required. Server TypeScript/build, desktop TypeScript/renderer build, Electron preload syntax, and `git diff --check` passed. Manual verification should exercise stock create/increase/decrease/archive/restore, tier edits for shared and unshared batches, batch-number edits with and without sales, clearing used tiers, and quantity refresh on a second connected terminal.

@@ -16,7 +16,7 @@ const productSchema = z.object({
   salePrice: z.number().nonnegative().optional(),
   purchasePrice: z.number().nonnegative(),
   markupPercent: z.number().nonnegative().optional().default(20),
-  stockQty: z.number().int().optional().default(0),
+  stockQty: z.never().optional(),
   expiry: z.string().optional(),
   prices: z.array(priceTierSchema).optional(),
 });
@@ -59,7 +59,6 @@ export const createProductSchema = productSchema.superRefine(validateProductPric
 
 export const updateProductSchema = productSchema
   .omit({
-    stockQty: true,
     expiry: true,
   })
   .superRefine(validateProductPrices);

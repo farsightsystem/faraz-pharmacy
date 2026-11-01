@@ -210,6 +210,7 @@ export const purchasesService = {
     });
     cacheDelNamespace("products"); // Invalidate only after committed stock is visible to readers.
     emitEvent("stock:updated", stockPurchase);
+    emitEvent("inventory:updated", null);
     return stockPurchase;
   },
 
@@ -224,7 +225,8 @@ export const purchasesService = {
     let purchasePrice = old.purchasePrice;
     let salePrice = old.salePrice;
 
-    if (data.priceTierId !== undefined) {
+    const priceTierChanged = data.priceTierId !== undefined && data.priceTierId !== old.priceTierId;
+    if (priceTierChanged) {
       if (data.priceTierId === null) {
         const product = await prisma.product.findUnique({
           where: { id: old.productId },
@@ -254,12 +256,65 @@ export const purchasesService = {
 
     const qtyDiff = (data.quantity ?? old.quantity) - old.quantity;
     const totalValue = (data.quantity ?? old.quantity) * purchasePrice;
+    const nextBatchNumber = data.batchNumber?.trim() || old.batchNumber;
 
     const result = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       await tx.$queryRaw`SELECT id FROM stock_purchases WHERE id = ${id} FOR UPDATE`;
       const current = await tx.stockPurchase.findUnique({ where: { id } });
-      if (!current || current.active !== 1 || current.quantity !== old.quantity) {
+      if (
+        !current ||
+        current.active !== 1 ||
+        current.quantity !== old.quantity ||
+        current.batchNumber !== old.batchNumber ||
+        current.purchasePrice !== old.purchasePrice ||
+        current.salePrice !== old.salePrice ||
+        current.priceTierId !== old.priceTierId ||
+        current.invoiceNumber !== old.invoiceNumber ||
+        current.distributorId !== old.distributorId ||
+        current.stax !== old.stax
+      ) {
         throw new BadRequestError("This purchase changed while it was being edited; reload and try again");
+      }
+
+      if (old.batchId) {
+        const batch = await tx.productBatch.findUnique({
+          where: { id: old.batchId },
+          include: { _count: { select: { stockPurchases: true, saleItems: true, returnItems: true } } },
+        });
+        if (!batch) throw new NotFoundError("Stock batch");
+
+        const activePurchaseCount = await tx.stockPurchase.count({
+          where: { batchId: old.batchId, active: 1 },
+        });
+        const batchNumberChanged = nextBatchNumber !== old.batchNumber;
+        if (batchNumberChanged && (
+          batch._count.stockPurchases > 1 ||
+          batch._count.saleItems > 0 ||
+          batch._count.returnItems > 0
+        )) {
+          throw new BadRequestError(
+            "Cannot change the batch number after this batch has been shared or used in sales/returns"
+          );
+        }
+        if (priceTierChanged && activePurchaseCount > 1) {
+          throw new BadRequestError(
+            "Cannot change the price tier for a shared batch; split the stock into separate batches first"
+          );
+        }
+        if (batchNumberChanged) {
+          const conflictingBatch = await tx.productBatch.findUnique({
+            where: {
+              productId_batchNumber: {
+                productId: old.productId,
+                batchNumber: nextBatchNumber,
+              },
+            },
+            select: { id: true },
+          });
+          if (conflictingBatch && conflictingBatch.id !== batch.id) {
+            throw new BadRequestError("A batch with this number already exists for the product");
+          }
+        }
       }
 
       if (qtyDiff < 0) {
@@ -286,6 +341,7 @@ export const purchasesService = {
         where: { id },
         data: {
           quantity: data.quantity ?? old.quantity,
+          ...(data.batchNumber !== undefined ? { batchNumber: nextBatchNumber } : {}),
           ...(data.expiry !== undefined ? { expiry: data.expiry } : {}),
           totalValue,
           invoiceNumber: data.invoiceNumber ?? old.invoiceNumber,
@@ -295,19 +351,15 @@ export const purchasesService = {
           salePrice,
           ...(data.priceTierId !== undefined ? { priceTierId: data.priceTierId } : {}),
         },
-        include: {
-          product: { select: { name: true } },
-          distributor: { select: { name: true } },
-          batch: true,
-          priceTier: true,
-        },
       });
 
       if (old.batchId) {
         const batchData = {
           quantity: { increment: qtyDiff },
           initialQty: { increment: qtyDiff },
+          ...(data.batchNumber?.trim() ? { batchNumber: nextBatchNumber } : {}),
           ...(data.expiry !== undefined ? { expiryDate: data.expiry } : {}),
+          ...(priceTierChanged ? { purchasePrice, salePrice } : {}),
         };
         if (qtyDiff < 0) {
           const batchUpdate = await tx.productBatch.updateMany({
@@ -343,9 +395,18 @@ export const purchasesService = {
         await tx.product.update({ where: { id: old.productId }, data: productData });
       }
 
-      return updated;
+      return tx.stockPurchase.findUniqueOrThrow({
+        where: { id: updated.id },
+        include: {
+          product: { select: { name: true } },
+          distributor: { select: { name: true } },
+          batch: true,
+          priceTier: true,
+        },
+      });
     });
     cacheDelNamespace("products"); // invalidate product cache on stock write
+    emitEvent("inventory:updated", null);
     return result;
   },
 
@@ -402,6 +463,7 @@ export const purchasesService = {
       return { success: true };
     });
     cacheDelNamespace("products"); // invalidate product cache on stock write
+    emitEvent("inventory:updated", null);
     return result;
   },
 
@@ -450,6 +512,7 @@ export const purchasesService = {
       return { success: true };
     });
     cacheDelNamespace("products"); // invalidate product cache on stock write
+    emitEvent("inventory:updated", null);
     return result;
   },
 
@@ -496,6 +559,7 @@ export const purchasesService = {
       return { success: true };
     });
     cacheDelNamespace("products"); // invalidate product cache on stock write
+    emitEvent("inventory:updated", null);
     return result;
   },
 };

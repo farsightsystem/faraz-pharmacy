@@ -292,9 +292,8 @@ export const medicinesService = {
         salePrice,
         purchasePrice: data.purchasePrice,
         markupPercent: data.markupPercent ?? 20,
-        stockQty: data.stockQty ?? 0,
         expiry: data.expiry ?? null,
-        prices: { createMany: { data: pricesData } },
+        ...(pricesData.length > 0 ? { prices: { createMany: { data: pricesData } } } : {}),
         barcodeLink: {
           connectOrCreate: {
             where: { code: data.barcode },
@@ -332,17 +331,6 @@ export const medicinesService = {
       markupPercent,
     };
 
-    if (data.prices) {
-      const pricesData = data.prices.map((p) => ({
-        label: p.label ?? "Standard",
-        purchasePrice: p.purchasePrice,
-        salePrice: resolveSalePrice(p.purchasePrice, p.salePrice, markupPercent),
-      }));
-
-      await prisma.productPrice.deleteMany({ where: { productId: id } });
-      updateData.prices = { createMany: { data: pricesData } };
-    }
-
     updateData.barcodeLink = {
       connectOrCreate: {
         where: { code: data.barcode },
@@ -351,8 +339,29 @@ export const medicinesService = {
     };
 
     const product = await prisma.$transaction(async (tx) => {
-      if (data.prices) {
+      if (data.prices !== undefined) {
+        const existingPrices = await tx.productPrice.findMany({
+          where: { productId: id },
+          select: { id: true },
+        });
+        const existingPriceIds = existingPrices.map((price) => price.id);
+        if (existingPriceIds.length > 0) {
+          await tx.stockPurchase.updateMany({
+            where: { priceTierId: { in: existingPriceIds } },
+            data: { priceTierId: null },
+          });
+        }
         await tx.productPrice.deleteMany({ where: { productId: id } });
+        if (data.prices.length > 0) {
+          await tx.productPrice.createMany({
+            data: data.prices.map((price) => ({
+              productId: id,
+              label: price.label ?? "Standard",
+              purchasePrice: price.purchasePrice,
+              salePrice: resolveSalePrice(price.purchasePrice, price.salePrice, markupPercent),
+            })),
+          });
+        }
       }
 
       return tx.product.update({

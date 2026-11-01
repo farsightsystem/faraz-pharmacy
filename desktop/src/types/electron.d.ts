@@ -34,6 +34,7 @@ export interface ElectronAPI {
       company: { name: string } | null;
       prices: ProductPrice[];
     } | null>;
+    onInventoryUpdated(callback: () => void): () => void;
     disconnect(): void;
   };
 }

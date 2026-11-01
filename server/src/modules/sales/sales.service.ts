@@ -218,6 +218,7 @@ export const salesService = {
     });
     cacheDelNamespace("products");
     emitEvent("sale:created", created);
+    emitEvent("inventory:updated", null);
     return created;
   },
 

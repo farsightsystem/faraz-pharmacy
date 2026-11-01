@@ -113,6 +113,31 @@ export async function ensureProductCache(): Promise<{
   return synchronizeIfStale();
 }
 
+export async function refreshProductCache(): Promise<{ error: string | null }> {
+  const synchronize = async () => {
+    const [lastSync, lastFullSync, version, count] = await Promise.all([
+      db.syncMeta.get("last_sync"),
+      db.syncMeta.get("last_full_sync"),
+      db.syncMeta.get("catalog_sync_version"),
+      db.products.count(),
+    ]);
+    const needsFullSync =
+      version?.value !== CATALOG_SYNC_VERSION ||
+      count === 0 ||
+      isCacheStale(lastFullSync?.value ?? null, FULL_SYNC_MINUTES);
+    const result = await syncProducts({
+      full: needsFullSync,
+      updatedSince: lastSync?.value,
+    });
+    return { error: result.error };
+  };
+
+  if (typeof navigator !== "undefined" && navigator.locks) {
+    return navigator.locks.request("faraz-product-catalog-sync", synchronize);
+  }
+  return synchronize();
+}
+
 /**
  * Look up a product by barcode from the local IndexedDB cache.
  * Returns null if not found locally.

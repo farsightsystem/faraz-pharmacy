@@ -39,6 +39,11 @@ contextBridge.exposeInMainWorld("electronAPI", {
     getWindowCount: () => ipcRenderer.invoke("pos:window-count"),
   },
   socket: {
+    onInventoryUpdated: (callback) => {
+      const s = getSocket();
+      s.on("inventory:updated", callback);
+      return () => s.off("inventory:updated", callback);
+    },
     scanBarcode: (barcode) => {
       return new Promise((resolve, reject) => {
         try {

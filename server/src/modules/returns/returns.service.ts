@@ -342,7 +342,10 @@ export const returnsService = {
         data: { inventoryStatus: "restocked", batchId },
       });
     });
-    if (action === "restock") cacheDelNamespace("products");
+    if (action === "restock") {
+      cacheDelNamespace("products");
+      emitEvent("inventory:updated", null);
+    }
     return result;
   },
 };
