@@ -104,6 +104,7 @@ export interface Sale {
   payment_method?: string;
   invoice_no?: string;
   profit?: number;
+  customer_outstanding_arrear?: number;
   created_at: string;
   return_count?: number;
   items?: SaleItem[];
@@ -468,6 +469,15 @@ export interface DashboardStats {
   weekRevenue: { day: string; revenue: number }[];
   monthRevenue: { day: string; revenue: number }[];
   topProducts: { name: string; value: number }[];
+  lowStockProducts: { id: string; name: string; barcode: string; stock_qty: number }[];
+  expiringProducts: { id: string; name: string; stock_qty: number; expiry: string | null }[];
+  topCustomers: { id: string; name: string; phone: string; total_spent: number }[];
+  pendingArrears: {
+    id: string;
+    sale_id: string | null;
+    customer_name: string;
+    balance_due: number;
+  }[];
 }
 
 export interface BarcodeEntry {

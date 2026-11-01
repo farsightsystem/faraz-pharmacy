@@ -201,6 +201,7 @@ export default function POS() {
     queryKey: ["products-search", debouncedSearch],
     queryFn: () => api.products.listPaginated({ search: debouncedSearch.trim(), limit: 12 }),
     enabled: debouncedSearch.trim().length >= 1,
+    staleTime: 0,
   });
 
   const matchingProducts = useMemo(() => {
@@ -450,8 +451,7 @@ export default function POS() {
 
       let customerTotalArrears = 0;
       if (cart.customerId) {
-        const customer = await api.customers.getById(cart.customerId);
-        customerTotalArrears = customer?.outstanding_arrear ?? 0;
+        customerTotalArrears = sale.customer_outstanding_arrear ?? 0;
       }
 
       const printData = {

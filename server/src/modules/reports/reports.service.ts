@@ -4,24 +4,26 @@ import type { Prisma } from "../../generated/prisma/client";
 
 export const reportsService = {
   async getStats() {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const todayStr = today.toISOString();
-
-    const sevenDaysAgo = new Date(today);
-    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-
-    const thirtyDaysAgo = new Date(today);
-    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    const now = new Date();
+    const today = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+    const startOfDaysAgo = (daysAgo: number) =>
+      new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate() - daysAgo));
+    const sevenDaysAgo = startOfDaysAgo(6);
+    const thirtyDaysAgo = startOfDaysAgo(29);
+    const todayString = today.toISOString().slice(0, 10);
+    const expiryThrough = startOfDaysAgo(-30).toISOString().slice(0, 10);
 
     const [
       todayRevenue,
       totalArrears,
       lowStockCount,
       expiringSoonCount,
-      weekRevenue,
-      monthRevenue,
+      dailyRevenue,
       topProducts,
+      lowStockProducts,
+      expiringProducts,
+      topCustomers,
+      pendingArrears,
     ] = await Promise.all([
       prisma.sale.aggregate({
         where: { createdAt: { gte: today } },
@@ -34,53 +36,101 @@ export const reportsService = {
       }),
 
       prisma.product.count({
-        where: { stockQty: { lte: 5 } },
+        where: { active: 1, stockQty: { gt: 0, lte: 10 } },
       }),
 
-      prisma
-        .$queryRawUnsafe<{ count: bigint }[]>(
-          `SELECT COUNT(*) as count FROM products WHERE expiry IS NOT NULL AND expiry::date BETWEEN CURRENT_DATE AND CURRENT_DATE + INTERVAL '30 days'`
-        )
-        .then((r) => Number(r[0]?.count ?? 0)),
-
-      prisma.sale.groupBy({
-        by: ["createdAt"],
-        where: { createdAt: { gte: sevenDaysAgo } },
-        _sum: { total: true },
-        orderBy: { createdAt: "asc" },
+      prisma.product.count({
+        where: {
+          active: 1,
+          expiry: { gte: todayString, lte: expiryThrough },
+        },
       }),
 
-      prisma.sale.groupBy({
-        by: ["createdAt"],
-        where: { createdAt: { gte: thirtyDaysAgo } },
-        _sum: { total: true },
-        orderBy: { createdAt: "asc" },
-      }),
+      prisma.$queryRaw<{ day: string; revenue: number }[]>`
+        SELECT TO_CHAR(created_at::date, 'YYYY-MM-DD') AS day,
+               COALESCE(SUM(total), 0)::float AS revenue
+        FROM sales
+        WHERE created_at >= ${thirtyDaysAgo}
+        GROUP BY created_at::date
+        ORDER BY created_at::date
+      `,
 
       prisma.saleItem.groupBy({
         by: ["productName"],
-        _sum: { quantity: true },
-        orderBy: { _sum: { quantity: "desc" } },
+        _sum: { subtotal: true },
+        orderBy: { _sum: { subtotal: "desc" } },
         take: 5,
       }),
+
+      prisma.product.findMany({
+        where: { active: 1, stockQty: { gt: 0, lte: 10 } },
+        orderBy: { stockQty: "asc" },
+        take: 5,
+        select: { id: true, name: true, barcode: true, stockQty: true },
+      }),
+
+      prisma.product.findMany({
+        where: { active: 1, expiry: { gte: todayString, lte: expiryThrough } },
+        orderBy: { expiry: "asc" },
+        take: 5,
+        select: { id: true, name: true, stockQty: true, expiry: true },
+      }),
+
+      prisma.$queryRaw<{ id: string; name: string; phone: string; total_spent: number }[]>`
+        SELECT c.id, c.name, c.phone, COALESCE(SUM(s.total), 0)::float AS total_spent
+        FROM customers c
+        JOIN sales s ON s.customer_id = c.id
+        WHERE c.active = 1
+        GROUP BY c.id, c.name, c.phone
+        ORDER BY SUM(s.total) DESC
+        LIMIT 5
+      `,
+
+      prisma.arrear.findMany({
+        where: { status: "pending", balanceDue: { gt: 0 } },
+        orderBy: { balanceDue: "desc" },
+        take: 5,
+        include: { customer: { select: { name: true } } },
+      }),
     ]);
+
+    const revenueByDay = new Map(dailyRevenue.map((row) => [row.day, Number(row.revenue)]));
+    const makeRevenueSeries = (days: number) =>
+      Array.from({ length: days }, (_, index) => {
+        const date = startOfDaysAgo(days - index - 1);
+        const day = date.toISOString().slice(0, 10);
+        return { day, revenue: revenueByDay.get(day) ?? 0 };
+      });
 
     return {
       todayRevenue: todayRevenue._sum.total ?? 0,
       totalArrears: totalArrears._sum.balanceDue ?? 0,
       lowStockCount,
       expiringSoonCount,
-      weekRevenue: weekRevenue.map((r: Record<string, unknown>) => ({
-        day: (r.createdAt as Date).toISOString().split("T")[0]!,
-        revenue: (r._sum as Record<string, number>).total ?? 0,
-      })),
-      monthRevenue: monthRevenue.map((r: Record<string, unknown>) => ({
-        day: (r.createdAt as Date).toISOString().split("T")[0]!,
-        revenue: (r._sum as Record<string, number>).total ?? 0,
-      })),
+      weekRevenue: makeRevenueSeries(7),
+      monthRevenue: makeRevenueSeries(30),
       topProducts: topProducts.map((p: Record<string, unknown>) => ({
         name: p.productName as string,
-        value: (p._sum as Record<string, number>).quantity ?? 0,
+        value: Number((p._sum as Record<string, number>).subtotal ?? 0),
+      })),
+      lowStockProducts: lowStockProducts.map((product) => ({
+        id: product.id,
+        name: product.name,
+        barcode: product.barcode,
+        stock_qty: product.stockQty,
+      })),
+      expiringProducts: expiringProducts.map((product) => ({
+        id: product.id,
+        name: product.name,
+        stock_qty: product.stockQty,
+        expiry: product.expiry,
+      })),
+      topCustomers,
+      pendingArrears: pendingArrears.map((arrear) => ({
+        id: arrear.id,
+        sale_id: arrear.saleId,
+        customer_name: arrear.customer.name,
+        balance_due: arrear.balanceDue,
       })),
     };
   },

@@ -50,8 +50,13 @@ export default function ArrearsReport() {
   const [statusFilter, setStatusFilter] = useState<ArrearStatus>("all");
 
   const { data: arrears = [], isLoading } = useQuery({
-    queryKey: ["arrears"],
-    queryFn: () => api.arrears.list(),
+    queryKey: ["arrears", dateRange.from, dateRange.to, statusFilter],
+    queryFn: () =>
+      api.arrears.list({
+        dateFrom: dateRange.from,
+        dateTo: dateRange.to,
+        status: statusFilter === "all" ? undefined : statusFilter,
+      }),
   });
 
   const filteredArrears = useMemo(() => {

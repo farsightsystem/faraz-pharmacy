@@ -57,7 +57,7 @@ export default function ExpensesReport() {
   // Summary data for KPIs and exports
   const { data: allExpenses = [] } = useQuery({
     queryKey: ["expenses", "summary", dateRange.from, dateRange.to],
-    queryFn: () => api.expenses.list(),
+    queryFn: () => api.expenses.list({ dateFrom: dateRange.from, dateTo: dateRange.to }),
   });
 
   const filteredExpenses = useMemo(() => {

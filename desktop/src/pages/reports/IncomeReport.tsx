@@ -18,10 +18,13 @@ export default function IncomeReport() {
   });
 
   const { data: sales = [] } = useQuery({
-    queryKey: ["sales", "all"],
-    queryFn: () => api.sales.listAll(),
+    queryKey: ["sales", "all", dateRange.from, dateRange.to],
+    queryFn: () => api.sales.listAll({ dateFrom: dateRange.from, dateTo: dateRange.to }),
   });
-  const { data: expenses = [] } = useQuery({ queryKey: ["expenses"], queryFn: api.expenses.list });
+  const { data: expenses = [] } = useQuery({
+    queryKey: ["expenses", dateRange.from, dateRange.to],
+    queryFn: () => api.expenses.list({ dateFrom: dateRange.from, dateTo: dateRange.to }),
+  });
 
   const filteredSales = useMemo(
     () =>

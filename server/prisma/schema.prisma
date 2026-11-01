@@ -68,6 +68,7 @@ model Product {
   @@index([name])
   @@index([location])
   @@index([createdAt])
+  @@index([companyId])
   @@map("products")
 }
 
@@ -92,6 +93,7 @@ model ProductPrice {
   product        Product         @relation(fields: [productId], references: [id], onDelete: Cascade)
   stockPurchases StockPurchase[]
 
+  @@index([productId])
   @@map("product_prices")
 }
 
@@ -123,6 +125,7 @@ model Customer {
   arrears     Arrear[]
   sales       Sale[]
 
+  @@index([active])
   @@map("customers")
 }
 
@@ -142,6 +145,8 @@ model Sale {
   items      SaleItem[]
   customer   Customer?     @relation(fields: [customerId], references: [id])
 
+  @@index([customerId])
+  @@index([createdAt])
   @@map("sales")
 }
 
@@ -161,6 +166,8 @@ model SaleItem {
   sale        Sale          @relation(fields: [saleId], references: [id], onDelete: Cascade)
   batch       ProductBatch? @relation(fields: [batchId], references: [id])
 
+  @@index([saleId])
+  @@index([productId])
   @@map("sale_items")
 }
 
@@ -177,6 +184,9 @@ model Arrear {
   customer   Customer        @relation(fields: [customerId], references: [id])
   sale       Sale?           @relation(fields: [saleId], references: [id])
 
+  @@index([customerId, status])
+  @@index([status, createdAt])
+  @@index([saleId])
   @@map("arrears")
 }
 
@@ -188,6 +198,7 @@ model ArrearPayment {
   createdAt     DateTime @default(now()) @map("created_at")
   arrear        Arrear   @relation(fields: [arrearId], references: [id], onDelete: Cascade)
 
+  @@index([arrearId])
   @@map("arrear_payments")
 }
 
@@ -215,6 +226,8 @@ model StockPurchase {
   @@index([productId])
   @@index([invoiceNumber])
   @@index([createdAt])
+  @@index([distributorId])
+  @@index([active])
   @@map("stock_purchases")
 }
 
@@ -252,6 +265,7 @@ model ReturnEntry {
   items        ReturnItem[]
   sale         Sale         @relation(fields: [saleId], references: [id])
 
+  @@index([saleId])
   @@map("returns")
 }
 
@@ -265,6 +279,8 @@ model ReturnItem {
   product      Product     @relation(fields: [productId], references: [id])
   returnEntry  ReturnEntry @relation(fields: [returnId], references: [id], onDelete: Cascade)
 
+  @@index([returnId])
+  @@index([productId])
   @@map("return_items")
 }
 
@@ -288,6 +304,8 @@ model Expense {
   active    Int      @default(1)
   createdAt DateTime @default(now()) @map("created_at")
 
+  @@index([date])
+  @@index([createdAt])
   @@map("expenses")
 }
 

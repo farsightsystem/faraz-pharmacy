@@ -431,7 +431,7 @@ Offline-first introduces stock conflicts: two terminals selling the same last it
 | Priority | Task | Effort | Risk | Impact | Status |
 |----------|------|--------|------|--------|--------|
 | **1** | PrismaClient singleton in `services/prisma.ts` | 15 min | Zero | High | ✅ Done |
-| **1** | PostgreSQL indexes (`schema.prisma` + migrate) | 30 min | Low | Very High | ✅ Done |
+| **1** | PostgreSQL indexes (`schema.prisma` + migrate) | 30 min | Low | Very High | ✅ Transaction/report indexes added in Phase 1 |
 | **1** | Targeted `select` on barcode lookup + `/barcode-fast` endpoint | 30 min | Zero | High | ✅ Done |
 | **1** | Express `compression` middleware | 15 min | Zero | Medium | ✅ Done |
 | **1** | PM2 fork mode + `connection_limit` in `.env` | 30 min | Low | Medium | ⬜ Pending |

@@ -1,6 +1,7 @@
 import { prisma } from "../../services/prisma";
 import { NotFoundError } from "../../utils/errors";
 import { cacheGet, cacheSet, cacheDelNamespace, makeKey } from "../../utils/cache";
+import { clampPageSize } from "../../utils/pagination";
 import type { CreateProductInput } from "./medicines.schema";
 
 function formatProduct(p: any) {
@@ -29,7 +30,7 @@ async function resolveCompanyId(company?: string): Promise<string | null> {
 export const medicinesService = {
   async list({
     page = 1,
-    limit = 50,
+    limit = 200,
     search,
     includeArchived = false,
     archivedOnly = false,
@@ -44,6 +45,7 @@ export const medicinesService = {
     sortBy?: string;
     sortOrder?: "asc" | "desc";
   }) {
+    limit = clampPageSize(limit);
     const cacheKey = makeKey("products:list", {
       page, limit, search, includeArchived, archivedOnly, sortBy, sortOrder,
     });

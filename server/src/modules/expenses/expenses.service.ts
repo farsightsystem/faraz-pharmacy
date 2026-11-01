@@ -1,11 +1,12 @@
 import { prisma, Prisma } from "../../services/prisma";
 import { NotFoundError } from "../../utils/errors";
 import type { CreateExpenseInput } from "./expenses.schema";
+import { clampPageSize } from "../../utils/pagination";
 
 export const expensesService = {
   async list({
     page = 1,
-    limit = 100000,
+    limit = 200,
     search,
     dateFrom,
     dateTo,
@@ -24,6 +25,7 @@ export const expensesService = {
     sortBy?: string;
     sortOrder?: "asc" | "desc";
   } = {}) {
+    limit = clampPageSize(limit);
     const where: Prisma.ExpenseWhereInput = archivedOnly
       ? { active: 0 }
       : includeArchived

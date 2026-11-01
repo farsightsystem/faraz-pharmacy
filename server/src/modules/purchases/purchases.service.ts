@@ -2,12 +2,13 @@ import { prisma, Prisma } from "../../services/prisma";
 import { NotFoundError } from "../../utils/errors";
 import { emitEvent } from "../../socket";
 import { cacheDelNamespace } from "../../utils/cache";
+import { clampPageSize } from "../../utils/pagination";
 import type { CreateStockInput } from "./purchases.schema";
 
 export const purchasesService = {
   async list({
     page = 1,
-    limit = 100000,
+    limit = 200,
     search,
     dateFrom,
     dateTo,
@@ -24,6 +25,7 @@ export const purchasesService = {
     sortBy?: string;
     sortOrder?: "asc" | "desc";
   } = {}) {
+    limit = clampPageSize(limit);
     const where: Prisma.StockPurchaseWhereInput = {
       active: archived ? 0 : 1,
     };
@@ -377,4 +379,3 @@ export const purchasesService = {
     return result;
   },
 };
-

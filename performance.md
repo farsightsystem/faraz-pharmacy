@@ -370,3 +370,69 @@ After each phase:
 - The production database and the actual slow client hardware were not available. Validate Phase 1 on a production copy before deploying.
 - Index creation briefly locks writes; run it outside business hours.
 - Keep the server at **one instance** (PM2 fork mode). Multiple instances each open a 20-connection pool and can exhaust PostgreSQL `max_connections` (100).
+
+## 10. Phase 0 Baseline (2026-11-01)
+
+### Operating target
+
+- Offline behavior: cached catalog browsing/search is supported; checkout requires the server.
+- Expected deployment: 3 concurrent terminals, 16 GB RAM on the server, 8 GB RAM on clients.
+- Benchmark scale: 1,000 products, 1,000 customers, 300 sales/day with 4 line items per sale, one year of sales history.
+
+### Validation and measurements
+
+- Server type check (`cd server && npm run lint`): passed.
+- Desktop type check (`cd desktop && npm exec -- tsc --noEmit`): passed.
+- Renderer build: 2,868 modules; JavaScript **1,699.50 kB raw / 458.99 kB gzip**; CSS **100.07 kB raw / 15.02 kB gzip**. Vite still reports a chunk above 500 kB.
+- Prisma migration status for the local database: all 4 migrations applied. The earlier `price_tier_id` error therefore needs to be checked against the exact database URL used by the failing server process if it recurs.
+- Synthetic data was loaded temporarily into the local development database and removed after measurement. The fixture contained 1,000 products, 1,000 customers, 109,500 sales, 438,000 sale items, and 2,000 pending arrears. No synthetic rows were retained.
+- Warm-cache local PostgreSQL `EXPLAIN (ANALYZE, BUFFERS)` results for query shapes used by the current services:
+
+| Query shape | Execution time | Observed plan |
+|---|---:|---|
+| Customer list, first 50 rows with correlated sales/arrears statistics | **1,266 ms** | Repeated sequential scans of sales and arrears |
+| Count sales from the last 30 days | **38.7 ms** | Sequential scan of sales |
+| Product sales history with sale join | **54.3 ms** | Sequential scan of sale items; indexed lookups of sales by primary key |
+| Dashboard top-five products aggregation | **96.3 ms** | Parallel sequential scan of sale items |
+
+### Interpretation and limits
+
+These are a reproducible-scale **local database baseline**, not a LAN or production benchmark: the measurements used a warm local cache, one client, synthetic uniform data, and no competing workload. Actual three-terminal latency, cold-cache disk reads, API serialization/network transfer, and slow-client startup remain unmeasured until the deployment hardware is available.
+
+One additional finding surfaced during cleanup: deleting the synthetic sales without an index on `sale_items.sale_id` was prohibitively slow because PostgreSQL repeatedly checked the unindexed foreign-key column. A temporary index allowed safe cleanup and was dropped afterward. Include `sale_items.sale_id` in the Phase 1 index review.
+
+## 11. Phase 1 Implementation and Retest (2026-11-01)
+
+### Changes made
+
+- Added migrations `20261101120000_add_transaction_performance_indexes` and `20261101121500_add_expense_date_index`, with matching Prisma schema indexes for sales, sale items, arrears/payments, returns, product prices, product-company lookup, customer status, stock-purchase supplier/status, and expense filtering/sorting.
+- Applied the additive migration to the local development database; migration status is up to date.
+- Added a server-side maximum page size of 200 for list controllers/services. Updated desktop “list all” API methods to request bounded pages and continue until all results are fetched, preserving complete results for callers that still require them.
+- Changed report data requests to apply the selected date range at the API boundary, rather than downloading unrelated history first.
+- Tuned React Query defaults to 30-second freshness, 5-minute garbage collection, no focus-triggered refetch, and one retry. POS product search remains immediately stale.
+- Sale creation now returns the customer's outstanding arrears total, avoiding the checkout follow-up request that previously loaded full purchase and arrears history.
+
+### Post-index query measurements
+
+The same synthetic dataset and query shapes were loaded again temporarily, analyzed, measured, then removed. Database counts returned to the original values afterward.
+
+| Query shape | Before | After | Change |
+|---|---:|---:|---:|
+| Customer list, first 50 rows with correlated statistics | 1,266 ms | **10.3 ms** | ~123× faster |
+| Count sales from last 30 days | 38.7 ms | **6.5 ms** | ~6× faster |
+| Product sales history with sale join | 54.3 ms | **9.0 ms** | ~6× faster |
+| Dashboard top-five products aggregation | 96.3 ms | **112.1 ms** | No improvement; remains a full sale-item aggregation |
+
+These are local warm-cache SQL timings, not end-to-end LAN timings. The slower top-products aggregate confirms that its full-history work needs server-side pre-aggregation or a narrower period in the dashboard/report phase.
+
+### Verification
+
+- `cd server && npm run lint`: passed.
+- `cd desktop && npm exec -- tsc --noEmit`: passed after fixing call sites affected by list APIs returning arrays rather than paginated envelopes.
+- `cd desktop && npm run build:renderer`: passed; JavaScript **1,700.24 kB raw / 459.23 kB gzip**, CSS **100.07 kB raw / 15.02 kB gzip**. Bundle remains above Vite's 500 kB chunk warning threshold.
+- `cd server && npx prisma validate` and `npx prisma migrate status`: passed.
+- `git diff --check`: passed.
+
+### Remaining Phase 1 follow-up
+
+Bounded pages limit each response but callers that explicitly need all rows still retrieve all pages. Dashboard full-list fetches, long-range report aggregation, the single large renderer bundle, and real three-terminal LAN behavior remain work for the next phase and deployment validation. Apply the migrations to each server database, then roll out the new server and desktop builds together: older desktop builds that still call legacy unpaginated endpoints will receive at most 200 rows and may show incomplete lists or reports.

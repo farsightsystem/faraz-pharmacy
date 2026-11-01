@@ -1,5 +1,6 @@
 import type { Request, Response, NextFunction } from "express";
 import { batchesService } from "./batches.service";
+import { getPaginationParams } from "../../utils/pagination";
 
 export const batchesController = {
   async listByProduct(req: Request, res: Response, next: NextFunction) {
@@ -33,8 +34,7 @@ export const batchesController = {
 
   async listAll(req: Request, res: Response, next: NextFunction) {
     try {
-      const page = Math.max(1, parseInt(req.query.page as string, 10) || 1);
-      const limit = Math.max(1, parseInt(req.query.limit as string, 10) || 50);
+      const { page, limit } = getPaginationParams(req.query.page, req.query.limit, true);
       const search = (req.query.search as string) || "";
       const productId = req.query.productId as string | undefined;
 

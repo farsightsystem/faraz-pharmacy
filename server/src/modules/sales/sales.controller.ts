@@ -1,5 +1,6 @@
 import type { Request, Response, NextFunction } from "express";
 import { salesService } from "./sales.service";
+import { getPaginationParams, MAX_PAGE_SIZE } from "../../utils/pagination";
 
 function normalizeSale(s: Record<string, unknown> | null): Record<string, unknown> | null {
   if (!s) return null;
@@ -27,6 +28,7 @@ function normalizeSale(s: Record<string, unknown> | null): Record<string, unknow
     payment_method: (s as any).paymentMethod ?? null,
     invoice_no: (s as any).invoiceNo ?? null,
     profit: (s as any).profit ?? 0,
+    customer_outstanding_arrear: (s as any).customerOutstandingArrear ?? null,
     created_at: s.createdAt,
     items: items.map((i: any) => ({
       id: i.id,
@@ -59,7 +61,8 @@ export const salesController = {
 
   async listRecent(req: Request, res: Response, next: NextFunction) {
     try {
-      const limit = parseInt(req.query.limit as string) || 10;
+      const requestedLimit = Number.parseInt(req.query.limit as string, 10) || 10;
+      const limit = Math.min(MAX_PAGE_SIZE, Math.max(1, requestedLimit));
       const sales = await salesService.listRecent(limit);
       res.json(sales.map(normalizeSale));
     } catch (err) {
@@ -91,8 +94,7 @@ export const salesController = {
   async listAll(req: Request, res: Response, next: NextFunction) {
     try {
       const isPaginated = req.query.paginated === "true";
-      const page = Math.max(1, parseInt(req.query.page as string) || 1);
-      const limit = Math.max(1, parseInt(req.query.limit as string) || (isPaginated ? 50 : 100000));
+      const { page, limit } = getPaginationParams(req.query.page, req.query.limit, isPaginated);
       const sortBy = req.query.sortBy as string | undefined;
       const sortOrder = (req.query.sortOrder as "asc" | "desc") || undefined;
 

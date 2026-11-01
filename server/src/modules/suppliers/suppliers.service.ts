@@ -1,11 +1,12 @@
 import { prisma, Prisma } from "../../services/prisma";
 import { NotFoundError } from "../../utils/errors";
 import type { CreateDistributorInput } from "./suppliers.schema";
+import { clampPageSize } from "../../utils/pagination";
 
 export const suppliersService = {
   async list({
     page = 1,
-    limit = 100000,
+    limit = 200,
     search,
     includeArchived = false,
     archivedOnly = false,
@@ -20,6 +21,7 @@ export const suppliersService = {
     sortBy?: string;
     sortOrder?: "asc" | "desc";
   } = {}) {
+    limit = clampPageSize(limit);
     const where: Prisma.DistributorWhereInput = archivedOnly
       ? { active: 0 }
       : includeArchived

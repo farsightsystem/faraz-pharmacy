@@ -3,11 +3,12 @@ import { BadRequestError, NotFoundError } from "../../utils/errors";
 import { emitEvent } from "../../socket";
 import type { CreateReturnInput } from "./returns.schema";
 import { Prisma } from "../../generated/prisma/client";
+import { clampPageSize } from "../../utils/pagination";
 
 export const returnsService = {
   async list({
     page = 1,
-    limit = 100000,
+    limit = 200,
     search,
     sortBy,
     sortOrder,
@@ -18,6 +19,7 @@ export const returnsService = {
     sortBy?: string;
     sortOrder?: "asc" | "desc";
   } = {}) {
+    limit = clampPageSize(limit);
     const where: Prisma.ReturnEntryWhereInput = {};
 
     if (search) {

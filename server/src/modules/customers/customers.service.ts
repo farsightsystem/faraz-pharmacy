@@ -3,6 +3,7 @@ import { NotFoundError, BadRequestError } from "../../utils/errors";
 import { cacheGet, cacheSet, cacheDelNamespace, makeKey } from "../../utils/cache";
 import type { CreateCustomerInput } from "./customers.schema";
 import { Prisma } from "../../generated/prisma/client";
+import { clampPageSize } from "../../utils/pagination";
 
 interface CustomerStats {
   total_purchases: number;
@@ -18,7 +19,7 @@ const customerStatsSelect = `
 export const customersService = {
   async list({
     page = 1,
-    limit = 100000,
+    limit = 200,
     search,
     includeArchived = false,
     archivedOnly = false,
@@ -33,6 +34,7 @@ export const customersService = {
     sortBy?: string;
     sortOrder?: "asc" | "desc";
   } = {}) {
+    limit = clampPageSize(limit);
     const cacheKey = makeKey("customers:list", {
       page, limit, search, includeArchived, archivedOnly, sortBy, sortOrder,
     });

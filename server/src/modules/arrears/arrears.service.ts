@@ -2,6 +2,7 @@ import { prisma } from "../../services/prisma";
 import { BadRequestError, NotFoundError, UnauthorizedError } from "../../utils/errors";
 import { Prisma } from "../../generated/prisma/client";
 import { authService } from "../auth/auth.service";
+import { clampPageSize } from "../../utils/pagination";
 
 function generateSaleId(prefix: string, lastId: string | null) {
   let nextNum = 1;
@@ -19,7 +20,8 @@ function makeSalePrefix(): string {
 }
 
 export const arrearsService = {
-  async list({ status, page = 1, limit = 100000, search, dateFrom, dateTo, sortBy, sortOrder }: { status?: string; page?: number; limit?: number; search?: string; dateFrom?: string; dateTo?: string; sortBy?: string; sortOrder?: "asc" | "desc" } = {}) {
+  async list({ status, page = 1, limit = 200, search, dateFrom, dateTo, sortBy, sortOrder }: { status?: string; page?: number; limit?: number; search?: string; dateFrom?: string; dateTo?: string; sortBy?: string; sortOrder?: "asc" | "desc" } = {}) {
+    limit = clampPageSize(limit);
     const where: Prisma.ArrearWhereInput = status && status !== "all" ? { status } : {};
 
     if (search) {
@@ -537,4 +539,3 @@ export const arrearsService = {
     });
   },
 };
-

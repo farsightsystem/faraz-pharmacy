@@ -1,11 +1,11 @@
 import type { Request, Response, NextFunction } from "express";
 import { categoriesService } from "./categories.service";
+import { getPaginationParams } from "../../utils/pagination";
 
 export const categoriesController = {
   async list(req: Request, res: Response, next: NextFunction) {
     try {
-      const page = Math.max(1, parseInt(req.query.page as string) || 1);
-      const limit = Math.max(1, parseInt(req.query.limit as string) || 50);
+      const { page, limit } = getPaginationParams(req.query.page, req.query.limit, true);
       const search = req.query.search as string | undefined;
       const archivedOnly = req.query.archived === "true" || req.query.archivedOnly === "true";
       const includeArchived = req.query.includeArchived === "true";

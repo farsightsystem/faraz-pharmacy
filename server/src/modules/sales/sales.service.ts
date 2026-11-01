@@ -3,6 +3,7 @@ import { NotFoundError } from "../../utils/errors";
 import { emitEvent } from "../../socket";
 import type { CreateSaleInput } from "./sales.schema";
 import { Prisma } from "../../generated/prisma/client";
+import { clampPageSize } from "../../utils/pagination";
 
 export const salesService = {
   async create(data: CreateSaleInput) {
@@ -123,8 +124,23 @@ export const salesService = {
         include: { items: true },
       });
 
-      emitEvent("sale:created", result);
-      return result;
+      if (!result) throw new NotFoundError("Sale");
+
+      const customerOutstandingArrear = data.customerId
+        ? await tx.arrear
+            .aggregate({
+              where: { customerId: data.customerId, status: "pending" },
+              _sum: { balanceDue: true },
+            })
+            .then((aggregate) => aggregate._sum.balanceDue ?? 0)
+        : 0;
+      const saleWithCustomerBalance = {
+        ...result,
+        customerOutstandingArrear,
+      };
+
+      emitEvent("sale:created", saleWithCustomerBalance);
+      return saleWithCustomerBalance;
     });
   },
 
@@ -216,7 +232,7 @@ export const salesService = {
     }
 
     const page = opts?.page || 1;
-    const limit = opts?.limit || 100000;
+    const limit = clampPageSize(opts?.limit);
     const skip = (page - 1) * limit;
 
     let orderBy: Prisma.SaleOrderByWithRelationInput = { createdAt: opts?.sortOrder || "desc" };

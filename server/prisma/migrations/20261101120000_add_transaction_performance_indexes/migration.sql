@@ -1,0 +1,17 @@
+CREATE INDEX "products_company_id_idx" ON "products"("company_id");
+CREATE INDEX "product_prices_product_id_idx" ON "product_prices"("product_id");
+CREATE INDEX "customers_active_idx" ON "customers"("active");
+CREATE INDEX "sales_customer_id_idx" ON "sales"("customer_id");
+CREATE INDEX "sales_created_at_idx" ON "sales"("created_at");
+CREATE INDEX "sale_items_sale_id_idx" ON "sale_items"("sale_id");
+CREATE INDEX "sale_items_product_id_idx" ON "sale_items"("product_id");
+CREATE INDEX "arrears_customer_id_status_idx" ON "arrears"("customer_id", "status");
+CREATE INDEX "arrears_status_created_at_idx" ON "arrears"("status", "created_at");
+CREATE INDEX "arrears_sale_id_idx" ON "arrears"("sale_id");
+CREATE INDEX "arrear_payments_arrear_id_idx" ON "arrear_payments"("arrear_id");
+CREATE INDEX "stock_purchases_distributor_id_idx" ON "stock_purchases"("distributor_id");
+CREATE INDEX "stock_purchases_active_idx" ON "stock_purchases"("active");
+CREATE INDEX "returns_sale_id_idx" ON "returns"("sale_id");
+CREATE INDEX "return_items_return_id_idx" ON "return_items"("return_id");
+CREATE INDEX "return_items_product_id_idx" ON "return_items"("product_id");
+CREATE INDEX "expenses_created_at_idx" ON "expenses"("created_at");

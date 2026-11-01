@@ -51,45 +51,10 @@ export default function Dashboard() {
     queryFn: api.dashboard.stats,
   });
 
-  const { data: products = [] } = useQuery({
-    queryKey: ["products-all"],
-    queryFn: api.products.list,
-  });
-
-  const { data: customers = [] } = useQuery({
-    queryKey: ["customers-list"],
-    queryFn: api.customers.list,
-  });
-
-  const { data: arrears = [] } = useQuery({
-    queryKey: ["arrears-list"],
-    queryFn: () => api.arrears.list(),
-  });
-
-  const lowStockProducts = products
-    .filter((p) => p.active && p.stock_qty > 0 && p.stock_qty <= 10)
-    .sort((a, b) => a.stock_qty - b.stock_qty)
-    .slice(0, 5);
-
-  const expiringProducts = products
-    .filter((p) => {
-      if (!p.expiry || !p.active) return false;
-      const expiryDate = new Date(p.expiry);
-      const thirtyDaysFromNow = new Date();
-      thirtyDaysFromNow.setDate(thirtyDaysFromNow.getDate() + 30);
-      return expiryDate <= thirtyDaysFromNow;
-    })
-    .slice(0, 5);
-
-  const topCustomers = customers
-    .filter((c) => c.total_purchases && c.total_purchases > 0)
-    .sort((a, b) => (b.total_purchases || 0) - (a.total_purchases || 0))
-    .slice(0, 5);
-
-  const pendingArrears = arrears
-    .filter((a) => a.status === "pending")
-    .sort((a, b) => b.balance_due - a.balance_due)
-    .slice(0, 5);
+  const lowStockProducts = stats?.lowStockProducts ?? [];
+  const expiringProducts = stats?.expiringProducts ?? [];
+  const topCustomers = stats?.topCustomers ?? [];
+  const pendingArrears = stats?.pendingArrears ?? [];
 
   if (isLoading) {
     return (
@@ -295,7 +260,10 @@ export default function Dashboard() {
             </div>
           </CardHeader>
           <CardContent>
-            <RevenueChart data={stats?.weekRevenue} period={chartPeriod} />
+            <RevenueChart
+              data={chartPeriod === "week" ? stats?.weekRevenue : stats?.monthRevenue}
+              period={chartPeriod}
+            />
           </CardContent>
         </Card>
 
@@ -458,7 +426,7 @@ export default function Dashboard() {
                         <p className="text-[10px] text-text-secondary">{customer.phone || "No phone"}</p>
                       </div>
                       <span className="text-xs font-mono font-bold text-text-primary bg-surface px-2.5 py-1 rounded-xl border border-border shadow-xs">
-                        {formatCurrency(customer.total_purchases || 0)}
+                        {formatCurrency(customer.total_spent)}
                       </span>
                     </div>
                   ))}

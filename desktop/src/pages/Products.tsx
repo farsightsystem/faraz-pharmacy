@@ -236,11 +236,10 @@ export default function Products() {
   );
   const meta = paginatedData?.meta || { total: 0, page: 1, limit: 50, totalPages: 1 };
 
-  const { data: categoriesResponse } = useQuery({
+  const { data: categories = [] } = useQuery({
     queryKey: ["categories"],
-    queryFn: () => api.categories.listPaginated({ limit: 1000 }),
+    queryFn: () => api.categories.list(),
   });
-  const categories = categoriesResponse?.data ?? [];
 
   const { data: companies } = useQuery({
     queryKey: ["companies", "options"],

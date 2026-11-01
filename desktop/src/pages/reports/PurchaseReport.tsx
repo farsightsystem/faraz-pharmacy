@@ -44,7 +44,7 @@ export default function PurchaseReport() {
   // Summary data for KPIs and exports
   const { data: allPurchases = [] } = useQuery({
     queryKey: ["stock", "summary", dateRange.from, dateRange.to],
-    queryFn: () => api.stock.list(),
+    queryFn: () => api.stock.list({ dateFrom: dateRange.from, dateTo: dateRange.to }),
   });
 
   const filteredPurchases = useMemo(() => {

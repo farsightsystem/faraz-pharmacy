@@ -24,15 +24,7 @@ export async function syncProducts(): Promise<{
 }> {
   try {
     // Fetch all active products (no pagination limit - get everything)
-    const products = await api.products.listPaginated({
-      page: 1,
-      limit: 10000,
-      includeArchived: false,
-      sortBy: "createdAt",
-      sortOrder: "desc",
-    });
-
-    const productList: Product[] = products.data || [];
+    const productList: Product[] = await api.products.list();
 
     // Clear existing products and write fresh
     await db.transaction("rw", db.products, db.priceTiers, async () => {

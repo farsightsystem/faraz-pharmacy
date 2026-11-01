@@ -1,13 +1,13 @@
 import type { Request, Response, NextFunction } from "express";
 import { purchasesService } from "./purchases.service";
 import { normalizeStockPurchase, normalizeStockPurchaseList } from "../../utils/normalize";
+import { getPaginationParams } from "../../utils/pagination";
 
 export const purchasesController = {
   async list(req: Request, res: Response, next: NextFunction) {
     try {
       const isPaginated = req.query.paginated === "true";
-      const page = Math.max(1, parseInt(req.query.page as string) || 1);
-      const limit = Math.max(1, parseInt(req.query.limit as string) || (isPaginated ? 50 : 100000));
+      const { page, limit } = getPaginationParams(req.query.page, req.query.limit, isPaginated);
       const search = req.query.search as string | undefined;
       const dateFrom = req.query.dateFrom as string | undefined;
       const dateTo = req.query.dateTo as string | undefined;
@@ -76,4 +76,3 @@ export const purchasesController = {
     }
   },
 };
-
