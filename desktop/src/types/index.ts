@@ -460,7 +460,7 @@ export interface PrintMargins {
 }
 
 export interface PrinterConfig {
-  paperSize: "thermal" | "a4" | "a5";
+  paperSize: "thermal";
   deviceName: string | null;
   margins?: PrintMargins;
 }

@@ -45,8 +45,6 @@ function generateSaleReceiptHTML(sale) {
   const gst = Number(sale.tax || sale.gst || 0);
   const paid = Number(sale.amount_paid ?? sale.amountPaid ?? 0);
   const balance = Math.max(0, totalAmount - paid);
-  const arrears = Number(sale.customer_total_arrears ?? sale.customerTotalArrears ?? sale.arrears ?? 0);
-  const totalPayable = totalAmount + arrears;
 
   const itemsHTML = items
     .map((item) => {
@@ -265,16 +263,6 @@ ${itemsHTML}
 </div>
 
 <div class="calc-row">
-<span>Arrears:</span>
-<span>${arrears}</span>
-</div>
-
-<div class="total-payable calc-row">
-<span>Total Payable:</span>
-<span>${totalPayable}</span>
-</div>
-
-<div class="calc-row">
 <span>Amount Paid:</span>
 <span>${paid}</span>
 </div>
@@ -303,284 +291,6 @@ Developed by www.farsightsystem.com
 </html>
 `;
 }
-
-function generateA4InvoiceHTML(sale) {
-  const items = sale.items || [];
-  const now = new Date();
-  const dateStr = now.toLocaleDateString("en-PK", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-  const totalQty = items.reduce((s, i) => s + (i.quantity || 0), 0);
-
-  return `<!DOCTYPE html>
-<html><head><meta charset="utf-8"><style>
-@page { margin: 12mm; size: A4; }
-* { margin: 0; padding: 0; box-sizing: border-box; }
-body {
-  font-family: -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
-  font-size: 11px; color: #1a1a1a; line-height: 1.5;
-}
-.header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; border-bottom: 3px solid #0D9488; padding-bottom: 14px; }
-.header-left { display: flex; align-items: center; gap: 10px; }
-.header-logo { width: 44px; height: 44px; border-radius: 8px; object-fit: contain; }
-.header h1 { font-size: 24px; letter-spacing: 1px; color: #0D9488; font-weight: 800; margin: 0; }
-.header p { font-size: 11px; color: #666; margin-top: 2px; }
-.header .addr { font-size: 10px; color: #888; margin-top: 1px; }
-.header-right { text-align: right; }
-.header-right .inv-label { font-size: 16px; font-weight: 800; color: #0D9488; letter-spacing: 1px; }
-.header-right .inv-id { font-size: 9px; color: #fff; background: #0D9488; padding: 3px 8px; border-radius: 3px; margin-top: 3px; display: inline-block; }
-.info { display: flex; justify-content: space-between; margin-bottom: 14px; background: #f9fafb; padding: 10px 14px; border-radius: 5px; }
-.info div { font-size: 10.5px; }
-.info .lbl { color: #9ca3af; font-weight: 600; }
-table { width: 100%; border-collapse: collapse; margin-bottom: 14px; }
-thead th {
-  background: #0D9488; color: #fff; text-align: left; padding: 7px 8px;
-  font-size: 9.5px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;
-}
-thead th:first-child { border-radius: 4px 0 0 0; }
-thead th:last-child { border-radius: 0 4px 0 0; }
-td { padding: 6px 8px; font-size: 10.5px; border-bottom: 1px solid #eee; }
-td:last-child, th:last-child { text-align: right; }
-td:nth-child(2) { text-align: center; }
-tbody tr:nth-child(even) { background: #fafafa; }
-.totals { width: 300px; margin-left: auto; border-collapse: collapse; }
-.totals td { padding: 4px 8px; border: none; font-size: 10.5px; }
-.totals td:last-child { text-align: right; font-weight: 600; }
-.totals .big td { font-weight: 800; font-size: 15px; border-top: 2px solid #0D9488; padding-top: 6px; color: #0D9488; }
-.footer { text-align: center; font-size: 9.5px; color: #9ca3af; margin-top: 20px; border-top: 1px solid #e5e7eb; padding-top: 8px; }
-.status-a4 { text-align: center; margin-top: 8px; font-size: 10px; font-weight: 700; color: #0D9488; letter-spacing: 1px; }
-.status-a4.partial { color: #f59e0b; }
-</style></head><body>
-<div class="header">
-  <div class="header-left">
-    ${logoBase64 ? `<img src="${logoBase64}" class="header-logo" alt="">` : ""}
-    <div>
-      <h1>FARAZ PHARMACY</h1>
-      <p>Your Trusted Pharmacy &mdash; Quality Care for Everyone</p>
-      <div class="addr">Barikot, Swat KPK &bull; Phone: 03469383792</div>
-    </div>
-  </div>
-  <div class="header-right">
-    <div class="inv-label">INVOICE</div>
-    <div class="inv-id">#${sale.id ? sale.id.slice(0, 8) : "000000"}</div>
-  </div>
-</div>
-<div class="info">
-<div><span class="lbl">Invoice:</span> ${sale.id || "N/A"}<br><span class="lbl">Date:</span> ${dateStr}</div>
-<div style="text-align:right">
-${(sale.customer_name ?? sale.customerName ?? sale.customer?.name) ? `<span class="lbl">Customer:</span> ${sale.customer_name ?? sale.customerName ?? sale.customer?.name}<br>` : ""}
-<span class="lbl">Items:</span> ${items.length} (${totalQty} units)
-</div>
-</div>
-<table>
-<thead><tr><th style="width:50%">Item</th><th style="width:12%;text-align:center">Qty</th><th style="width:16%;text-align:right">Price</th><th style="width:22%;text-align:right">Total</th></tr></thead>
-<tbody>${items.map((i) => {
-  const pName = i.product_name ?? i.productName ?? "Item";
-  const bNo = i.batch_number ?? i.batchNumber;
-  const exp = i.expiry;
-  const qty = Number(i.quantity || 1);
-  const uPrice = Number(i.unit_price ?? i.unitPrice ?? (qty > 0 ? (i.subtotal || 0) / qty : 0));
-  const sub = Number(i.subtotal ?? (uPrice * qty));
-  return `<tr><td>${pName}${bNo ? ` <div style="font-size:8.5px;color:#666;">Batch: ${bNo}${exp ? ` | Exp: ${String(exp).slice(0, 7)}` : ""}</div>` : ""}</td><td style="text-align:center">${qty}</td><td style="text-align:right">${uPrice.toFixed(0)}</td><td style="text-align:right">${sub.toFixed(0)}</td></tr>`;
-}).join("")}</tbody>
-</table>
-<table class="totals">
-<tr><td>Subtotal</td><td>${Number(sale.subtotal || 0).toFixed(0)}</td></tr>
-${sale.discount > 0 ? `<tr><td>Discount</td><td>-${Number(sale.discount).toFixed(0)}</td></tr>` : ""}
-${(sale.tax || sale.gst) > 0 ? `<tr><td>Tax / GST</td><td>+${Number(sale.tax || sale.gst).toFixed(0)}</td></tr>` : ""}
-<tr class="big"><td>Total</td><td>${Number(sale.total || 0).toFixed(0)}</td></tr>
-<tr><td>Paid</td><td>${Number(sale.amount_paid ?? sale.amountPaid ?? 0).toFixed(0)}</td></tr>
-<tr><td>Change</td><td>${Math.max(0, Number(sale.amount_paid ?? sale.amountPaid ?? 0) - Number(sale.total || 0)).toFixed(0)}</td></tr>
-<tr><td>Arrears</td><td>${Number(sale.customer_total_arrears ?? sale.customerTotalArrears ?? sale.arrears ?? 0).toFixed(0)}</td></tr>
-</table>
-${sale.status === "partial" ? '<div class="status-a4 partial">PARTIAL PAYMENT</div>' : ""}
-<div class="footer"><p>Thank you for your visit! &bull; Powered by Faraz Pharmacy</p></div>
-</body></html>`;
-}
-
-function generateA5InvoiceHTML(sale) {
-  const items = sale.items || [];
-  const now = new Date();
-  const dateStr = now.toLocaleDateString("en-PK", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-  const totalQty = items.reduce((s, i) => s + (i.quantity || 0), 0);
-
-  return `<!DOCTYPE html>
-<html>
-<head>
-<meta charset="utf-8">
-<style>
-@page { size: A5 portrait; margin: 6mm; }
-* { margin: 0; padding: 0; box-sizing: border-box; }
-body {
-  font-family: -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
-  color: #1a1a1a; background: #fff; font-size: 10.5px; line-height: 1.4;
-}
-.header {
-  display: flex; justify-content: space-between; align-items: center;
-  padding-bottom: 10px; border-bottom: 2.5px solid #0D9488; margin-bottom: 12px;
-}
-.brand { display: flex; align-items: center; gap: 8px; }
-.brand-logo { width: 36px; height: 36px; border-radius: 6px; object-fit: contain; }
-.brand-name { font-size: 17px; font-weight: 800; color: #0D9488; letter-spacing: -0.3px; }
-.brand-sub { font-size: 8.5px; color: #666; margin-top: 1px; }
-.brand-addr { font-size: 8px; color: #888; }
-.badge { text-align: right; }
-.badge h2 { font-size: 18px; font-weight: 800; color: #0D9488; letter-spacing: 1px; }
-.badge-id {
-  margin-top: 4px; background: #0D9488; color: #fff;
-  padding: 4px 10px; border-radius: 3px; font-size: 9px; font-weight: 600; letter-spacing: 0.5px;
-}
-.info-row {
-  display: flex; justify-content: space-between; gap: 10px; margin-bottom: 12px;
-}
-.info-block {
-  flex: 1; padding: 8px 10px; border: 1px solid #e5e7eb; border-radius: 5px;
-}
-.info-block-title {
-  font-size: 7.5px; font-weight: 700; color: #9ca3af; text-transform: uppercase;
-  letter-spacing: 0.8px; margin-bottom: 4px;
-}
-.info-block p { font-size: 10px; margin: 1px 0; color: #333; }
-.info-block .label { color: #9ca3af; font-size: 8.5px; }
-table.items { width: 100%; border-collapse: collapse; margin-bottom: 10px; }
-table.items thead th {
-  background: #0D9488; color: #fff; padding: 5px 7px;
-  font-size: 8.5px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;
-}
-table.items thead th:first-child { border-radius: 4px 0 0 0; }
-table.items thead th:last-child { border-radius: 0 4px 0 0; }
-table.items td { padding: 5px 7px; border-bottom: 1px solid #f0f0f0; font-size: 10px; }
-table.items tbody tr:last-child td { border-bottom: none; }
-.bottom { display: flex; gap: 12px; margin-top: 4px; }
-.notes-block {
-  flex: 1; border: 1px solid #e5e7eb; border-radius: 5px; padding: 8px 10px;
-  min-height: 70px;
-}
-.notes-block strong { font-size: 8.5px; color: #9ca3af; text-transform: uppercase; letter-spacing: 0.5px; }
-.notes-block p { font-size: 9px; color: #666; margin-top: 4px; line-height: 1.5; }
-.totals { width: 200px; }
-.totals table { width: 100%; border-collapse: collapse; }
-.totals td { padding: 3.5px 6px; font-size: 10px; }
-.totals td:last-child { text-align: right; font-weight: 600; }
-.totals .total-row td {
-  padding: 6px; font-size: 13px; font-weight: 800;
-  background: #0D9488; color: #fff; border-radius: 3px;
-}
-.status-badge {
-  margin-top: 8px; text-align: center; padding: 4px;
-  border-radius: 3px; font-size: 9px; font-weight: 700; letter-spacing: 1px;
-  border: 1.5px solid #0D9488; color: #0D9488;
-}
-.status-badge.partial { border-color: #f59e0b; color: #f59e0b; background: #fffbeb; }
-.divider { border: none; border-top: 1px dashed #d1d5db; margin: 6px 0; }
-.footer { margin-top: 10px; padding-top: 6px; border-top: 1px solid #e5e7eb; text-align: center; font-size: 8px; color: #9ca3af; }
-</style>
-</head>
-<body>
-
-<div class="header">
-  <div class="brand">
-    ${logoBase64 ? `<img src="${logoBase64}" class="brand-logo" alt="">` : ""}
-    <div>
-      <div class="brand-name">FARAZ PHARMACY</div>
-      <div class="brand-sub">Quality Care For Everyone</div>
-      <div class="brand-addr">Barikot, Swat KPK</div>
-    </div>
-  </div>
-  <div class="badge">
-    <h2>INVOICE</h2>
-    <div class="badge-id">#${sale.id ? sale.id.slice(0, 8) : "000000"}</div>
-  </div>
-</div>
-
-<div class="info-row">
-  <div class="info-block">
-    <div class="info-block-title">Customer</div>
-    <p><strong>${sale.customer_name || "Walk-in Customer"}</strong></p>
-    <p>${sale.customer_phone || ""}</p>
-  </div>
-  <div class="info-block">
-    <div class="info-block-title">Invoice Details</div>
-    <p><span class="label">Date:</span> ${dateStr}</p>
-    <p><span class="label">Status:</span> ${sale.status || "Paid"}</p>
-    <p><span class="label">Items:</span> ${items.length} (${totalQty} units)</p>
-  </div>
-</div>
-
-<table class="items">
-  <thead>
-    <tr>
-      <th style="width:55%">Product</th>
-      <th style="width:15%;text-align:center">Qty</th>
-      <th style="width:15%;text-align:right">Rate</th>
-      <th style="width:15%;text-align:right">Amount</th>
-    </tr>
-  </thead>
-  <tbody>
-    ${items
-      .map((item) => {
-        const pName = item.product_name ?? item.productName ?? "Item";
-        const bNo = item.batch_number ?? item.batchNumber;
-        const exp = item.expiry;
-        const qty = Number(item.quantity || 1);
-        const unitPrice = Number(item.unit_price ?? item.unitPrice ?? (qty > 0 ? (item.subtotal || 0) / qty : 0));
-        const sub = Number(item.subtotal ?? (unitPrice * qty));
-        return `<tr>
-        <td>
-          ${pName}
-          ${bNo ? `<div style="font-size:8px;color:#666;">Batch: ${bNo}${exp ? ` | Exp: ${String(exp).slice(0, 7)}` : ""}</div>` : ""}
-        </td>
-        <td style="text-align:center">${qty}</td>
-        <td style="text-align:right">${Math.round(unitPrice)}</td>
-        <td style="text-align:right">${sub.toFixed(0)}</td>
-      </tr>`;
-      })
-      .join("")}
-  </tbody>
-</table>
-
-<hr class="divider">
-
-<div class="bottom">
-  <div class="notes-block">
-    <strong>Notes</strong>
-    <p>Please keep this invoice for returns, replacement or future reference.</p>
-    <p>No return without receipt &bull; No return after 3 days &bull; No return of freezer/refrigerator medicines</p>
-  </div>
-  <div class="totals">
-    <table>
-      <tr><td>Subtotal</td><td>${Number(sale.subtotal || 0).toFixed(0)}</td></tr>
-      ${sale.discount > 0 ? `<tr><td>Discount</td><td>-${Number(sale.discount).toFixed(0)}</td></tr>` : ""}
-      ${(sale.tax || sale.gst) > 0 ? `<tr><td>Tax / GST</td><td>+${Number(sale.tax || sale.gst).toFixed(0)}</td></tr>` : ""}
-      <tr class="total-row"><td>Total</td><td>${Number(sale.total || 0).toFixed(0)}</td></tr>
-      <tr><td>Paid</td><td>${Number(sale.amount_paid ?? sale.amountPaid ?? 0).toFixed(0)}</td></tr>
-      <tr><td>Change</td><td>${Math.max(0, Number(sale.amount_paid ?? sale.amountPaid ?? 0) - Number(sale.total || 0)).toFixed(0)}</td></tr>
-      <tr><td>Arrears</td><td>${Number(sale.customer_total_arrears ?? sale.customerTotalArrears ?? sale.arrears ?? 0).toFixed(0)}</td></tr>
-    </table>
-    ${
-      sale.status === "partial"
-        ? '<div class="status-badge partial">PARTIAL PAYMENT</div>'
-        : '<div class="status-badge">PAID</div>'
-    }
-  </div>
-</div>
-
-<div class="footer">Thank you for choosing Faraz Pharmacy &bull; Powered by FarSight System</div>
-</body>
-</html>`;
-}
-
-// return Recipt start
 
 function generateReturnReceiptHTML(returnData, sale) {
   const items = returnData.items || [];
@@ -1746,47 +1456,14 @@ body {
 // return Recipt end
 
 function getPrintOptions(printerConfig) {
-  const paperSize = printerConfig?.paperSize || "thermal";
-  const opts = {
+  // A4/A5 options removed — thermal 80mm is the only supported receipt size.
+  return {
     silent: true,
     printBackground: true,
     deviceName: printerConfig?.deviceName || undefined,
+    pageSize: { width: 80000, height: 297000 },
+    margins: { marginType: "none" },
   };
-
-  const margins = printerConfig?.margins;
-
-  if (paperSize === "thermal") {
-    opts.pageSize = { width: 80000, height: 297000 };
-    opts.margins = { marginType: "none" };
-  } else if (paperSize === "a4") {
-    opts.pageSize = "A4";
-    if (margins) {
-      opts.margins = {
-        marginType: "custom",
-        top: margins.top,
-        bottom: margins.bottom,
-        left: margins.left,
-        right: margins.right,
-      };
-    } else {
-      opts.margins = { marginType: "printableArea" };
-    }
-  } else if (paperSize === "a5") {
-    opts.pageSize = "A5";
-    if (margins) {
-      opts.margins = {
-        marginType: "custom",
-        top: margins.top,
-        bottom: margins.bottom,
-        left: margins.left,
-        right: margins.right,
-      };
-    } else {
-      opts.margins = { marginType: "printableArea" };
-    }
-  }
-
-  return opts;
 }
 
 function escposInit() {
@@ -2291,9 +1968,9 @@ async function printBarcodeLabel(
   await doBarcodePrintJob(html, deviceName, width, height);
 }
 
-function generateHTML(sale, paperSize) {
-  if (paperSize === "a4") return generateA4InvoiceHTML(sale);
-  if (paperSize === "a5") return generateA5InvoiceHTML(sale);
+// A4/A5 invoice printing was removed — only 80mm thermal receipts are generated.
+// paperSize is accepted for API compatibility and ignored.
+function generateHTML(sale, _paperSize) {
   return generateSaleReceiptHTML(sale);
 }
 
@@ -2305,13 +1982,11 @@ function writeTempFile(content, ext) {
 }
 
 function doPrintJob(data, printerConfig) {
-  const paperSize = printerConfig?.paperSize || "thermal";
-
   return new Promise((resolve, reject) => {
     const filePath = writeTempFile(data, "html");
 
     const printWin = new BrowserWindow({
-      width: paperSize === "a4" ? 800 : paperSize === "thermal" ? 350 : 600,
+      width: 350,
       height: 600,
       show: false,
       paintWhenReady: true,
