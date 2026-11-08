@@ -181,6 +181,9 @@ export const arrearsService = {
         include: { customer: { select: { name: true } } },
       });
       if (!arrear) throw new NotFoundError("Arrear");
+      if (arrear.status === "settled" || arrear.balanceDue <= 0) {
+        throw new BadRequestError("Arrear is already settled");
+      }
       const settleAmount = arrear.balanceDue;
 
       const updated = await tx.arrear.update({

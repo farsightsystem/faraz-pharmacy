@@ -3,6 +3,7 @@ import path from "path";
 import os from "os";
 import { execSync } from "child_process";
 import { prisma } from "../../services/prisma";
+import type { GDriveConfig } from "./settings.schema";
 
 const dataDir = process.env.FARAZ_DATA_DIR || path.join(os.homedir(), ".faraz-pharmacy");
 
@@ -174,7 +175,8 @@ export const settingsService = {
     const cfg = loadConfig();
     cfg.autoBackup = {
       enabled: !!autoBackup.enabled,
-      time: typeof autoBackup.time === "string" ? autoBackup.time : "02:00",
+      // Route-level zod validation guarantees "HH:MM"; keep a sane fallback anyway
+      time: typeof autoBackup.time === "string" && autoBackup.time ? autoBackup.time : "02:00",
     };
     saveConfig(cfg);
     return { success: true };
@@ -195,9 +197,17 @@ export const settingsService = {
     );
   },
 
-  saveGdriveConfig(gdriveConfig: Record<string, unknown>) {
+  saveGdriveConfig(gdriveConfig: GDriveConfig) {
     const cfg = loadConfig();
-    cfg.googleDrive = gdriveConfig;
+    // Normalize via the shared type: fill omitted optional fields with defaults
+    cfg.googleDrive = {
+      clientId: gdriveConfig.clientId ?? "",
+      clientSecret: gdriveConfig.clientSecret ?? "",
+      redirectUri: gdriveConfig.redirectUri ?? "",
+      refreshToken: gdriveConfig.refreshToken ?? "",
+      autoUpload: !!gdriveConfig.autoUpload,
+      connected: !!gdriveConfig.connected,
+    };
     saveConfig(cfg);
     return { success: true };
   },

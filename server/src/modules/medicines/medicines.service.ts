@@ -2,6 +2,7 @@ import { prisma } from "../../services/prisma";
 import { BadRequestError, NotFoundError } from "../../utils/errors";
 import { emitEvent } from "../../socket";
 import { clampPageSize } from "../../utils/pagination";
+import { cacheGet, cacheSet, cacheDelNamespace } from "../../utils/cache";
 import type { CreateProductInput } from "./medicines.schema";
 
 function formatProduct(p: any) {
@@ -38,6 +39,26 @@ async function resolveCompanyId(company?: string): Promise<string | null> {
 
   return existing?.id ?? null;
 }
+
+type BarcodeFastResult = {
+  id: string;
+  barcode: string;
+  name: string;
+  salePrice: number;
+  purchasePrice: number;
+  stockQty: number;
+  category: string;
+  location: string;
+  active: number;
+  company: { name: string } | null;
+  prices: {
+    id: string;
+    productId: string;
+    label: string;
+    purchasePrice: number;
+    salePrice: number;
+  }[];
+} | null;
 
 export const medicinesService = {
   async list({
@@ -143,10 +164,20 @@ export const medicinesService = {
   /**
    * Fast barcode lookup for POS scanning.
    * Returns only the fields needed at checkout to keep the JSON payload tiny.
+   *
+   * Cached with a deliberately SHORT TTL (10s): this dedupes rapid re-scans of
+   * the same barcode but bounds staleness of stockQty. Any product or stock
+   * write flushes the "products" namespace, so the cache is empty for the
+   * rest of the 10s window after any change.
    */
-  async getByBarcodeFast(barcode: string) {
+  async getByBarcodeFast(barcode: string): Promise<BarcodeFastResult> {
     const trimmed = barcode.trim();
-    return prisma.product.findFirst({
+    if (!trimmed) return null;
+    const cacheKey = `fz:products:bcfast:${trimmed.toLowerCase()}`;
+    const cached = cacheGet<Exclude<BarcodeFastResult, null>>(cacheKey);
+    if (cached !== undefined) return cached;
+
+    const product = await prisma.product.findFirst({
       where: {
         active: 1,
         barcode: { equals: trimmed, mode: "insensitive" },
@@ -177,6 +208,8 @@ export const medicinesService = {
         },
       },
     });
+    cacheSet(cacheKey, product ?? null, 10); // 10s TTL — short on purpose (stock freshness)
+    return product;
   },
 
   async getById(id: string) {
@@ -236,6 +269,7 @@ export const medicinesService = {
         company: true,
       },
     });
+    cacheDelNamespace("products"); // invalidate product cache on write
     emitEvent("inventory:updated", null);
     return formatProduct(product);
   },
@@ -416,6 +450,7 @@ export const medicinesService = {
         },
       });
     });
+    cacheDelNamespace("products"); // invalidate product cache on write
     emitEvent("inventory:updated", null);
     return formatProduct(product);
   },
@@ -424,6 +459,7 @@ export const medicinesService = {
     const product = await prisma.product.findUnique({ where: { id } });
     if (!product) throw new NotFoundError("Product");
     const result = await prisma.product.update({ where: { id }, data: { active: 0 } });
+    cacheDelNamespace("products"); // invalidate product cache on write
     emitEvent("inventory:updated", null);
     return result;
   },
@@ -432,6 +468,7 @@ export const medicinesService = {
     const product = await prisma.product.findUnique({ where: { id } });
     if (!product) throw new NotFoundError("Product");
     const result = await prisma.product.update({ where: { id }, data: { active: 1 } });
+    cacheDelNamespace("products"); // invalidate product cache on write
     emitEvent("inventory:updated", null);
     return result;
   },
@@ -446,6 +483,7 @@ export const medicinesService = {
       await tx.product.delete({ where: { id } });
     });
 
+    cacheDelNamespace("products"); // invalidate product cache on write
     emitEvent("inventory:updated", null);
     return { success: true };
   },

@@ -143,8 +143,13 @@ export default function Expenses() {
 
   const filtered = expenses;
 
+  // Match "this month" to the terminal's local timezone (same tzOffset
+  // convention the app uses for server report queries), not UTC.
+  const nowLocal = new Date(Date.now() + -new Date().getTimezoneOffset() * 60_000);
+  const localYearMonth = nowLocal.toISOString().slice(0, 7);
+
   const totalThisMonth = expenses
-    .filter((e: Expense) => e.date?.startsWith(new Date().toISOString().slice(0, 7)))
+    .filter((e: Expense) => e.date?.startsWith(localYearMonth))
     .reduce((s: number, e: Expense) => s + e.amount, 0);
 
   const createMutation = useMutation({

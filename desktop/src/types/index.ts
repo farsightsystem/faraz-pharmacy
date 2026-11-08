@@ -309,7 +309,7 @@ export interface StockInput {
   priceTierId?: string | null;
   quantity: number;
   stax?: number;
-  expiry?: string;
+  expiry?: string | null;
 }
 
 export interface ProductBatch {

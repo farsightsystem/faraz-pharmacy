@@ -2,8 +2,10 @@
 
 **Project:** Faraz Pharmacy (Desktop POS)  
 **Stack:** Electron + React (Vite) · Express.js · Prisma ORM · PostgreSQL · PM2 (Windows LAN)  
-**Date:** October 2026  
+**Date:** October 2026 (updated November 2026)
 **Author:** Engineering Review
+
+> **Status note (2026-11-08):** This document is a recommendation log; `performance.md` is the authoritative implementation status. Two entries below have changed since the original review: (1) the server-side product cache was re-scoped to a **stock-safe variant** (see §3.7), and (2) the Dexie.js/IndexedDB client cache was **implemented, then reverted** (removed from the desktop in commit `c8cc8b7 "removed indexdb"`); client machines connect to the LAN server as before.
 
 ---
 
@@ -193,41 +195,35 @@ Added `getByBarcodeFast()` to the API layer which calls the new `/api/products/b
 
 ### 3.7 Server-Side Memory Cache (node-cache)
 
-Standard PostgreSQL queries hit disk on every request, even for frequently-read data like product listings and barcode lookups. A server-side in-memory cache eliminates redundant database hits for data that changes infrequently.
+Standard PostgreSQL queries hit disk on every request, even for frequently-read data. A server-side in-memory cache eliminates redundant database hits — **but caching anything that includes stock quantities served stale data and caused stock bugs, and the initial broad product cache was reverted (commit `6ad74b3 "stock and product update issue resolved"`).** The cache was re-introduced in November 2026 with a deliberately **stock-safe scope**.
 
-**New file:** `server/src/utils/cache.ts`
+**File:** `server/src/utils/cache.ts`
 
-Created a `node-cache` singleton wrapper with TTL-based expiration:
+A `node-cache` singleton wrapper with TTL-based expiration:
 
 ```typescript
 const cache = new NodeCache({
   stdTTL: 60,        // default TTL: 60 seconds
-  checkperiod: 120,  // check for expired keys every 120 seconds
+  checkperiod: 120,  // check for expired entries every 120s
   useClones: false,  // don't clone objects on get (faster, safe for read-only)
 });
 ```
 
 **Exported helpers:** `cacheGet`, `cacheSet`, `cacheDel`, `cacheDelNamespace`, `cacheFlush`, `cacheStats`, `makeKey`.
 
-**Applied caching to:**
+**Caching actually applied (2026-11-08 state):**
 
 | Service | Method | TTL | Invalidated On |
 |---------|--------|-----|----------------|
-| `medicinesService` | `list()` | 60s | create, update, archive, restore, hardDelete |
-| `medicinesService` | `search()` | 30s | create, update, archive, restore, hardDelete |
-| `medicinesService` | `getByBarcode()` | 60s | create, update, archive, restore, hardDelete |
-| `medicinesService` | `getById()` | 60s | create, update, archive, restore, hardDelete |
+| `medicinesService` | `getByBarcodeFast()` | **10s (short on purpose)** | create, update, archive, restore, hardDelete; plus all `purchasesService` writes |
 | `customersService` | `list()` | 120s | create, update, archive, restore, hardDelete |
 | `customersService` | `getById()` | 120s | create, update, archive, restore, hardDelete |
-| `purchasesService` | `create()` | — | `cacheDelNamespace("products")` |
-| `purchasesService` | `update()` | — | `cacheDelNamespace("products")` |
-| `purchasesService` | `remove()` | — | `cacheDelNamespace("products")` |
-| `purchasesService` | `restore()` | — | `cacheDelNamespace("products")` |
-| `purchasesService` | `hardDelete()` | — | `cacheDelNamespace("products")` |
 
-**Cache key pattern:** `fz:{namespace}:{params}` (e.g., `fz:products:list:page=1&limit=50`)
+**Deliberately NOT cached:** `medicinesService.list()` / `search()` / `getById()` — these expose `stockQty`, and caching them reintroduces stale-stock bugs (the reason the first attempt was reverted). The 10s barcode-scan cache only dedupes rapid re-scans of the same barcode; its `stockQty` staleness is bounded to 10 seconds, and **every** product or stock write flushes the whole `products` namespace immediately.
 
-**Invalidation strategy:** Any write operation (create/update/delete) clears the entire `products` or `customers` namespace, ensuring stale data is never served. TTLs provide a safety net so cache entries auto-expire even if invalidation is missed.
+**Cache key pattern:** `fz:{namespace}:{params}` — e.g. `fz:products:bcfast:<barcode>` for scans, `fz:customers:list:...` for customer lists.
+
+**Invalidation strategy:** Any write operation clears the entire namespace (`cacheDelNamespace("products")` / `("customers")`). Write sites: `medicinesService.create/update/archive/restore/hardDelete` and `purchasesService.create/update/remove/restore/hardDelete`. TTLs remain a safety net. The Socket.io `product:scan` handler reuses `medicinesService.getByBarcodeFast()`, so REST and Socket scans share one query path and one cache (added 2026-11-08).
 
 ---
 
@@ -260,7 +256,7 @@ module.exports = {
 
 ---
 
-### 3.8 Configure Explicit Connection Pooling
+### 3.9 Configure Explicit Connection Pooling
 
 **File:** `server/.env`
 
@@ -431,15 +427,16 @@ Offline-first introduces stock conflicts: two terminals selling the same last it
 | Priority | Task | Effort | Risk | Impact | Status |
 |----------|------|--------|------|--------|--------|
 | **1** | PrismaClient singleton in `services/prisma.ts` | 15 min | Zero | High | ✅ Done |
-| **1** | PostgreSQL indexes (`schema.prisma` + migrate) | 30 min | Low | Very High | ✅ Transaction/report indexes added in Phase 1 |
+| **1** | PostgreSQL indexes (`schema.prisma` + migrate) | 30 min | Low | Very High | ✅ Done (transaction/report indexes round 1–2 applied) |
 | **1** | Targeted `select` on barcode lookup + `/barcode-fast` endpoint | 30 min | Zero | High | ✅ Done |
 | **1** | Express `compression` middleware | 15 min | Zero | Medium | ✅ Done |
 | **1** | PM2 fork mode + `connection_limit` in `.env` | 30 min | Low | Medium | ⬜ Pending |
-| **2** | Socket.io for barcode scan / stock check | 2–4 hours | Low | High | ✅ Done |
-| **2** | Server-side memory cache (node-cache) | 1 hour | Low | Medium | ✅ Done |
-| **3** | Dexie.js IndexedDB client cache + sync | 1–2 weeks | Medium | Very High | ✅ Done |
+| **2** | Socket.io for barcode scan / stock check | 2–4 hours | Low | High | ✅ Done (socket scan now reuses the cached service path) |
+| **2** | Server-side memory cache (node-cache) | 1 hour | Low | Medium | ✅ Done — stock-safe scope (see §3.7; broad product cache was reverted, barcode-scan + customer caches shipped) |
+| **3** | Dexie.js IndexedDB client cache + sync | 1–2 weeks | Medium | Very High | ⛔ Reverted — implemented once, then removed (`c8cc8b7 "removed indexdb"`); client reads go to the LAN server |
 | **3** | Virtualize large product lists/tables | 4–8 hours | Low | Medium | ⬜ Pending |
 | **3** | PM2 Windows Service + power settings | 30 min | Low | Medium | ⬜ Pending |
+| **2** | Update-feature hardening (partial updates, settings validation, settle guard, expiry clear, timezone display) | 3–4 hours | Zero | Medium | ✅ Done (2026-11-08 — see performance.md §14) |
 
 ---
 

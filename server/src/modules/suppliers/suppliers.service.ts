@@ -1,6 +1,6 @@
 import { prisma, Prisma } from "../../services/prisma";
 import { NotFoundError } from "../../utils/errors";
-import type { CreateDistributorInput } from "./suppliers.schema";
+import type { CreateDistributorInput, UpdateDistributorInput } from "./suppliers.schema";
 import { clampPageSize } from "../../utils/pagination";
 
 export const suppliersService = {
@@ -88,18 +88,19 @@ export const suppliersService = {
     });
   },
 
-  async update(id: string, data: CreateDistributorInput) {
+  async update(id: string, data: UpdateDistributorInput) {
     const existing = await prisma.distributor.findUnique({ where: { id } });
     if (!existing) throw new NotFoundError("Distributor");
+    // Partial update: only set fields that were actually provided
+    const patch: Partial<Record<"name" | "salesmanName" | "salesmanContact" | "deliveryManName" | "deliveryManContact", string>> = {};
+    if (data.name !== undefined) patch.name = data.name;
+    if (data.salesmanName !== undefined) patch.salesmanName = data.salesmanName;
+    if (data.salesmanContact !== undefined) patch.salesmanContact = data.salesmanContact;
+    if (data.deliveryManName !== undefined) patch.deliveryManName = data.deliveryManName;
+    if (data.deliveryManContact !== undefined) patch.deliveryManContact = data.deliveryManContact;
     return prisma.distributor.update({
       where: { id },
-      data: {
-        name: data.name ?? "",
-        salesmanName: data.salesmanName ?? "",
-        salesmanContact: data.salesmanContact ?? "",
-        deliveryManName: data.deliveryManName ?? "",
-        deliveryManContact: data.deliveryManContact ?? "",
-      },
+      data: patch,
     });
   },
 

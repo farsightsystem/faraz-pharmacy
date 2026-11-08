@@ -2,6 +2,7 @@ import { Server as HttpServer } from "http";
 import { Server } from "socket.io";
 import { logger } from "../utils/logger";
 import { prisma } from "../services/prisma";
+import { medicinesService } from "../modules/medicines/medicines.service";
 
 let io: Server;
 
@@ -46,39 +47,10 @@ export function initializeSocket(httpServer: HttpServer) {
         } | null) => void
       ) => {
         try {
-          const trimmed = data.barcode.trim();
-          const product = await prisma.product.findFirst({
-            where: {
-              active: 1,
-              barcode: { equals: trimmed, mode: "insensitive" },
-            },
-            select: {
-              id: true,
-              barcode: true,
-              name: true,
-              salePrice: true,
-              purchasePrice: true,
-              stockQty: true,
-              category: true,
-              location: true,
-              active: true,
-              company: {
-                select: { name: true },
-              },
-              prices: {
-                where: { active: true },
-                orderBy: [{ createdAt: "asc" }, { id: "asc" }],
-                select: {
-                  id: true,
-                  productId: true,
-                  label: true,
-                  purchasePrice: true,
-                  salePrice: true,
-                },
-              },
-            },
-          });
-          callback(product ?? null);
+          // Reuse the service method so REST and Socket barcode lookups share
+          // one query path (and the short-TTL scan cache).
+          const product = await medicinesService.getByBarcodeFast(data.barcode);
+          callback(product as never);
         } catch (err) {
           logger.error("Socket product:scan error:", err);
           callback(null);

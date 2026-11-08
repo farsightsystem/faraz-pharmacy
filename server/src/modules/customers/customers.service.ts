@@ -1,7 +1,7 @@
 import { prisma } from "../../services/prisma";
 import { NotFoundError, BadRequestError } from "../../utils/errors";
 import { cacheGet, cacheSet, cacheDelNamespace, makeKey } from "../../utils/cache";
-import type { CreateCustomerInput } from "./customers.schema";
+import type { CreateCustomerInput, UpdateCustomerInput } from "./customers.schema";
 import { Prisma } from "../../generated/prisma/client";
 import { clampPageSize } from "../../utils/pagination";
 
@@ -203,19 +203,21 @@ export const customersService = {
     return result;
   },
 
-  async update(id: string, data: CreateCustomerInput) {
+  async update(id: string, data: UpdateCustomerInput) {
     const existing = await prisma.customer.findUnique({ where: { id } });
     if (!existing) throw new NotFoundError("Customer");
 
+    // Partial update: only set fields that were actually provided
+    const patch: Partial<Record<"name" | "phone" | "address" | "fatherName" | "fatherPhone", string>> = {};
+    if (data.name !== undefined) patch.name = data.name;
+    if (data.phone !== undefined) patch.phone = data.phone;
+    if (data.address !== undefined) patch.address = data.address;
+    if (data.fatherName !== undefined) patch.fatherName = data.fatherName;
+    if (data.fatherPhone !== undefined) patch.fatherPhone = data.fatherPhone;
+
     const result = await prisma.customer.update({
       where: { id },
-      data: {
-        name: data.name,
-        phone: data.phone ?? "",
-        address: data.address ?? "",
-        fatherName: data.fatherName ?? "",
-        fatherPhone: data.fatherPhone ?? "",
-      },
+      data: patch,
     });
     cacheDelNamespace("customers"); // invalidate customer cache on write
     return result;

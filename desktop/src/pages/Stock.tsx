@@ -342,7 +342,9 @@ export default function Stock() {
         batchNumber: form.batchNumber || undefined,
         quantity: Number(form.quantity),
         stax: form.stax ? Number(form.stax) : 0,
-        expiry: form.expiry || undefined,
+        // Send null (not undefined) when the field is cleared, so the server
+        // sets expiry to null instead of keeping the old value.
+        expiry: form.expiry || null,
         priceTierId:
           form.priceTierId === PRODUCT_PRICE_OPTION ? null : form.priceTierId || undefined,
       }),

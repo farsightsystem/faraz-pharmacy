@@ -24,7 +24,7 @@ The application works, but it is still built like a small-data app. The biggest 
 5. **Dashboard and reports recompute on the client** instead of returning small server-side aggregates. `reports.getStats()` even groups by raw timestamp (one row per sale).
 6. **Checkout loads the customer's entire purchase + arrears history** just to print the outstanding total.
 
-Good things already in place (they helped): gzip compression, server-side `node-cache`, a fast barcode endpoint + Socket.io scan path, a Dexie/IndexedDB client cache, an explicit DB pool (20 connections), and read-only list queries no longer wrapped in transactions.
+Good things already in place (they helped): gzip compression, a server-side `node-cache` in a **stock-safe scope** (customer list/detail + a short-TTL 10 s barcode-scan cache — see §14; the original broad product cache was reverted after causing stale-stock bugs), a fast barcode endpoint + Socket.io scan path sharing one cached service method, an explicit DB pool (20 connections), and read-only list queries no longer wrapped in transactions. Note: the Dexie/IndexedDB client cache described in Phase 3 was **reverted** in commit `c8cc8b7 "removed indexdb"`; client machines read from the LAN server as before, so the §5 catalog-sync findings no longer apply to a client cache.
 
 ---
 
@@ -489,3 +489,40 @@ The production build no longer reports a chunk above 500 kB. The initial rendere
 - `node --check desktop/electron/main.js && node --check desktop/electron/preload.cjs` and `git diff --check`: passed.
 - The local database was unreachable during the attempted runtime check (Prisma `P1001`). Apply `20261102100000_add_product_updated_at` with `cd server && npx prisma migrate deploy`, then verify full sync, incremental price/stock updates, archiving, and cached operation while the API is disconnected. Hard-deleted products are reconciled by the daily full refresh.
 - Manually smoke-test POS/returns standalone windows, report navigation and exports, printing, and status updates across multiple terminals. LAN and real-hardware performance remain unmeasured.
+
+> **2026-11-08 status note:** the desktop IndexedDB/Dexie client cache and its catalog sync were subsequently **reverted** (commit `c8cc8b7 "removed indexdb"`). The server-side `products.updated_at` migration remains in place. LAN terminals read product data from the Express API on every request, covered by the API-level caches described in §14.
+
+## 14. Update-Feature Audit, Stock-Safe Cache, and Hardening (2026-11-08)
+
+### What triggered this phase
+
+A module-by-module audit of every `PUT`/`PATCH`/update flow (categories, companies, customers, suppliers, users, settings, medicines, barcodes, batches, inventory, purchases, sales, arrears, returns, expenses, reports) found the business logic of all update endpoints transactionally sound (row locks, stock compensation, arrear compensation all correct), plus six minor issues and one reverted optimization to address.
+
+### Changes made
+
+**Update-feature fixes (desktop + server paired):**
+
+- **Partial updates for suppliers and customers.** `updateDistributorSchema` / `updateCustomerSchema` are now true partial-update schemas (optional fields without `""` defaults; `name` required). `suppliersService.update` and `customersService.update` build a patch object from only the fields actually provided, so a client that omits an optional field no longer silently wipes it to an empty string. The desktop edit dialogs send the full object, so user-facing behavior is unchanged.
+- **Settings endpoint validation.** `validate()` middleware added to `PUT /backup/directory` (path required), `PUT /auto-backup` (`enabled: boolean`, `time` must match `HH:MM` 24-hour), and `PUT /gdrive` (the previously dead `gdriveConfigSchema` is now used). `saveGdriveConfig` normalizes the payload through the typed shape instead of persisting raw `req.body`.
+- **Arrear settle guard.** `arrearsService.settle` now throws `BadRequestError("Arrear is already settled")` when `status === "settled"` or `balanceDue <= 0`, preventing zero-value `arrear_payment` sale rows from repeat settles.
+- **Stock dialog can clear expiry.** Stock edit submit sends `expiry: null` when the field is cleared (schema is `.nullable()`; the server distinguishes "not provided" from "clear"). `StockInput.expiry` widened to `string | null`. Create-path behavior unchanged.
+- **Expenses "this month" total timezone.** Computed with the terminal's local timezone via the same `tzOffset` convention used for server report queries, instead of UTC `toISOString()`.
+
+**Stock-safe product cache (replaces the reverted broad cache):**
+
+- `medicinesService.getByBarcodeFast` is cached with a deliberate **10 s TTL** (`fz:products:bcfast:<barcode>`), including negative caching (`null`) for unknown barcodes. It dedupes rapid re-scans of the same barcode; stock staleness is bounded to 10 s.
+- **`list()` / `search()` / `getById()` are intentionally NOT cached** — they expose `stockQty`, and caching them was what caused the stale-stock bugs behind the earlier revert.
+- Every write flushes the namespace: `medicinesService.create/update/archive/restore/hardDelete` and `purchasesService.create/update/remove/restore/hardDelete` all call `cacheDelNamespace("products")`.
+- The Socket.io `product:scan` handler was refactored to call `medicinesService.getByBarcodeFast()` instead of duplicating the query — REST and socket scans now share one query path and one cache.
+
+### Verification
+
+- `cd server && npx tsc --noEmit`: passed.
+- `cd desktop && npm exec -- tsc --noEmit`: passed (exit 0).
+- `git diff --check`: passed.
+- 14 files changed (server: medicines/purchases/customers/suppliers/settings/arrears services + schemas + socket index; desktop: Stock.tsx, Expenses.tsx, types/index.ts). All uncommitted.
+
+### Not yet validated
+
+- Manual LAN testing on the target terminals is outstanding. Highest-value manual checks: product update, stock edit with a cleared expiry, arrear settle twice (second attempt must be rejected), barcode scan while a product edit has just been saved (must reflect new price instantly — the write-side invalidation covers this), and settings saves with an invalid `auto-backup` time (must be rejected with a 400-style validation error).
+- Cache-adjacent behavior worth watching in real use: the 10 s scan cache means a quantity change made *without* going through a write endpoint (e.g. direct DB edit) can be missed for up to 10 s — an accepted, bounded trade-off.
