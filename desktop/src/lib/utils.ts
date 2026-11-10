@@ -42,12 +42,14 @@ export function renderBarcode(
 
 export function formatCurrency(amount: number | null | undefined): string {
   const val = Number(amount ?? 0);
-  if (isNaN(val)) return "Rs\u00a00";
+  if (isNaN(val)) return "Rs\u00a00.00";
+  // Always show exactly 2 decimals so whole prices read as 100.00 and
+  // decimal prices read as 130.60 (exact stored value, no rounding away).
   return new Intl.NumberFormat("en-PK", {
     style: "currency",
     currency: "PKR",
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
   }).format(val);
 }
 

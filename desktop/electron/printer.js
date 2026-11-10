@@ -61,8 +61,8 @@ function generateSaleReceiptHTML(sale) {
             ${batchNo ? `<div style="font-size:8.5px;color:#555;">B:${batchNo}${expiry ? ` Exp:${String(expiry).slice(0, 7)}` : ""}</div>` : ""}
           </td>
           <td>${item.quantity}</td>
-          <td>${Math.round(unitPrice)}</td>
-          <td class="right">${subtotal.toFixed(0)}</td>
+          <td>${unitPrice.toFixed(2)}</td>
+          <td class="right">${subtotal.toFixed(2)}</td>
       </tr>
       `;
     })
@@ -249,27 +249,27 @@ ${itemsHTML}
 
 <div class="calc-row">
 <span>Total Amount:</span>
-<span>${subtotal}</span>
+<span>${subtotal.toFixed(2)}</span>
 </div>
 
 <div class="calc-row">
 <span>Discount:</span>
-<span>${discount}</span>
+<span>${discount.toFixed(2)}</span>
 </div>
 
 <div class="calc-row">
 <span>${gst > 0 ? "Tax / GST:" : "GST (0%):"}</span>
-<span>${gst}</span>
+<span>${gst.toFixed(2)}</span>
 </div>
 
 <div class="calc-row">
 <span>Amount Paid:</span>
-<span>${paid}</span>
+<span>${paid.toFixed(2)}</span>
 </div>
 
 <div class="calc-row">
 <span>Balance:</span>
-<span>${balance}</span>
+<span>${balance.toFixed(2)}</span>
 </div>
 
 </div>
@@ -337,11 +337,11 @@ function generateReturnReceiptHTML(returnData, sale) {
           </td>
 
           <td class="price">
-            ${price.toFixed(0)}
+            ${price.toFixed(2)}
           </td>
 
           <td class="refund">
-            ${refund.toFixed(0)}
+            ${refund.toFixed(2)}
           </td>
         </tr>
       `;
@@ -760,16 +760,16 @@ body {
   <div class="total">
 
     <span class="total-label">Return Value:</span>
-    <span class="total-value">Rs ${totalRefund.toFixed(0)}</span>
+    <span class="total-value">Rs ${totalRefund.toFixed(2)}</span>
 
   </div>
   <div class="total">
     <span class="total-label">Applied to Arrears:</span>
-    <span class="total-value">Rs ${Number(returnData.credit_applied ?? returnData.creditApplied ?? 0).toFixed(0)}</span>
+    <span class="total-value">Rs ${Number(returnData.credit_applied ?? returnData.creditApplied ?? 0).toFixed(2)}</span>
   </div>
   <div class="total">
     <span class="total-label">Cash Refunded:</span>
-    <span class="total-value">Rs ${Number(returnData.cash_refunded ?? returnData.cashRefunded ?? 0).toFixed(0)}</span>
+    <span class="total-value">Rs ${Number(returnData.cash_refunded ?? returnData.cashRefunded ?? 0).toFixed(2)}</span>
   </div>
 
 

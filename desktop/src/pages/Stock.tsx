@@ -57,7 +57,6 @@ export default function Stock() {
   const [traceBatchOpen, setTraceBatchOpen] = useState(false);
   const [traceBatchNumber, setTraceBatchNumber] = useState("");
   const [search, setSearch] = useState("");
-  const [toolbarScan, setToolbarScan] = useState("");
   const [scanValue, setScanValue] = useState("");
   const scanRef = useRef<HTMLInputElement>(null);
   const isSavingAndNextRef = useRef(false);
@@ -70,13 +69,14 @@ export default function Stock() {
     quantity: "",
     stax: "",
     expiry: "",
+    arrivalDate: "",
     priceTierId: "" as string | null,
   });
 
   const stockHeaders = [
     "Invoice",
     "Batch #",
-    "Date",
+    "Arrival Date",
     "Supplier",
     "Product",
     "Qty",
@@ -89,7 +89,7 @@ export default function Stock() {
     data.map((s) => [
       s.invoice_number || "—",
       s.batch_number || "—",
-      formatDate(s.created_at),
+      formatDate(s.arrival_date || s.created_at),
       s.distributor_name || "—",
       s.product_name,
       s.quantity,
@@ -125,7 +125,7 @@ export default function Stock() {
 
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(50);
-  const [sortBy, setSortBy] = useState<string>("createdAt");
+  const [sortBy, setSortBy] = useState<string>("arrivalDate");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
   const debouncedSearch = useDebounce(search, 300);
 
@@ -190,7 +190,7 @@ export default function Stock() {
         distributorId?: string;
         distributorName?: string;
         stax?: number;
-        createdAt: string;
+        arrivalDate: string;
         count: number;
       }
     >();
@@ -205,7 +205,8 @@ export default function Stock() {
           distributorId: entry.distributor_id || undefined,
           distributorName: entry.distributor_name || undefined,
           stax: entry.stax ?? 0,
-          createdAt: entry.created_at,
+          // Prefer the recorded arrival date; fall back to the entry's created date
+          arrivalDate: entry.arrival_date || String(entry.created_at || "").slice(0, 10),
           count: 1,
         });
       } else {
@@ -217,6 +218,11 @@ export default function Stock() {
         }
         if (item.stax === undefined && entry.stax !== undefined) {
           item.stax = entry.stax;
+        }
+        // Keep the latest known arrival date for this invoice
+        const entryArrival = entry.arrival_date || String(entry.created_at || "").slice(0, 10);
+        if (entryArrival && (!item.arrivalDate || entryArrival > item.arrivalDate)) {
+          item.arrivalDate = entryArrival;
         }
       }
     }
@@ -236,8 +242,9 @@ export default function Stock() {
         quantity: Number(form.quantity),
         stax: form.stax ? Number(form.stax) : 0,
         expiry: form.expiry || undefined,
+        arrivalDate: form.arrivalDate || undefined,
         priceTierId:
-          form.priceTierId === PRODUCT_PRICE_OPTION ? undefined : form.priceTierId || undefined,
+        form.priceTierId === PRODUCT_PRICE_OPTION ? undefined : form.priceTierId || undefined,
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["stock"] });
@@ -269,6 +276,7 @@ export default function Stock() {
           quantity: "",
           stax: "",
           expiry: "",
+          arrivalDate: "",
           priceTierId: "",
         });
         toast.success("Stock purchase recorded");
@@ -345,6 +353,7 @@ export default function Stock() {
         // Send null (not undefined) when the field is cleared, so the server
         // sets expiry to null instead of keeping the old value.
         expiry: form.expiry || null,
+        arrivalDate: form.arrivalDate || null,
         priceTierId:
           form.priceTierId === PRODUCT_PRICE_OPTION ? null : form.priceTierId || undefined,
       }),
@@ -352,6 +361,10 @@ export default function Stock() {
       queryClient.invalidateQueries({ queryKey: ["stock"] });
       queryClient.invalidateQueries({ queryKey: ["products"] });
       queryClient.invalidateQueries({ queryKey: ["recent-stock-purchases"] });
+      // Bring the just-updated entry to the top for the admin
+      setSortBy("updatedAt");
+      setSortOrder("desc");
+      setPage(1);
       setOpen(false);
       setEditingId(null);
       setForm({
@@ -362,6 +375,7 @@ export default function Stock() {
         quantity: "",
         stax: "",
         expiry: "",
+        arrivalDate: "",
         priceTierId: "",
       });
       toast.success("Stock purchase updated");
@@ -449,18 +463,6 @@ export default function Stock() {
     scanRef.current?.focus();
   }
 
-  async function handleToolbarScan(barcode: string) {
-    const product = await api.products.getByBarcodeFast(barcode.trim());
-    if (product) {
-      openAdd();
-      handleSelectProduct(product.id);
-      toast.success(`Received scan for: ${product.name}`);
-    } else {
-      toast.error("No product found with this barcode");
-    }
-    setToolbarScan("");
-  }
-
   function openAdd(prefillInvoiceNumber?: unknown) {
     setEditingId(null);
     setScanValue("");
@@ -481,6 +483,7 @@ export default function Stock() {
         quantity: "",
         stax: targetInv.stax !== undefined && targetInv.stax !== null ? String(targetInv.stax) : "",
         expiry: "",
+        arrivalDate: targetInv.arrivalDate || "",
         priceTierId: "",
       });
       setInvoiceMode("recent");
@@ -493,6 +496,7 @@ export default function Stock() {
         quantity: "",
         stax: "",
         expiry: "",
+        arrivalDate: "",
         priceTierId: "",
       });
       setInvoiceMode("new");
@@ -510,6 +514,7 @@ export default function Stock() {
       quantity: String(entry.quantity),
       stax: entry.stax !== undefined && entry.stax !== null ? String(entry.stax) : "",
       expiry: entry.expiry || "",
+      arrivalDate: entry.arrival_date || "",
       priceTierId: entry.price_tier_id ?? PRODUCT_PRICE_OPTION,
     });
     setInvoiceMode(
@@ -522,13 +527,13 @@ export default function Stock() {
 
   const columns = [
     {
-      key: "created_at",
-      header: "Date",
+      key: "arrival_date",
+      header: "Arrival Date",
       sortable: true,
-      sortKey: "createdAt",
+      sortKey: "arrivalDate",
       cell: (s: StockPurchase) => (
         <span className="font-mono text-[11px] text-text-secondary">
-          {formatDate(s.created_at)}
+          {s.arrival_date ? formatDate(s.arrival_date) : "\u2014"}
         </span>
       ),
     },
@@ -702,6 +707,14 @@ export default function Stock() {
           ),
           onClick: () => openAdd(),
         }}
+        secondaryAction={{
+          label: "Batch Audit",
+          icon: <ShieldAlert className="h-4 w-4" />,
+          onClick: () => {
+            setTraceBatchNumber("");
+            setTraceBatchOpen(true);
+          },
+        }}
       />
 
       {/* Stock Overview Banner */}
@@ -736,31 +749,30 @@ export default function Stock() {
             <Input
               ref={searchRef}
               autoFocus
-              placeholder="Search by product, company, distributor, invoice..."
+              placeholder="Search by product, barcode, company, distributor, invoice..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="pl-10 h-10 rounded-full border border-border/80 bg-surface shadow-xs text-xs focus-visible:ring-2 focus-visible:ring-[#4A25E1]/25"
             />
           </div>
-          <div className="relative min-w-[210px]">
-            <Barcode className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-text-secondary" />
-            <Input
-              placeholder="Scan barcode to receive stock..."
-              value={toolbarScan}
-              onChange={(e) => setToolbarScan(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && toolbarScan.trim()) {
-                  handleToolbarScan(toolbarScan.trim());
-                }
-              }}
-              className="pl-10 h-10 rounded-full border border-border/80 bg-surface shadow-xs text-xs focus-visible:ring-2 focus-visible:ring-[#4A25E1]/25"
-            />
-          </div>
           <Select
-            value={sortBy === "createdAt" ? (sortOrder === "desc" ? "recent" : "oldest") : (sortBy === "productName" ? (sortOrder === "asc" ? "name_asc" : "name_desc") : "custom")}
+            value={
+              sortBy === "arrivalDate"
+                ? sortOrder === "desc"
+                  ? "arrival_recent"
+                  : "arrival_oldest"
+                : sortBy === "updatedAt"
+                  ? "updated"
+                  : sortBy === "productName"
+                    ? sortOrder === "asc"
+                      ? "name_asc"
+                      : "name_desc"
+                    : "custom"
+            }
             onValueChange={(val) => {
-              if (val === "recent") { setSortBy("createdAt"); setSortOrder("desc"); }
-              else if (val === "oldest") { setSortBy("createdAt"); setSortOrder("asc"); }
+              if (val === "arrival_recent") { setSortBy("arrivalDate"); setSortOrder("desc"); }
+              else if (val === "arrival_oldest") { setSortBy("arrivalDate"); setSortOrder("asc"); }
+              else if (val === "updated") { setSortBy("updatedAt"); setSortOrder("desc"); }
               else if (val === "name_asc") { setSortBy("productName"); setSortOrder("asc"); }
               else if (val === "name_desc") { setSortBy("productName"); setSortOrder("desc"); }
               setPage(1);
@@ -771,29 +783,18 @@ export default function Stock() {
               <SelectValue placeholder="Sort" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="recent">Recent first</SelectItem>
-              <SelectItem value="oldest">Oldest first</SelectItem>
+              <SelectItem value="arrival_recent">Recent arrival first</SelectItem>
+              <SelectItem value="arrival_oldest">Oldest arrival first</SelectItem>
+              <SelectItem value="updated">Updated first</SelectItem>
               <SelectItem value="name_asc">Product (A-Z)</SelectItem>
               <SelectItem value="name_desc">Product (Z-A)</SelectItem>
-              {sortBy !== "createdAt" && sortBy !== "productName" && (
+              {sortBy !== "arrivalDate" && sortBy !== "updatedAt" && sortBy !== "productName" && (
                 <SelectItem value="custom">Sort: {sortBy} ({sortOrder})</SelectItem>
               )}
             </SelectContent>
           </Select>
         </div>
         <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            className="rounded-xl shadow-xs border-brand/30 text-brand hover:bg-brand/10 gap-1.5"
-            onClick={() => {
-              setTraceBatchNumber("");
-              setTraceBatchOpen(true);
-            }}
-          >
-            <ShieldAlert className="h-3.5 w-3.5" />
-            Batch Audit
-          </Button>
           <ExportButton type="pdf" onClick={handleExportPDF} />
           <ExportButton type="csv" onClick={handleExportCSV} />
           <Button
@@ -993,6 +994,7 @@ export default function Stock() {
                             invoiceNumber: matched.invoiceNumber,
                             distributorId: matched.distributorId || prev.distributorId,
                             stax: matched.stax !== undefined && matched.stax !== null ? String(matched.stax) : prev.stax,
+                            arrivalDate: matched.arrivalDate || prev.arrivalDate,
                           }));
                           toast.info(`Invoice ${matched.invoiceNumber} loaded with distributor & STAX.`);
                         } else {
@@ -1015,6 +1017,7 @@ export default function Stock() {
                             invoiceNumber: val,
                             distributorId: matched.distributorId || prev.distributorId,
                             stax: matched.stax !== undefined && matched.stax !== null ? String(matched.stax) : prev.stax,
+                            arrivalDate: matched.arrivalDate || prev.arrivalDate,
                           }));
                         } else {
                           setForm((prev) => ({ ...prev, invoiceNumber: val }));
@@ -1039,16 +1042,26 @@ export default function Stock() {
                 </div>
               </div>
 
-              <div className="space-y-1">
-                <Label className="text-xs">STAX (PKR)</Label>
-                <Input
-                  type="number"
-                  min="0"
-                  step="any"
-                  placeholder="e.g. 150 (sales tax in PKR for this invoice)"
-                  value={form.stax}
-                  onChange={(e) => setForm({ ...form, stax: e.target.value })}
-                />
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <Label className="text-xs">STAX (PKR)</Label>
+                  <Input
+                    type="number"
+                    min="0"
+                    step="any"
+                    placeholder="e.g. 150 (sales tax in PKR for this invoice)"
+                    value={form.stax}
+                    onChange={(e) => setForm({ ...form, stax: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">Arrival Date (optional)</Label>
+                  <Input
+                    type="date"
+                    value={form.arrivalDate}
+                    onChange={(e) => setForm({ ...form, arrivalDate: e.target.value })}
+                  />
+                </div>
               </div>
             </div>
 

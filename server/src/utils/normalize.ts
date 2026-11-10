@@ -67,6 +67,7 @@ export function normalizeStockPurchase(purchase: any): any {
     stax: purchase.stax ?? 0,
     price_tier_id: purchase.priceTierId ?? null,
     expiry: purchase.expiry ?? null,
+    arrival_date: purchase.arrivalDate ?? null,
     active: purchase.active ?? 1,
     total_value: purchase.totalValue ?? 0,
     created_at: purchase.createdAt?.toISOString?.() ?? purchase.createdAt,

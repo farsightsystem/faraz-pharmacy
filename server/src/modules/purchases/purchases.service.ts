@@ -36,6 +36,7 @@ export const purchasesService = {
         { invoiceNumber: { contains: q, mode: "insensitive" } },
         { batchNumber: { contains: q, mode: "insensitive" } },
         { product: { name: { contains: q, mode: "insensitive" } } },
+        { product: { barcode: { contains: q, mode: "insensitive" } } },
         { distributor: { name: { contains: q, mode: "insensitive" } } },
       ];
     }
@@ -52,7 +53,7 @@ export const purchasesService = {
 
     const skip = (page - 1) * limit;
 
-    let orderBy: Prisma.StockPurchaseOrderByWithRelationInput = { createdAt: sortOrder || "desc" };
+    let orderBy: Prisma.StockPurchaseOrderByWithRelationInput = { arrivalDate: sortOrder || "desc" };
     if (sortBy === "productName" || sortBy === "name") {
       orderBy = { product: { name: sortOrder || "asc" } };
     } else if (sortBy === "invoiceNumber") {
@@ -61,6 +62,10 @@ export const purchasesService = {
       orderBy = { batchNumber: sortOrder || "asc" };
     } else if (sortBy === "quantity") {
       orderBy = { quantity: sortOrder || "desc" };
+    } else if (sortBy === "arrivalDate" || sortBy === "arrival_date") {
+      orderBy = { arrivalDate: sortOrder || "desc" };
+    } else if (sortBy === "updatedAt" || sortBy === "updated_at") {
+      orderBy = { updatedAt: sortOrder || "desc" };
     } else if (sortBy === "createdAt" || sortBy === "created_at") {
       orderBy = { createdAt: sortOrder || "desc" };
     }
@@ -182,6 +187,7 @@ export const purchasesService = {
           salePrice,
           stax: data.stax ?? 0,
           expiry,
+          arrivalDate: data.arrivalDate ?? null,
           totalValue,
           priceTierId: data.priceTierId ?? null,
         },
@@ -334,6 +340,7 @@ export const purchasesService = {
           quantity: data.quantity ?? old.quantity,
           ...(data.batchNumber !== undefined ? { batchNumber: nextBatchNumber } : {}),
           ...(data.expiry !== undefined ? { expiry: data.expiry } : {}),
+          ...(data.arrivalDate !== undefined ? { arrivalDate: data.arrivalDate } : {}),
           totalValue,
           invoiceNumber: data.invoiceNumber ?? old.invoiceNumber,
           distributorId: data.distributorId ?? old.distributorId,

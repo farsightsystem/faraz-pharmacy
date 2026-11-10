@@ -286,6 +286,7 @@ export interface StockPurchase {
   price_tier_id?: string | null;
   stax?: number;
   expiry?: string;
+  arrival_date?: string | null;
   total_value: number;
   subtotal?: number;
   discount?: number;
@@ -310,6 +311,7 @@ export interface StockInput {
   quantity: number;
   stax?: number;
   expiry?: string | null;
+  arrivalDate?: string | null;
 }
 
 export interface ProductBatch {

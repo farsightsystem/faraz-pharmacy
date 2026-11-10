@@ -201,7 +201,7 @@ export default function Products() {
 
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(50);
-  const [sortBy, setSortBy] = useState<string>("createdAt");
+  const [sortBy, setSortBy] = useState<string>("updatedAt");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
   const debouncedSearch = useDebounce(search, 300);
 
@@ -385,6 +385,10 @@ export default function Products() {
       queryClient.invalidateQueries({ queryKey: ["products"] });
       queryClient.invalidateQueries({ queryKey: ["stock"] });
       queryClient.invalidateQueries({ queryKey: ["recent-stock-purchases"] });
+      // Snap the list back to "last updated first" so the just-edited product appears on top
+      setSortBy("updatedAt");
+      setSortOrder("desc");
+      setPage(1);
       setOpen(false);
       setEditingId(null);
       toast.success("Product updated");
@@ -488,7 +492,8 @@ export default function Products() {
       purchasePrice: String(product.purchase_price),
       salePrice: String(product.sale_price),
       prices: p
-        ? p.map((pt) => ({
+        // Server returns tiers oldest-first; show newest-first so added tiers appear on top
+        ? [...p].reverse().map((pt) => ({
           id: pt.id,
           purchasePrice: String(pt.purchasePrice),
           salePrice: String(pt.salePrice),
@@ -500,7 +505,8 @@ export default function Products() {
   }
 
   function addPriceTier() {
-    setForm((prev) => ({ ...prev, prices: [...prev.prices, emptyPriceTier()] }));
+    // Prepend so the new tier's fields are the first pair in the list
+    setForm((prev) => ({ ...prev, prices: [emptyPriceTier(), ...prev.prices] }));
   }
 
   function removePriceTier(index: number) {
@@ -816,7 +822,7 @@ export default function Products() {
             </span>
             {allPrices && allPrices.length > 0 && (
               <div className="flex flex-wrap gap-1">
-                {allPrices.map((pt, i) => (
+                {[...allPrices].reverse().map((pt, i) => (
                   <span
                     key={i}
                     className="text-[9px] font-mono text-text-secondary bg-surface-2 px-1 rounded"
@@ -1057,9 +1063,24 @@ export default function Products() {
             />
           </div>
           <Select
-            value={sortBy === "createdAt" ? (sortOrder === "desc" ? "recent" : "oldest") : (sortBy === "name" ? (sortOrder === "asc" ? "name_asc" : "name_desc") : "custom")}
+            value={
+              sortBy === "updatedAt"
+                ? sortOrder === "desc"
+                  ? "updated"
+                  : "updated_old"
+                : sortBy === "createdAt"
+                  ? sortOrder === "desc"
+                    ? "recent"
+                    : "oldest"
+                  : sortBy === "name"
+                    ? sortOrder === "asc"
+                      ? "name_asc"
+                      : "name_desc"
+                    : "custom"
+            }
             onValueChange={(val) => {
-              if (val === "recent") { setSortBy("createdAt"); setSortOrder("desc"); }
+              if (val === "updated") { setSortBy("updatedAt"); setSortOrder("desc"); }
+              else if (val === "recent") { setSortBy("createdAt"); setSortOrder("desc"); }
               else if (val === "oldest") { setSortBy("createdAt"); setSortOrder("asc"); }
               else if (val === "name_asc") { setSortBy("name"); setSortOrder("asc"); }
               else if (val === "name_desc") { setSortBy("name"); setSortOrder("desc"); }
@@ -1071,11 +1092,12 @@ export default function Products() {
               <SelectValue placeholder="Sort" />
             </SelectTrigger>
             <SelectContent>
+              <SelectItem value="updated">Recently updated</SelectItem>
               <SelectItem value="recent">Recent first</SelectItem>
               <SelectItem value="oldest">Oldest first</SelectItem>
               <SelectItem value="name_asc">Name (A-Z)</SelectItem>
               <SelectItem value="name_desc">Name (Z-A)</SelectItem>
-              {sortBy !== "createdAt" && sortBy !== "name" && (
+              {sortBy !== "createdAt" && sortBy !== "name" && sortBy !== "updatedAt" && (
                 <SelectItem value="custom">Sort: {sortBy} ({sortOrder})</SelectItem>
               )}
             </SelectContent>

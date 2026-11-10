@@ -59,6 +59,8 @@ export type StockPurchaseMinAggregateOutputType = {
   batchId: string | null
   batchNumber: string | null
   priceTierId: string | null
+  arrivalDate: string | null
+  updatedAt: Date | null
   createdAt: Date | null
 }
 
@@ -77,6 +79,8 @@ export type StockPurchaseMaxAggregateOutputType = {
   batchId: string | null
   batchNumber: string | null
   priceTierId: string | null
+  arrivalDate: string | null
+  updatedAt: Date | null
   createdAt: Date | null
 }
 
@@ -95,6 +99,8 @@ export type StockPurchaseCountAggregateOutputType = {
   batchId: number
   batchNumber: number
   priceTierId: number
+  arrivalDate: number
+  updatedAt: number
   createdAt: number
   _all: number
 }
@@ -133,6 +139,8 @@ export type StockPurchaseMinAggregateInputType = {
   batchId?: true
   batchNumber?: true
   priceTierId?: true
+  arrivalDate?: true
+  updatedAt?: true
   createdAt?: true
 }
 
@@ -151,6 +159,8 @@ export type StockPurchaseMaxAggregateInputType = {
   batchId?: true
   batchNumber?: true
   priceTierId?: true
+  arrivalDate?: true
+  updatedAt?: true
   createdAt?: true
 }
 
@@ -169,6 +179,8 @@ export type StockPurchaseCountAggregateInputType = {
   batchId?: true
   batchNumber?: true
   priceTierId?: true
+  arrivalDate?: true
+  updatedAt?: true
   createdAt?: true
   _all?: true
 }
@@ -274,6 +286,8 @@ export type StockPurchaseGroupByOutputType = {
   batchId: string | null
   batchNumber: string
   priceTierId: string | null
+  arrivalDate: string | null
+  updatedAt: Date
   createdAt: Date
   _count: StockPurchaseCountAggregateOutputType | null
   _avg: StockPurchaseAvgAggregateOutputType | null
@@ -315,6 +329,8 @@ export type StockPurchaseWhereInput = {
   batchId?: Prisma.StringNullableFilter<"StockPurchase"> | string | null
   batchNumber?: Prisma.StringFilter<"StockPurchase"> | string
   priceTierId?: Prisma.StringNullableFilter<"StockPurchase"> | string | null
+  arrivalDate?: Prisma.StringNullableFilter<"StockPurchase"> | string | null
+  updatedAt?: Prisma.DateTimeFilter<"StockPurchase"> | Date | string
   createdAt?: Prisma.DateTimeFilter<"StockPurchase"> | Date | string
   distributor?: Prisma.XOR<Prisma.DistributorNullableScalarRelationFilter, Prisma.DistributorWhereInput> | null
   product?: Prisma.XOR<Prisma.ProductScalarRelationFilter, Prisma.ProductWhereInput>
@@ -337,6 +353,8 @@ export type StockPurchaseOrderByWithRelationInput = {
   batchId?: Prisma.SortOrderInput | Prisma.SortOrder
   batchNumber?: Prisma.SortOrder
   priceTierId?: Prisma.SortOrderInput | Prisma.SortOrder
+  arrivalDate?: Prisma.SortOrderInput | Prisma.SortOrder
+  updatedAt?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   distributor?: Prisma.DistributorOrderByWithRelationInput
   product?: Prisma.ProductOrderByWithRelationInput
@@ -362,6 +380,8 @@ export type StockPurchaseWhereUniqueInput = Prisma.AtLeast<{
   batchId?: Prisma.StringNullableFilter<"StockPurchase"> | string | null
   batchNumber?: Prisma.StringFilter<"StockPurchase"> | string
   priceTierId?: Prisma.StringNullableFilter<"StockPurchase"> | string | null
+  arrivalDate?: Prisma.StringNullableFilter<"StockPurchase"> | string | null
+  updatedAt?: Prisma.DateTimeFilter<"StockPurchase"> | Date | string
   createdAt?: Prisma.DateTimeFilter<"StockPurchase"> | Date | string
   distributor?: Prisma.XOR<Prisma.DistributorNullableScalarRelationFilter, Prisma.DistributorWhereInput> | null
   product?: Prisma.XOR<Prisma.ProductScalarRelationFilter, Prisma.ProductWhereInput>
@@ -384,6 +404,8 @@ export type StockPurchaseOrderByWithAggregationInput = {
   batchId?: Prisma.SortOrderInput | Prisma.SortOrder
   batchNumber?: Prisma.SortOrder
   priceTierId?: Prisma.SortOrderInput | Prisma.SortOrder
+  arrivalDate?: Prisma.SortOrderInput | Prisma.SortOrder
+  updatedAt?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   _count?: Prisma.StockPurchaseCountOrderByAggregateInput
   _avg?: Prisma.StockPurchaseAvgOrderByAggregateInput
@@ -410,6 +432,8 @@ export type StockPurchaseScalarWhereWithAggregatesInput = {
   batchId?: Prisma.StringNullableWithAggregatesFilter<"StockPurchase"> | string | null
   batchNumber?: Prisma.StringWithAggregatesFilter<"StockPurchase"> | string
   priceTierId?: Prisma.StringNullableWithAggregatesFilter<"StockPurchase"> | string | null
+  arrivalDate?: Prisma.StringNullableWithAggregatesFilter<"StockPurchase"> | string | null
+  updatedAt?: Prisma.DateTimeWithAggregatesFilter<"StockPurchase"> | Date | string
   createdAt?: Prisma.DateTimeWithAggregatesFilter<"StockPurchase"> | Date | string
 }
 
@@ -424,6 +448,8 @@ export type StockPurchaseCreateInput = {
   totalValue?: number
   active?: number
   batchNumber?: string
+  arrivalDate?: string | null
+  updatedAt?: Date | string
   createdAt?: Date | string
   distributor?: Prisma.DistributorCreateNestedOneWithoutStockPurchasesInput
   product: Prisma.ProductCreateNestedOneWithoutStockPurchasesInput
@@ -446,6 +472,8 @@ export type StockPurchaseUncheckedCreateInput = {
   batchId?: string | null
   batchNumber?: string
   priceTierId?: string | null
+  arrivalDate?: string | null
+  updatedAt?: Date | string
   createdAt?: Date | string
 }
 
@@ -460,6 +488,8 @@ export type StockPurchaseUpdateInput = {
   totalValue?: Prisma.FloatFieldUpdateOperationsInput | number
   active?: Prisma.IntFieldUpdateOperationsInput | number
   batchNumber?: Prisma.StringFieldUpdateOperationsInput | string
+  arrivalDate?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   distributor?: Prisma.DistributorUpdateOneWithoutStockPurchasesNestedInput
   product?: Prisma.ProductUpdateOneRequiredWithoutStockPurchasesNestedInput
@@ -482,6 +512,8 @@ export type StockPurchaseUncheckedUpdateInput = {
   batchId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   batchNumber?: Prisma.StringFieldUpdateOperationsInput | string
   priceTierId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  arrivalDate?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
 
@@ -500,6 +532,8 @@ export type StockPurchaseCreateManyInput = {
   batchId?: string | null
   batchNumber?: string
   priceTierId?: string | null
+  arrivalDate?: string | null
+  updatedAt?: Date | string
   createdAt?: Date | string
 }
 
@@ -514,6 +548,8 @@ export type StockPurchaseUpdateManyMutationInput = {
   totalValue?: Prisma.FloatFieldUpdateOperationsInput | number
   active?: Prisma.IntFieldUpdateOperationsInput | number
   batchNumber?: Prisma.StringFieldUpdateOperationsInput | string
+  arrivalDate?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
 
@@ -532,6 +568,8 @@ export type StockPurchaseUncheckedUpdateManyInput = {
   batchId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   batchNumber?: Prisma.StringFieldUpdateOperationsInput | string
   priceTierId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  arrivalDate?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
 
@@ -560,6 +598,8 @@ export type StockPurchaseCountOrderByAggregateInput = {
   batchId?: Prisma.SortOrder
   batchNumber?: Prisma.SortOrder
   priceTierId?: Prisma.SortOrder
+  arrivalDate?: Prisma.SortOrder
+  updatedAt?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
 }
 
@@ -587,6 +627,8 @@ export type StockPurchaseMaxOrderByAggregateInput = {
   batchId?: Prisma.SortOrder
   batchNumber?: Prisma.SortOrder
   priceTierId?: Prisma.SortOrder
+  arrivalDate?: Prisma.SortOrder
+  updatedAt?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
 }
 
@@ -605,6 +647,8 @@ export type StockPurchaseMinOrderByAggregateInput = {
   batchId?: Prisma.SortOrder
   batchNumber?: Prisma.SortOrder
   priceTierId?: Prisma.SortOrder
+  arrivalDate?: Prisma.SortOrder
+  updatedAt?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
 }
 
@@ -796,6 +840,8 @@ export type StockPurchaseCreateWithoutProductInput = {
   totalValue?: number
   active?: number
   batchNumber?: string
+  arrivalDate?: string | null
+  updatedAt?: Date | string
   createdAt?: Date | string
   distributor?: Prisma.DistributorCreateNestedOneWithoutStockPurchasesInput
   batch?: Prisma.ProductBatchCreateNestedOneWithoutStockPurchasesInput
@@ -816,6 +862,8 @@ export type StockPurchaseUncheckedCreateWithoutProductInput = {
   batchId?: string | null
   batchNumber?: string
   priceTierId?: string | null
+  arrivalDate?: string | null
+  updatedAt?: Date | string
   createdAt?: Date | string
 }
 
@@ -863,6 +911,8 @@ export type StockPurchaseScalarWhereInput = {
   batchId?: Prisma.StringNullableFilter<"StockPurchase"> | string | null
   batchNumber?: Prisma.StringFilter<"StockPurchase"> | string
   priceTierId?: Prisma.StringNullableFilter<"StockPurchase"> | string | null
+  arrivalDate?: Prisma.StringNullableFilter<"StockPurchase"> | string | null
+  updatedAt?: Prisma.DateTimeFilter<"StockPurchase"> | Date | string
   createdAt?: Prisma.DateTimeFilter<"StockPurchase"> | Date | string
 }
 
@@ -877,6 +927,8 @@ export type StockPurchaseCreateWithoutPriceTierInput = {
   totalValue?: number
   active?: number
   batchNumber?: string
+  arrivalDate?: string | null
+  updatedAt?: Date | string
   createdAt?: Date | string
   distributor?: Prisma.DistributorCreateNestedOneWithoutStockPurchasesInput
   product: Prisma.ProductCreateNestedOneWithoutStockPurchasesInput
@@ -897,6 +949,8 @@ export type StockPurchaseUncheckedCreateWithoutPriceTierInput = {
   active?: number
   batchId?: string | null
   batchNumber?: string
+  arrivalDate?: string | null
+  updatedAt?: Date | string
   createdAt?: Date | string
 }
 
@@ -937,6 +991,8 @@ export type StockPurchaseCreateWithoutDistributorInput = {
   totalValue?: number
   active?: number
   batchNumber?: string
+  arrivalDate?: string | null
+  updatedAt?: Date | string
   createdAt?: Date | string
   product: Prisma.ProductCreateNestedOneWithoutStockPurchasesInput
   batch?: Prisma.ProductBatchCreateNestedOneWithoutStockPurchasesInput
@@ -957,6 +1013,8 @@ export type StockPurchaseUncheckedCreateWithoutDistributorInput = {
   batchId?: string | null
   batchNumber?: string
   priceTierId?: string | null
+  arrivalDate?: string | null
+  updatedAt?: Date | string
   createdAt?: Date | string
 }
 
@@ -997,6 +1055,8 @@ export type StockPurchaseCreateWithoutBatchInput = {
   totalValue?: number
   active?: number
   batchNumber?: string
+  arrivalDate?: string | null
+  updatedAt?: Date | string
   createdAt?: Date | string
   distributor?: Prisma.DistributorCreateNestedOneWithoutStockPurchasesInput
   product: Prisma.ProductCreateNestedOneWithoutStockPurchasesInput
@@ -1017,6 +1077,8 @@ export type StockPurchaseUncheckedCreateWithoutBatchInput = {
   active?: number
   batchNumber?: string
   priceTierId?: string | null
+  arrivalDate?: string | null
+  updatedAt?: Date | string
   createdAt?: Date | string
 }
 
@@ -1060,6 +1122,8 @@ export type StockPurchaseCreateManyProductInput = {
   batchId?: string | null
   batchNumber?: string
   priceTierId?: string | null
+  arrivalDate?: string | null
+  updatedAt?: Date | string
   createdAt?: Date | string
 }
 
@@ -1074,6 +1138,8 @@ export type StockPurchaseUpdateWithoutProductInput = {
   totalValue?: Prisma.FloatFieldUpdateOperationsInput | number
   active?: Prisma.IntFieldUpdateOperationsInput | number
   batchNumber?: Prisma.StringFieldUpdateOperationsInput | string
+  arrivalDate?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   distributor?: Prisma.DistributorUpdateOneWithoutStockPurchasesNestedInput
   batch?: Prisma.ProductBatchUpdateOneWithoutStockPurchasesNestedInput
@@ -1094,6 +1160,8 @@ export type StockPurchaseUncheckedUpdateWithoutProductInput = {
   batchId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   batchNumber?: Prisma.StringFieldUpdateOperationsInput | string
   priceTierId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  arrivalDate?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
 
@@ -1111,6 +1179,8 @@ export type StockPurchaseUncheckedUpdateManyWithoutProductInput = {
   batchId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   batchNumber?: Prisma.StringFieldUpdateOperationsInput | string
   priceTierId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  arrivalDate?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
 
@@ -1128,6 +1198,8 @@ export type StockPurchaseCreateManyPriceTierInput = {
   active?: number
   batchId?: string | null
   batchNumber?: string
+  arrivalDate?: string | null
+  updatedAt?: Date | string
   createdAt?: Date | string
 }
 
@@ -1142,6 +1214,8 @@ export type StockPurchaseUpdateWithoutPriceTierInput = {
   totalValue?: Prisma.FloatFieldUpdateOperationsInput | number
   active?: Prisma.IntFieldUpdateOperationsInput | number
   batchNumber?: Prisma.StringFieldUpdateOperationsInput | string
+  arrivalDate?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   distributor?: Prisma.DistributorUpdateOneWithoutStockPurchasesNestedInput
   product?: Prisma.ProductUpdateOneRequiredWithoutStockPurchasesNestedInput
@@ -1162,6 +1236,8 @@ export type StockPurchaseUncheckedUpdateWithoutPriceTierInput = {
   active?: Prisma.IntFieldUpdateOperationsInput | number
   batchId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   batchNumber?: Prisma.StringFieldUpdateOperationsInput | string
+  arrivalDate?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
 
@@ -1179,6 +1255,8 @@ export type StockPurchaseUncheckedUpdateManyWithoutPriceTierInput = {
   active?: Prisma.IntFieldUpdateOperationsInput | number
   batchId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   batchNumber?: Prisma.StringFieldUpdateOperationsInput | string
+  arrivalDate?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
 
@@ -1196,6 +1274,8 @@ export type StockPurchaseCreateManyDistributorInput = {
   batchId?: string | null
   batchNumber?: string
   priceTierId?: string | null
+  arrivalDate?: string | null
+  updatedAt?: Date | string
   createdAt?: Date | string
 }
 
@@ -1210,6 +1290,8 @@ export type StockPurchaseUpdateWithoutDistributorInput = {
   totalValue?: Prisma.FloatFieldUpdateOperationsInput | number
   active?: Prisma.IntFieldUpdateOperationsInput | number
   batchNumber?: Prisma.StringFieldUpdateOperationsInput | string
+  arrivalDate?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   product?: Prisma.ProductUpdateOneRequiredWithoutStockPurchasesNestedInput
   batch?: Prisma.ProductBatchUpdateOneWithoutStockPurchasesNestedInput
@@ -1230,6 +1312,8 @@ export type StockPurchaseUncheckedUpdateWithoutDistributorInput = {
   batchId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   batchNumber?: Prisma.StringFieldUpdateOperationsInput | string
   priceTierId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  arrivalDate?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
 
@@ -1247,6 +1331,8 @@ export type StockPurchaseUncheckedUpdateManyWithoutDistributorInput = {
   batchId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   batchNumber?: Prisma.StringFieldUpdateOperationsInput | string
   priceTierId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  arrivalDate?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
 
@@ -1264,6 +1350,8 @@ export type StockPurchaseCreateManyBatchInput = {
   active?: number
   batchNumber?: string
   priceTierId?: string | null
+  arrivalDate?: string | null
+  updatedAt?: Date | string
   createdAt?: Date | string
 }
 
@@ -1278,6 +1366,8 @@ export type StockPurchaseUpdateWithoutBatchInput = {
   totalValue?: Prisma.FloatFieldUpdateOperationsInput | number
   active?: Prisma.IntFieldUpdateOperationsInput | number
   batchNumber?: Prisma.StringFieldUpdateOperationsInput | string
+  arrivalDate?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   distributor?: Prisma.DistributorUpdateOneWithoutStockPurchasesNestedInput
   product?: Prisma.ProductUpdateOneRequiredWithoutStockPurchasesNestedInput
@@ -1298,6 +1388,8 @@ export type StockPurchaseUncheckedUpdateWithoutBatchInput = {
   active?: Prisma.IntFieldUpdateOperationsInput | number
   batchNumber?: Prisma.StringFieldUpdateOperationsInput | string
   priceTierId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  arrivalDate?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
 
@@ -1315,6 +1407,8 @@ export type StockPurchaseUncheckedUpdateManyWithoutBatchInput = {
   active?: Prisma.IntFieldUpdateOperationsInput | number
   batchNumber?: Prisma.StringFieldUpdateOperationsInput | string
   priceTierId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  arrivalDate?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
 
@@ -1335,6 +1429,8 @@ export type StockPurchaseSelect<ExtArgs extends runtime.Types.Extensions.Interna
   batchId?: boolean
   batchNumber?: boolean
   priceTierId?: boolean
+  arrivalDate?: boolean
+  updatedAt?: boolean
   createdAt?: boolean
   distributor?: boolean | Prisma.StockPurchase$distributorArgs<ExtArgs>
   product?: boolean | Prisma.ProductDefaultArgs<ExtArgs>
@@ -1357,6 +1453,8 @@ export type StockPurchaseSelectCreateManyAndReturn<ExtArgs extends runtime.Types
   batchId?: boolean
   batchNumber?: boolean
   priceTierId?: boolean
+  arrivalDate?: boolean
+  updatedAt?: boolean
   createdAt?: boolean
   distributor?: boolean | Prisma.StockPurchase$distributorArgs<ExtArgs>
   product?: boolean | Prisma.ProductDefaultArgs<ExtArgs>
@@ -1379,6 +1477,8 @@ export type StockPurchaseSelectUpdateManyAndReturn<ExtArgs extends runtime.Types
   batchId?: boolean
   batchNumber?: boolean
   priceTierId?: boolean
+  arrivalDate?: boolean
+  updatedAt?: boolean
   createdAt?: boolean
   distributor?: boolean | Prisma.StockPurchase$distributorArgs<ExtArgs>
   product?: boolean | Prisma.ProductDefaultArgs<ExtArgs>
@@ -1401,10 +1501,12 @@ export type StockPurchaseSelectScalar = {
   batchId?: boolean
   batchNumber?: boolean
   priceTierId?: boolean
+  arrivalDate?: boolean
+  updatedAt?: boolean
   createdAt?: boolean
 }
 
-export type StockPurchaseOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "productId" | "distributorId" | "invoiceNumber" | "quantity" | "purchasePrice" | "salePrice" | "stax" | "expiry" | "totalValue" | "active" | "batchId" | "batchNumber" | "priceTierId" | "createdAt", ExtArgs["result"]["stockPurchase"]>
+export type StockPurchaseOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "productId" | "distributorId" | "invoiceNumber" | "quantity" | "purchasePrice" | "salePrice" | "stax" | "expiry" | "totalValue" | "active" | "batchId" | "batchNumber" | "priceTierId" | "arrivalDate" | "updatedAt" | "createdAt", ExtArgs["result"]["stockPurchase"]>
 export type StockPurchaseInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   distributor?: boolean | Prisma.StockPurchase$distributorArgs<ExtArgs>
   product?: boolean | Prisma.ProductDefaultArgs<ExtArgs>
@@ -1447,6 +1549,8 @@ export type $StockPurchasePayload<ExtArgs extends runtime.Types.Extensions.Inter
     batchId: string | null
     batchNumber: string
     priceTierId: string | null
+    arrivalDate: string | null
+    updatedAt: Date
     createdAt: Date
   }, ExtArgs["result"]["stockPurchase"]>
   composites: {}
@@ -1889,6 +1993,8 @@ export interface StockPurchaseFieldRefs {
   readonly batchId: Prisma.FieldRef<"StockPurchase", 'String'>
   readonly batchNumber: Prisma.FieldRef<"StockPurchase", 'String'>
   readonly priceTierId: Prisma.FieldRef<"StockPurchase", 'String'>
+  readonly arrivalDate: Prisma.FieldRef<"StockPurchase", 'String'>
+  readonly updatedAt: Prisma.FieldRef<"StockPurchase", 'DateTime'>
   readonly createdAt: Prisma.FieldRef<"StockPurchase", 'DateTime'>
 }
     

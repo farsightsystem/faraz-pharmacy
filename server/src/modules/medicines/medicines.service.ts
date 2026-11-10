@@ -96,6 +96,8 @@ export const medicinesService = {
     let orderBy: Record<string, "asc" | "desc"> = { createdAt: sortOrder || "desc" };
     if (sortBy === "name") {
       orderBy = { name: sortOrder || "asc" };
+    } else if (sortBy === "updatedAt" || sortBy === "updated_at") {
+      orderBy = { updatedAt: sortOrder || "desc" };
     } else if (sortBy === "salePrice" || sortBy === "sale_price") {
       orderBy = { salePrice: sortOrder || "desc" };
     } else if (sortBy === "purchasePrice" || sortBy === "purchase_price") {
@@ -339,7 +341,7 @@ export const medicinesService = {
         UPDATE stock_purchases
         SET purchase_price = ${standardPrice.purchasePrice},
             sale_price = ${standardPrice.salePrice},
-            total_value = quantity * ${standardPrice.purchasePrice}
+            total_value = quantity * ${standardPrice.purchasePrice}::double precision
         WHERE product_id = ${id}
           AND price_tier_id IS NULL
           AND purchase_price = ${old.purchasePrice}
@@ -381,7 +383,7 @@ export const medicinesService = {
               UPDATE stock_purchases
               SET purchase_price = ${nextPrice.purchasePrice},
                   sale_price = ${nextPrice.salePrice},
-                  total_value = quantity * ${nextPrice.purchasePrice}
+                  total_value = quantity * ${nextPrice.purchasePrice}::double precision
               WHERE product_id = ${id}
                 AND price_tier_id = ${price.id}
             `;
