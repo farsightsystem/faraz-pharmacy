@@ -1,5 +1,6 @@
 import { useEffect, useState, useRef } from "react";
 import { Barcode } from "lucide-react";
+import { toast } from "sonner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -134,12 +135,17 @@ export default function PrintBarcodeDialog({
         productName
       );
       if (!result.success) {
-        alert("Barcode print failed: " + (result.error || "Unknown error"));
+        toast.error("Barcode print failed: " + (result.error || "Unknown error"));
       } else {
+        toast.success(
+          copies > 1
+            ? `${copies} barcode labels sent to printer`
+            : "Barcode label sent to printer"
+        );
         onOpenChange(false);
       }
     } catch (e) {
-      alert("Barcode print failed: " + (e as Error).message);
+      toast.error("Barcode print failed: " + (e as Error).message);
     }
   }
 

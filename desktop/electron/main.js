@@ -100,7 +100,7 @@ function createWindow({ posOnly = false, returnOnly = false } = {}) {
   minHeight: 700,
   title: "Faraz Pharmacy",
   movable: true,
-  icon: path.join(__dirname, "..", "src", "asset", "image", "logo.png"),
+  icon: path.join(__dirname, "..", "src", "asset", "image", "desktop-icon.png"),
   webPreferences: {
     preload: path.join(__dirname, "preload.cjs"),
     nodeIntegration: false,
