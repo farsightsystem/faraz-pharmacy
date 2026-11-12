@@ -28,7 +28,7 @@ export default function InvoiceDetail() {
       if (!sale) return "";
       const printData = {
         ...sale,
-        customer_total_arrears: 0,
+        customer_total_arrears: sale.customer_outstanding_arrear ?? 0,
         items:
           sale.items?.map((i) => ({
             product_name: i.product_name,
@@ -49,7 +49,7 @@ export default function InvoiceDetail() {
     if (!sale) return;
     const printData = {
       ...sale,
-      customer_total_arrears: 0,
+      customer_total_arrears: sale.customer_outstanding_arrear ?? 0,
       items:
         sale.items?.map((i) => ({
           product_name: i.product_name,

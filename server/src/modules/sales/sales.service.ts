@@ -384,6 +384,14 @@ export const salesService = {
     const adjustedProfit = rawProfit * (1 - discountRatio);
 
     const { items, ...rest } = sale;
-    return { ...rest, items, profit: Math.round(adjustedProfit) };
+    const customerOutstandingArrear = sale.customerId
+      ? await prisma.arrear
+          .aggregate({
+            where: { customerId: sale.customerId, status: "pending" },
+            _sum: { balanceDue: true },
+          })
+          .then((aggregate) => aggregate._sum.balanceDue ?? 0)
+      : 0;
+    return { ...rest, items, profit: Math.round(adjustedProfit), customerOutstandingArrear };
   },
 };

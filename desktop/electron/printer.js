@@ -45,12 +45,11 @@ function generateSaleReceiptHTML(sale) {
   const gst = Number(sale.tax || sale.gst || 0);
   const paid = Number(sale.amount_paid ?? sale.amountPaid ?? 0);
   const balance = Math.max(0, totalAmount - paid);
+  const customerArrears = Number(sale.customer_total_arrears ?? sale.customerTotalArrears ?? 0);
 
   const itemsHTML = items
     .map((item) => {
       const name = item.product_name ?? item.productName ?? "Item";
-      const batchNo = item.batch_number ?? item.batchNumber;
-      const expiry = item.expiry;
       const unitPrice = Number(item.unit_price ?? item.unitPrice ?? (item.quantity > 0 ? item.subtotal / item.quantity : 0));
       const subtotal = Number(item.subtotal || 0);
 
@@ -58,7 +57,6 @@ function generateSaleReceiptHTML(sale) {
       <tr>
           <td>
             ${name}
-            ${batchNo ? `<div style="font-size:8.5px;color:#555;">B:${batchNo}${expiry ? ` Exp:${String(expiry).slice(0, 7)}` : ""}</div>` : ""}
           </td>
           <td>${item.quantity}</td>
           <td>${unitPrice.toFixed(2)}</td>
@@ -271,6 +269,11 @@ ${itemsHTML}
 <span>Balance:</span>
 <span>${balance.toFixed(2)}</span>
 </div>
+
+${customerArrears > 0 ? `<div class="calc-row">
+<span>Total Arrears:</span>
+<span>${customerArrears.toFixed(2)}</span>
+</div>` : ""}
 
 </div>
 
@@ -1522,6 +1525,7 @@ function generateESCPOSReceipt(sale) {
   const discount = sale.discount || 0;
   const tax = sale.tax || sale.gst || 0;
   const balance = Math.max(0, totalAmount - paidAmount);
+  const customerArrears = Number(sale.customer_total_arrears ?? sale.customerTotalArrears ?? 0);
   const L = 48;
   const parts = [];
 
@@ -1571,10 +1575,6 @@ function generateESCPOSReceipt(sale) {
     const unitPrice = String(Math.round(item.subtotal / item.quantity)).padStart(colUnit);
     const amount = String(item.subtotal.toFixed(0)).padStart(colAmt);
     parts.push(escposText(name + qty + unitPrice + amount));
-    if (item.batch_number) {
-      const bInfo = `  B:${item.batch_number}${item.expiry ? ` Exp:${item.expiry.slice(0, 7)}` : ""}`;
-      parts.push(escposText(bInfo.padEnd(L).slice(0, L)));
-    }
   });
 
   parts.push(escposLine("-", L));
@@ -1593,6 +1593,7 @@ function generateESCPOSReceipt(sale) {
   addLine("Paid", paidAmount.toFixed(0));
   if (balance > 0) addLine("Balance", balance.toFixed(0));
   else if (changeDue > 0) addLine("Change", changeDue.toFixed(0));
+  if (customerArrears > 0) addLine("Total Arrears", customerArrears.toFixed(0));
   parts.push(escposLine("=", L));
 
   if (sale.status === "partial") {

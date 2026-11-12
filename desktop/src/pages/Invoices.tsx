@@ -1,6 +1,7 @@
 import { useState, useCallback, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
+import { toast } from "sonner";
 import { useDebounce } from "@/hooks/useDebounce";
 import { Search, Calendar, Printer, Eye, RotateCcw, ArrowUpDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -181,9 +182,20 @@ export default function Invoices() {
     onExportCSV: handleExportCSV,
   });
 
-  function handleQuickPrint(sale: Sale, e: React.MouseEvent) {
+  async function handleQuickPrint(sale: Sale, e: React.MouseEvent) {
     e.stopPropagation();
-    setPrintSale(sale);
+    try {
+      // The paginated list omits line items, so load the full invoice
+      // (with items) before opening the receipt preview.
+      const fullSale = await api.sales.getById(sale.id);
+      if (!fullSale) {
+        toast.error("Invoice not found");
+        return;
+      }
+      setPrintSale(fullSale);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to load invoice details");
+    }
   }
 
   const generateReceiptHtml = useCallback(
@@ -191,7 +203,7 @@ export default function Invoices() {
       if (!printSale) return "";
       const printData = {
         ...printSale,
-        customer_total_arrears: 0,
+        customer_total_arrears: printSale.customer_outstanding_arrear ?? 0,
         items:
           printSale.items?.map((i) => ({
             product_name: i.product_name,
@@ -212,7 +224,7 @@ export default function Invoices() {
     if (!printSale) return;
     const printData = {
       ...printSale,
-      customer_total_arrears: 0,
+      customer_total_arrears: printSale.customer_outstanding_arrear ?? 0,
       items:
         printSale.items?.map((i) => ({
           product_name: i.product_name,
