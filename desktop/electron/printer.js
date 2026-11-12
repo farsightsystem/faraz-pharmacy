@@ -44,7 +44,6 @@ function generateSaleReceiptHTML(sale) {
   const discount = Number(sale.discount || 0);
   const gst = Number(sale.tax || sale.gst || 0);
   const paid = Number(sale.amount_paid ?? sale.amountPaid ?? 0);
-  const balance = Math.max(0, totalAmount - paid);
   const customerArrears = Number(sale.customer_total_arrears ?? sale.customerTotalArrears ?? 0);
 
   const itemsHTML = items
@@ -265,11 +264,6 @@ ${itemsHTML}
 <span>${paid.toFixed(2)}</span>
 </div>
 
-<div class="calc-row">
-<span>Balance:</span>
-<span>${balance.toFixed(2)}</span>
-</div>
-
 ${customerArrears > 0 ? `<div class="calc-row">
 <span>Total Arrears:</span>
 <span>${customerArrears.toFixed(2)}</span>
@@ -283,7 +277,7 @@ ${customerArrears > 0 ? `<div class="calc-row">
 
 <div class="footer center">
 
-Developed by www.farsightsystem.com 
+Developed by Mustafa & Imran | 03099510704 & 03103388069
 
 </div>
 
@@ -803,7 +797,7 @@ body {
     <div class="footer-developed">
       Developed by
       <span class="footer-website">
-        www.farsightsystem.com
+        Mustafa &amp; Imran | 03099510704 &amp; 03103388069
       </span>
     </div>
 
@@ -1524,7 +1518,6 @@ function generateESCPOSReceipt(sale) {
   const changeDue = sale.change || 0;
   const discount = sale.discount || 0;
   const tax = sale.tax || sale.gst || 0;
-  const balance = Math.max(0, totalAmount - paidAmount);
   const customerArrears = Number(sale.customer_total_arrears ?? sale.customerTotalArrears ?? 0);
   const L = 48;
   const parts = [];
@@ -1591,8 +1584,7 @@ function generateESCPOSReceipt(sale) {
   if (tax > 0) addLine("Tax / GST", "+" + tax.toFixed(0));
   addLine("Total", totalAmount.toFixed(0), true);
   addLine("Paid", paidAmount.toFixed(0));
-  if (balance > 0) addLine("Balance", balance.toFixed(0));
-  else if (changeDue > 0) addLine("Change", changeDue.toFixed(0));
+  if (changeDue > 0) addLine("Change", changeDue.toFixed(0));
   if (customerArrears > 0) addLine("Total Arrears", customerArrears.toFixed(0));
   parts.push(escposLine("=", L));
 
