@@ -17,7 +17,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { cn, formatCurrency, formatDate } from "@/lib/utils";
+import { cn, formatCurrency, formatDate, formatLocalDateKey } from "@/lib/utils";
 import { api } from "@/lib/api";
 import { downloadPDF, downloadCSV } from "@/lib/export";
 import { useModuleShortcuts } from "@/hooks/useModuleShortcuts";
@@ -145,12 +145,19 @@ export default function Expenses() {
 
   // Match "this month" to the terminal's local timezone (same tzOffset
   // convention the app uses for server report queries), not UTC.
-  const nowLocal = new Date(Date.now() + -new Date().getTimezoneOffset() * 60_000);
-  const localYearMonth = nowLocal.toISOString().slice(0, 7);
+  const now = new Date();
+  const monthStart = formatLocalDateKey(new Date(now.getFullYear(), now.getMonth(), 1));
+  const monthEnd = formatLocalDateKey(new Date(now.getFullYear(), now.getMonth() + 1, 0));
 
-  const totalThisMonth = expenses
-    .filter((e: Expense) => e.date?.startsWith(localYearMonth))
-    .reduce((s: number, e: Expense) => s + e.amount, 0);
+  // Aggregate on the server so the total covers every active expense this
+  // month, not just the current paginated page or the selected category.
+  const { data: monthSummary } = useQuery({
+    queryKey: ["expenses", "month-summary", monthStart, monthEnd],
+    queryFn: () =>
+      api.reports.expenseSummary({ dateFrom: monthStart, dateTo: monthEnd }),
+  });
+
+  const totalThisMonth = monthSummary?.total ?? 0;
 
   const createMutation = useMutation({
     mutationFn: () =>

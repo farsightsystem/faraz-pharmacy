@@ -49,7 +49,8 @@ export default function StatCard({
   href,
   onClick,
 }: StatCardProps) {
-  const numValue = typeof value === "number" ? value : 0;
+  const isNumberValue = typeof value === "number";
+  const numValue = isNumberValue ? value : 0;
   const isCurrency =
     title.toLowerCase().includes("revenue") || title.toLowerCase().includes("arrear");
   const animatedValue = useCountUp(numValue, 500);
@@ -84,9 +85,13 @@ export default function StatCard({
           </p>
           <div className="flex items-baseline gap-1.5">
             <p className="text-2xl font-bold font-display text-text-primary tabular-nums tracking-tight">
-              {isCurrency ? formatCurrency(animatedValue) : animatedValue.toLocaleString()}
+              {isNumberValue
+                ? isCurrency
+                  ? formatCurrency(animatedValue)
+                  : animatedValue.toLocaleString()
+                : value}
             </p>
-            {typeof value === "number" && value !== animatedValue && (
+            {isNumberValue && value !== animatedValue && (
               <span className="text-[10px] text-text-secondary animate-pulse">...</span>
             )}
           </div>
