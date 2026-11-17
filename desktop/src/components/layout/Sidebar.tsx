@@ -132,7 +132,11 @@ export default function Sidebar() {
         )}
       >
         <div className="flex items-center justify-center rounded-2xl h-20 w-20  shrink-0 p-1.5">
-          <img src={logoSrc} alt="Faraz Pharmacy" className="h-full w-full object-contain filter drop-shadow" />
+          <img
+            src={logoSrc}
+            alt="Faraz Pharmacy"
+            className="h-full w-full object-contain filter brightness-0 invert opacity-90"
+          />
         </div>
         <AnimatePresence>
           {isExpanded && (

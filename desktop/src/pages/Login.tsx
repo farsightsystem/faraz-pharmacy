@@ -99,9 +99,7 @@ export default function Login() {
           <div className="rounded-3xl border border-border/80 bg-surface p-8 sm:p-10 shadow-xl shadow-brand/5">
             <div className="mb-8">
               <div className="flex items-center gap-3 mb-4">
-                <div className="h-11 w-11 rounded-2xl bg-gradient-to-br from-[#3612B8] to-[#2A0E94] flex items-center justify-center p-2 shadow-md shadow-brand/20">
-                  <img src={logoSrc} alt="" className="h-full w-full object-contain filter brightness-0 invert" />
-                </div>
+                <img src={logoSrc} alt="Faraz Pharmacy" className="h-12 w-12 object-contain" />
                 <div>
                   <h1 className="text-xl font-display font-bold text-text-primary tracking-tight">
                     Faraz Pharmacy
@@ -212,9 +210,11 @@ export default function Login() {
           transition={{ duration: 0.45, ease: "easeOut" }}
           className="relative z-10 text-center max-w-sm w-full mx-auto"
         >
-          <div className="w-24 h-24 p-4 mx-auto mb-6 rounded-3xl bg-white/10 backdrop-blur-md border border-white/20 shadow-2xl flex items-center justify-center transform hover:scale-105 transition-transform duration-300">
-            <img src={logoSrc} alt="Faraz Pharmacy" className="w-full h-full object-contain filter brightness-0 invert" />
-          </div>
+          <img
+            src={logoSrc}
+            alt="Faraz Pharmacy"
+            className="w-28 h-28 mx-auto mb-6 object-contain filter brightness-0 invert opacity-90 drop-shadow-2xl"
+          />
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 backdrop-blur-md border border-white/15 text-white/90 text-xs font-medium mb-4">
             <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
             Airnow Modern SaaS Edition
