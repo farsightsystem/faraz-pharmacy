@@ -13,10 +13,11 @@ import {
   Tags,
   Barcode,
   ArrowUpDown,
+  Eye,
 } from "lucide-react";
 import PageHeader from "@/components/shared/PageHeader";
 import DataTable from "@/components/shared/DataTable";
-import StatusBadge from "@/components/shared/StatusBadge";
+
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -29,7 +30,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { cn, formatCurrency, generateBarcode } from "@/lib/utils";
+import { cn, formatCurrency, formatDate, generateBarcode } from "@/lib/utils";
 import { api } from "@/lib/api";
 import { downloadCSV, downloadPDF } from "@/lib/export";
 import { useModuleShortcuts } from "@/hooks/useModuleShortcuts";
@@ -167,6 +168,7 @@ export default function Products() {
   const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
   const [showArchived, setShowArchived] = useState(false);
+  const [viewProduct, setViewProduct] = useState<Product | null>(null);
   const [open, setOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [addedId, setAddedId] = useState<string | null>(null);
@@ -837,34 +839,19 @@ export default function Products() {
       },
     },
     {
-      key: "stockQty",
-      header: "Stock",
-      sortable: true,
-      sortKey: "stockQty",
-      cell: (p: Product) => (
-        <span
-          className={`font-mono text-xs font-semibold ${p.stock_qty <= 5 ? "text-danger" : p.active ? "text-text-primary" : "text-text-secondary"}`}
-        >
-          {p.stock_qty}
-        </span>
-      ),
-    },
-    {
-      key: "status",
-      header: "Status",
-      cell: (p: Product) => {
-        if (!p.active) return <StatusBadge status="inactive" />;
-        const s = p.stock_qty <= 0 ? "inactive" : p.stock_qty <= 5 ? "low" : "active";
-        return <StatusBadge status={s} />;
-      },
-    },
-    {
       key: "actions",
       header: "",
       cell: (p: Product) => (
         <div className="flex items-center gap-0.5 justify-end">
           {p.active ? (
             <>
+              <button
+                onClick={() => setViewProduct(p)}
+                className="h-8 w-8 rounded-xl flex items-center justify-center text-text-secondary hover:text-brand hover:bg-brand/10 transition-colors"
+                title="View details"
+              >
+                <Eye className="h-4 w-4" />
+              </button>
               <button
                 onClick={() => openEdit(p)}
                 className="h-8 w-8 rounded-xl flex items-center justify-center text-text-secondary hover:text-brand hover:bg-brand/10 transition-colors"
@@ -1782,6 +1769,134 @@ export default function Products() {
         barcode={printBarcode?.barcode}
         productName={printBarcode?.name || printBarcode?.productName}
       />
+
+      {/* Product details viewer */}
+      <Dialog open={!!viewProduct} onOpenChange={(v) => !v && setViewProduct(null)}>
+        <DialogContent className="max-w-xl rounded-3xl max-h-[85vh] overflow-y-auto" aria-describedby={undefined}>
+          <div className="px-6 py-5">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-lg font-bold font-display">
+              <Eye className="h-5 w-5 text-brand" />
+              Product Details
+            </DialogTitle>
+          </DialogHeader>
+
+          {viewProduct && (
+            <div className="space-y-5">
+              {/* Product identity */}
+              <div className="flex items-start justify-between gap-4">
+                <div className="space-y-1 min-w-0">
+                  <h3 className="text-xl font-bold font-display text-text-primary leading-tight">
+                    {viewProduct.name}
+                  </h3>
+                  <div className="flex items-center gap-3 text-xs text-text-secondary">
+                    <span className="font-mono">{viewProduct.barcode}</span>
+                    <span>{viewProduct.company || "No company"}</span>
+                    {viewProduct.category && <span>{viewProduct.category}</span>}
+                  </div>
+                </div>
+                <span
+                  className={cn(
+                    "shrink-0 inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-semibold",
+                    !viewProduct.active
+                      ? "bg-text-secondary/10 text-text-secondary"
+                      : viewProduct.stock_qty <= 0
+                      ? "bg-danger/10 text-danger"
+                      : "bg-success/10 text-success"
+                  )}
+                >
+                  {!viewProduct.active
+                    ? "Archived"
+                    : viewProduct.stock_qty <= 0
+                    ? "Out of stock"
+                    : "In stock"}
+                </span>
+              </div>
+
+              {/* Key numbers: price is the hero */}
+              <div className="grid grid-cols-3 gap-px rounded-2xl bg-border/60 border border-border/60 overflow-hidden">
+                <div className="bg-surface px-4 py-3">
+                  <p className="text-[11px] text-text-secondary">Sale price</p>
+                  <p className="text-xl font-bold font-display text-text-primary tabular-nums">
+                    {formatCurrency(viewProduct.sale_price)}
+                  </p>
+                </div>
+                <div className="bg-surface px-4 py-3">
+                  <p className="text-[11px] text-text-secondary">Purchase</p>
+                  <p className="text-base font-semibold text-text-primary tabular-nums pt-0.5">
+                    {formatCurrency(viewProduct.purchase_price)}
+                  </p>
+                </div>
+                <div className="bg-surface px-4 py-3">
+                  <p className="text-[11px] text-text-secondary">Stock on hand</p>
+                  <p className="text-base font-semibold text-text-primary tabular-nums pt-0.5">
+                    {viewProduct.stock_qty}
+                  </p>
+                </div>
+              </div>
+
+              {/* Remaining details */}
+              <dl className="divide-y divide-border/60 rounded-2xl border border-border/60 overflow-hidden">
+                {[
+                  { label: "Location", value: viewProduct.location || "—" },
+                  { label: "Markup", value: `${viewProduct.markup_percent}%` },
+                  { label: "Batch #", value: viewProduct.batch_no || "—" },
+                  { label: "Expiry", value: viewProduct.expiry || "—" },
+                  { label: "Created", value: formatDate(viewProduct.created_at) },
+                  ...(viewProduct.updated_at
+                    ? [{ label: "Last updated", value: formatDate(viewProduct.updated_at) }]
+                    : []),
+                ].map(({ label, value }) => (
+                  <div key={label} className="flex items-center justify-between gap-6 px-4 py-2.5 bg-surface">
+                    <dt className="text-xs text-text-secondary shrink-0">{label}</dt>
+                    <dd className="text-xs font-medium text-text-primary text-right">{value}</dd>
+                  </div>
+                ))}
+              </dl>
+
+              {/* Price tiers */}
+              <div className="space-y-2">
+                <div className="flex items-baseline justify-between">
+                  <h4 className="text-sm font-semibold text-text-primary">
+                    Price tiers
+                    {viewProduct.prices && viewProduct.prices.length > 0 && (
+                      <span className="ml-1.5 text-xs font-normal text-text-secondary">
+                        ({viewProduct.prices.length}
+                        {viewProduct.prices.length === 1 ? " tier" : " tiers"})
+                      </span>
+                    )}
+                  </h4>
+                  <span className="text-[11px] text-text-secondary">Purchase → Sale</span>
+                </div>
+                {viewProduct.prices && viewProduct.prices.length > 0 ? (
+                  <div className="rounded-2xl border border-border/60 overflow-hidden">
+                    <table className="w-full text-xs">
+                      <tbody className="divide-y divide-border/60">
+                        {viewProduct.prices.map((tier, i) => (
+                          <tr key={tier.id} className={i % 2 === 1 ? "bg-surface-2/40" : "bg-surface"}>
+                            <td className="px-4 py-2.5 font-medium text-text-primary">{tier.label || "Tier"}</td>
+                            <td className="px-4 py-2.5 font-mono text-text-secondary text-right tabular-nums">
+                              {formatCurrency(tier.purchasePrice)}
+                            </td>
+                            <td className="px-4 py-2.5 font-mono font-semibold text-text-primary text-right tabular-nums">
+                              {formatCurrency(tier.salePrice)}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <p className="text-xs text-text-secondary px-1">
+                    No additional price tiers — this product sells at its default sale price.
+                  </p>
+                )}
+              </div>
+            </div>
+          )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

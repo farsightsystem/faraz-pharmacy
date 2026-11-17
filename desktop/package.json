@@ -66,17 +66,17 @@
       "electron/**/*",
       "dist/**/*"
     ],
-    "icon": "src/asset/image/desktop-icon.png",
+    "icon": "src/asset/image/desktop-icon.jpeg",
     "mac": {
-      "icon": "src/asset/image/desktop-icon.png",
+      "icon": "src/asset/image/desktop-icon.jpeg",
       "target": "dmg"
     },
     "win": {
-      "icon": "src/asset/image/desktop-icon.png",
+      "icon": "src/asset/image/desktop-icon.jpeg",
       "target": "nsis"
     },
     "linux": {
-      "icon": "src/asset/image/desktop-icon.png",
+      "icon": "src/asset/image/desktop-icon.jpeg",
       "target": "AppImage"
     }
   }

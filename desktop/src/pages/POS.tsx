@@ -231,14 +231,14 @@ export default function POS() {
   }, [matchingProducts, search]);
 
   // Amount Paid behavior:
-  // - Defaults to Total (customer selection is optional for full payments)
+  // - Starts EMPTY: the cashier must enter the amount (avoids accidental full-pay clicks)
   // - Capped at cart.total (cannot exceed total amount)
-  // - Keeps synced with Total unless cashier entered custom partial amount or 100% credit
+  // - "100% Credit" checkbox forces Rs 0 paid
   useEffect(() => {
     if (isFullArrears) {
       cart.setAmountPaid("0");
     } else if (!isCustomAmountPaid) {
-      cart.setAmountPaid(cart.total > 0 ? String(cart.total) : "0");
+      cart.setAmountPaid("");
     } else {
       const currentVal = Number(cart.amountPaid) || 0;
       if (currentVal > cart.total) {
@@ -250,8 +250,11 @@ export default function POS() {
   const numAmountPaid = isFullArrears
     ? 0
     : Math.min(cart.total, Math.max(0, Number(cart.amountPaid) || 0));
+  // Empty field means "no payment entered yet" — not a 0-paid/arrears sale.
+  const amountPaidEmpty =
+    !isFullArrears && String(cart.amountPaid ?? "").trim() === "";
   const arrearsShortfall =
-    numAmountPaid < cart.total ? cart.total - numAmountPaid : 0;
+    amountPaidEmpty ? 0 : numAmountPaid < cart.total ? cart.total - numAmountPaid : 0;
   const isPartialOrCredit = isFullArrears || arrearsShortfall > 0;
   const changeDue = 0;
 
@@ -544,6 +547,13 @@ export default function POS() {
       return;
     }
 
+    // The cashier must explicitly enter the amount paid before checkout
+    if (amountPaidEmpty) {
+      toast.error("Enter the amount paid to complete the sale");
+      amountPaidInputRef.current?.focus();
+      return;
+    }
+
     // If there is any remaining amount going into arrears:
     if (arrearsShortfall > 0) {
       if (!cart.customerId) {
@@ -624,6 +634,7 @@ export default function POS() {
   const canPay =
     cart.items.length > 0 &&
     !processing &&
+    !amountPaidEmpty &&
     (!isPartialOrCredit || !!cart.customerId);
 
   return (
